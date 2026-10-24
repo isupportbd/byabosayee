@@ -11,8 +11,41 @@ import {
   subCategories,
   units,
   challanTypes,
-  vendorTypes
+  vendorTypes,
+  paymentMethods
 } from "@/modules/catalog/database/models/catalog.js";
+
+let paymentMethodsTableEnsured = false;
+export async function ensurePaymentMethodsTable() {
+  if (paymentMethodsTableEnsured) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "payment_methods" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "name" varchar(255) NOT NULL UNIQUE,
+        "code" varchar(50),
+        "description" text,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+    `);
+
+    const existing = await db.select().from(paymentMethods).limit(1);
+    if (existing.length === 0) {
+      await db.insert(paymentMethods).values([
+        { name: "নগদ / ক্যাশ (Cash)", code: "cash", description: "সরাসরি নগদ অর্থ লেনদেন", isActive: true },
+        { name: "বিকাশ (bKash)", code: "bkash", description: "বিকাশ মোবাইল ব্যাংকিং লেনদেন", isActive: true },
+        { name: "নগদ (Nagad)", code: "nagad", description: "নগদ মোবাইল ব্যাংকিং লেনদেন", isActive: true },
+        { name: "রকেট (Rocket)", code: "rocket", description: "রকেট মোবাইল ব্যাংকিং লেনদেন", isActive: true },
+        { name: "ব্যাংক ট্রান্সফার (Bank)", code: "bank", description: "ব্যাংক অ্যাকাউন্ট ও অনলাইন ট্রান্সফার", isActive: true }
+      ]);
+    }
+    paymentMethodsTableEnsured = true;
+  } catch (e) {
+    console.error("Failed to ensure payment_methods table:", e);
+  }
+}
 
 let productTypesTableEnsured = false;
 export async function ensureProductTypesTable() {
@@ -132,7 +165,8 @@ export const getMasterCatalog: Handler = async (c: any) => {
     await ensureUnitsTableColumns();
     await ensureChallanTypesTable();
     await ensureVendorTypesTable();
-    const [allCategories, allSubCategories, allProductTypes, allSizeGroups, allSizes, allColors, allFabricTypes, allUnits, allChallanTypes, allVendorTypes] =
+    await ensurePaymentMethodsTable();
+    const [allCategories, allSubCategories, allProductTypes, allSizeGroups, allSizes, allColors, allFabricTypes, allUnits, allChallanTypes, allVendorTypes, allPaymentMethods] =
       await Promise.all([
         db.select().from(categories).orderBy(desc(categories.id)),
         db.select().from(subCategories).orderBy(desc(subCategories.id)),
@@ -143,7 +177,8 @@ export const getMasterCatalog: Handler = async (c: any) => {
         db.select().from(fabricTypes).orderBy(desc(fabricTypes.id)),
         db.select().from(units).orderBy(desc(units.id)),
         db.select().from(challanTypes).orderBy(asc(challanTypes.id)),
-        db.select().from(vendorTypes).orderBy(asc(vendorTypes.id))
+        db.select().from(vendorTypes).orderBy(asc(vendorTypes.id)),
+        db.select().from(paymentMethods).orderBy(asc(paymentMethods.id))
       ]);
 
     // Group sizes under their parent size group
@@ -211,6 +246,10 @@ export const getMasterCatalog: Handler = async (c: any) => {
             createdAt: item.createdAt ? String(item.createdAt) : null
           })),
           vendorTypes: allVendorTypes.map((item) => ({
+            ...item,
+            createdAt: item.createdAt ? String(item.createdAt) : null
+          })),
+          paymentMethods: allPaymentMethods.map((item) => ({
             ...item,
             createdAt: item.createdAt ? String(item.createdAt) : null
           }))
@@ -1672,6 +1711,163 @@ export const toggleVendorTypeStatus: Handler = async (c: any) => {
     );
   } catch (error) {
     console.error("Toggle vendor type status error:", error);
+    return c.json({ message: "স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+/* -------------------------------------------------------------
+ * 9. Payment Methods Controllers (পরিশোধের মাধ্যম / Trx Type)
+ * ----------------------------------------------------------- */
+export const listPaymentMethods: Handler = async (c: any) => {
+  try {
+    await ensurePaymentMethodsTable();
+    const list = await db.select().from(paymentMethods).orderBy(asc(paymentMethods.id));
+    return c.json(
+      {
+        message: "Payment methods retrieved successfully",
+        data: list.map((item) => ({
+          ...item,
+          createdAt: item.createdAt ? String(item.createdAt) : null
+        }))
+      },
+      HttpStatusCodes.OK
+    );
+  } catch (error) {
+    console.error("List payment methods error:", error);
+    return c.json({ message: "পরিশোধের মাধ্যমের তালিকা লোড করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const createPaymentMethod: Handler = async (c: any) => {
+  try {
+    await ensurePaymentMethodsTable();
+    const body = typeof c.req.valid === "function" ? c.req.valid("json") : await c.req.json();
+    const name = body.name?.trim();
+    const code = body.code?.trim() || null;
+    const description = body.description?.trim() || null;
+
+    if (!name) {
+      return c.json({ message: "পরিশোধের মাধ্যমের নাম আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    const [existing] = await db.select().from(paymentMethods).where(
+      sql`LOWER(TRIM(${paymentMethods.name})) = LOWER(TRIM(${name}))`
+    );
+    if (existing) {
+      return c.json({ message: "এই নামের পরিশোধের মাধ্যম ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.CONFLICT);
+    }
+
+    const [created] = await db
+      .insert(paymentMethods)
+      .values({
+        name,
+        code,
+        description,
+        isActive: true
+      })
+      .returning();
+
+    return c.json(
+      {
+        message: "পরিশোধের মাধ্যম সফলভাবে তৈরি হয়েছে",
+        data: {
+          ...created,
+          createdAt: created.createdAt ? String(created.createdAt) : null
+        }
+      },
+      HttpStatusCodes.CREATED
+    );
+  } catch (error) {
+    console.error("Create payment method error:", error);
+    return c.json({ message: "পরিশোধের মাধ্যম তৈরি করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const updatePaymentMethod: Handler = async (c: any) => {
+  try {
+    await ensurePaymentMethodsTable();
+    const id = Number(c.req.param("id"));
+    const body = typeof c.req.valid === "function" ? c.req.valid("json") : await c.req.json();
+    const name = body.name?.trim();
+    const code = body.code !== undefined ? (body.code?.trim() || null) : undefined;
+    const description = body.description !== undefined ? (body.description?.trim() || null) : undefined;
+
+    const [item] = await db.select().from(paymentMethods).where(eq(paymentMethods.id, id));
+    if (!item) {
+      return c.json({ message: "পরিশোধের মাধ্যম পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    if (name) {
+      const [duplicate] = await db.select().from(paymentMethods).where(
+        and(
+          ne(paymentMethods.id, id),
+          sql`LOWER(TRIM(${paymentMethods.name})) = LOWER(TRIM(${name}))`
+        )
+      );
+      if (duplicate) {
+        return c.json({ message: "এই নামের আরেকটি পরিশোধের মাধ্যম ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.CONFLICT);
+      }
+    }
+
+    const [updated] = await db
+      .update(paymentMethods)
+      .set({
+        ...(name ? { name } : {}),
+        ...(code !== undefined ? { code } : {}),
+        ...(description !== undefined ? { description } : {}),
+        updatedAt: new Date()
+      })
+      .where(eq(paymentMethods.id, id))
+      .returning();
+
+    return c.json(
+      {
+        message: "পরিশোধের মাধ্যম সফলভাবে আপডেট হয়েছে",
+        data: {
+          ...updated,
+          createdAt: updated.createdAt ? String(updated.createdAt) : null
+        }
+      },
+      HttpStatusCodes.OK
+    );
+  } catch (error) {
+    console.error("Update payment method error:", error);
+    return c.json({ message: "পরিশোধের মাধ্যম আপডেট করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const togglePaymentMethodStatus: Handler = async (c: any) => {
+  try {
+    await ensurePaymentMethodsTable();
+    const id = Number(c.req.param("id"));
+    const [item] = await db.select().from(paymentMethods).where(eq(paymentMethods.id, id));
+    if (!item) {
+      return c.json({ message: "পরিশোধের মাধ্যম পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    const nextStatus =
+      typeof c.req.valid === "function" && c.req.valid("json")?.isActive !== undefined
+        ? Boolean(c.req.valid("json").isActive)
+        : !item.isActive;
+
+    const [updated] = await db
+      .update(paymentMethods)
+      .set({ isActive: nextStatus, updatedAt: new Date() })
+      .where(eq(paymentMethods.id, id))
+      .returning();
+
+    return c.json(
+      {
+        message: `পরিশোধের মাধ্যমের স্ট্যাটাস ${nextStatus ? "সক্রিয়" : "নিষ্ক্রিয়"} করা হয়েছে`,
+        data: {
+          ...updated,
+          createdAt: updated.createdAt ? String(updated.createdAt) : null
+        }
+      },
+      HttpStatusCodes.OK
+    );
+  } catch (error) {
+    console.error("Toggle payment method status error:", error);
     return c.json({ message: "স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
   }
 };

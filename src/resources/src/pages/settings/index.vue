@@ -86,7 +86,17 @@
           <span>সরবরাহকারীর ধরন</span>
         </button>
 
-        <!-- 9. Bangla Font Tab -->
+        <!-- 9. Payment Methods Tab (পরিশোধের মাধ্যম / Trx Type) -->
+        <button
+          type="button"
+          class="tab-pill-btn d-inline-flex align-items-center gap-2"
+          :class="{ active: activeTab === 'paymentMethod' }"
+          @click="activeTab = 'paymentMethod'">
+          <i class="bi bi-credit-card-2-front-fill"></i>
+          <span>পরিশোধের মাধ্যম</span>
+        </button>
+
+        <!-- 10. Bangla Font Tab -->
         <button
           type="button"
           class="tab-pill-btn d-inline-flex align-items-center gap-2"
@@ -720,7 +730,87 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- TAB 9: GLOBAL BANGLA FONT SELECTION (MFS LEDGER STYLE) -->
+        <!-- TAB 9: PAYMENT METHODS (পরিশোধের মাধ্যম / Trx Type) -->
+        <!-- ========================================== -->
+        <div v-if="activeTab === 'paymentMethod'">
+          <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <span class="fw-bold settings-card-title d-flex align-items-center gap-2">
+                <i class="bi bi-credit-card-2-front-fill text-primary fs-5"></i>
+                পরিশোধের মাধ্যমের তালিকা (Payment Methods / Trx Type)
+              </span>
+              <div class="text-muted small">
+                ক্রয় ও বিক্রয়ে ব্যবহৃত পরিশোধের মাধ্যম বা লেনদেনের ধরন (Trx Type)।
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 shadow-sm"
+              @click="openModal('paymentMethod')">
+              <i class="bi bi-plus-circle"></i>
+              <span>নতুন পরিশোধের মাধ্যম</span>
+            </button>
+          </div>
+
+          <div v-if="paymentMethods.length === 0" class="text-center py-5">
+            <i class="bi bi-credit-card-2-front text-muted fs-1 mb-2 d-block"></i>
+            <p class="text-muted mb-3">কোনো পরিশোধের মাধ্যম পাওয়া যায়নি।</p>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="openModal('paymentMethod')">
+              প্রথম পরিশোধের মাধ্যম যোগ করুন
+            </button>
+          </div>
+
+          <div v-else class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" style="width: 50px;" class="text-center">#</th>
+                  <th scope="col">মাধ্যমের নাম</th>
+                  <th scope="col" style="width: 25%;">Trx Type (কোড)</th>
+                  <th scope="col">বিবরণ</th>
+                  <th scope="col" class="text-center" style="width: 100px;">স্টেটাস</th>
+                  <th scope="col" class="text-center" style="width: 100px;">একশন</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(pm, idx) in paymentMethods" :key="pm.id">
+                  <td class="text-center text-muted small">{{ idx + 1 }}</td>
+                  <td class="fw-semibold">{{ pm.name }}</td>
+                  <td>
+                    <span v-if="pm.code" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace">{{ pm.code }}</span>
+                    <span v-else class="text-muted small">-</span>
+                  </td>
+                  <td class="text-muted small">{{ pm.description || '-' }}</td>
+                  <td class="text-center">
+                    <div class="form-check form-switch d-inline-flex justify-content-center m-0">
+                      <input
+                        class="form-check-input my-0"
+                        type="checkbox"
+                        role="switch"
+                        :checked="pm.isActive"
+                        :disabled="togglingId === `paymentMethod-${pm.id}`"
+                        @change="toggleStatus('paymentMethod', pm)"
+                        style="cursor: pointer; width: 2.2rem; height: 1.15rem;" />
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1"
+                      title="সম্পাদনা করুন"
+                      @click="openEditModal('paymentMethod', pm)">
+                      <i class="bi bi-pencil-square"></i>
+                      <span>এডিট</span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 10: GLOBAL BANGLA FONT SELECTION (MFS LEDGER STYLE) -->
         <!-- ========================================== -->
         <div v-if="activeTab === 'font'">
           <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -1208,6 +1298,45 @@
                     placeholder="যেমন: supplier, manufacturer" />
                 </div>
               </template>
+
+              <!-- 10. Payment Method Form (পরিশোধের মাধ্যম) -->
+              <template v-if="modalType === 'paymentMethod'">
+                <div class="mb-3">
+                  <label for="paymentMethodName" class="form-label fw-medium small">
+                    পরিশোধের মাধ্যমের নাম <span class="text-danger">*</span>
+                  </label>
+                  <input
+                    id="paymentMethodName"
+                    v-model.trim="paymentMethodForm.name"
+                    type="text"
+                    class="form-control"
+                    placeholder="যেমন: নগদ / ক্যাশ (Cash), বিকাশ (bKash)"
+                    required
+                    autofocus />
+                </div>
+                <div class="mb-3">
+                  <label for="paymentMethodCode" class="form-label fw-medium small">
+                    Trx Type / শর্টকোড (ঐচ্ছিক)
+                  </label>
+                  <input
+                    id="paymentMethodCode"
+                    v-model.trim="paymentMethodForm.code"
+                    type="text"
+                    class="form-control font-monospace"
+                    placeholder="যেমন: cash, bkash, nagad, bank" />
+                </div>
+                <div class="mb-3">
+                  <label for="paymentMethodDesc" class="form-label fw-medium small">
+                    বিবরণ (ঐচ্ছিক)
+                  </label>
+                  <textarea
+                    id="paymentMethodDesc"
+                    v-model.trim="paymentMethodForm.description"
+                    class="form-control"
+                    rows="2"
+                    placeholder="পরিশোধের মাধ্যম সম্পর্কিত সংক্ষিপ্ত বিবরণ"></textarea>
+                </div>
+              </template>
             </div>
 
             <div class="modal-footer border-top">
@@ -1245,8 +1374,8 @@ if (setPageTitle) {
   setPageTitle("গ্লোবাল সেটিংস");
 }
 
-type TabType = "category" | "subCategory" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "font";
-type ModalType = "category" | "subCategory" | "sizeGroup" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | null;
+type TabType = "category" | "subCategory" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "paymentMethod" | "font";
+type ModalType = "category" | "subCategory" | "sizeGroup" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "paymentMethod" | null;
 
 const ui = useAdminUiStore();
 const isSuperAdmin = computed(() => hasRole("super_admin"));
@@ -1369,6 +1498,15 @@ interface VendorTypeItem {
   createdAt?: string;
 }
 
+interface PaymentMethodItem {
+  id: number;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  isActive: boolean;
+  createdAt?: string;
+}
+
 // Reactive UI states
 const activeTab = ref<TabType>("category");
 const loading = ref(true);
@@ -1390,6 +1528,7 @@ const productTypes = ref<ProductTypeItem[]>([]);
 const units = ref<UnitItem[]>([]);
 const challanTypes = ref<ChallanTypeItem[]>([]);
 const vendorTypes = ref<VendorTypeItem[]>([]);
+const paymentMethods = ref<PaymentMethodItem[]>([]);
 
 // Forms
 const categoryForm = reactive({ name: "" });
@@ -1412,6 +1551,11 @@ const challanTypeForm = reactive({
 const vendorTypeForm = reactive({
   name: "",
   code: ""
+});
+const paymentMethodForm = reactive({
+  name: "",
+  code: "",
+  description: ""
 });
 
 const filteredSubCategoriesForProductType = computed(() => {
@@ -1467,6 +1611,8 @@ const modalTitle = computed(() => {
         return "চালানের ধরন সম্পাদনা";
       case "vendorType":
         return "সরবরাহকারীর ধরন সম্পাদনা";
+      case "paymentMethod":
+        return "পরিশোধের মাধ্যম সম্পাদনা";
       default:
         return "সম্পাদনা";
     }
@@ -1490,6 +1636,8 @@ const modalTitle = computed(() => {
       return "নতুন চালানের ধরন";
     case "vendorType":
       return "নতুন সরবরাহকারীর ধরন";
+    case "paymentMethod":
+      return "নতুন পরিশোধের মাধ্যম";
     default:
       return "";
   }
@@ -1518,6 +1666,8 @@ const modalIcon = computed(() => {
       return "bi bi-receipt";
     case "vendorType":
       return "bi bi-person-badge";
+    case "paymentMethod":
+      return "bi bi-credit-card-2-front";
     default:
       return "bi bi-plus-circle";
   }
@@ -1540,6 +1690,7 @@ async function fetchMasterData() {
     units.value = data.units || [];
     challanTypes.value = data.challanTypes || [];
     vendorTypes.value = data.vendorTypes || [];
+    paymentMethods.value = data.paymentMethods || [];
   } catch (error: any) {
     showToast(error.response?.data?.message || "মাস্টার ডাটা লোড করতে ব্যর্থ হয়েছে", "danger");
   } finally {
@@ -1599,6 +1750,11 @@ function openModal(type: ModalType) {
     vendorTypeForm.name = "";
     vendorTypeForm.code = "";
   }
+  if (type === "paymentMethod") {
+    paymentMethodForm.name = "";
+    paymentMethodForm.code = "";
+    paymentMethodForm.description = "";
+  }
 }
 
 function openEditModal(type: ModalType, item: any) {
@@ -1634,6 +1790,10 @@ function openEditModal(type: ModalType, item: any) {
   } else if (type === "vendorType") {
     vendorTypeForm.name = item.name;
     vendorTypeForm.code = item.code || "";
+  } else if (type === "paymentMethod") {
+    paymentMethodForm.name = item.name;
+    paymentMethodForm.code = item.code || "";
+    paymentMethodForm.description = item.description || "";
   }
 }
 
@@ -1799,6 +1959,21 @@ async function submitModalForm() {
         }
         showToast(res.data.message || "সরবরাহকারীর ধরন আপডেট হয়েছে", "success");
         closeModal();
+      } else if (modalType.value === "paymentMethod") {
+        const res = await axios.put(`/api/catalog/payment-methods/${editingId.value}`, {
+          name: paymentMethodForm.name,
+          code: paymentMethodForm.code || null,
+          description: paymentMethodForm.description || null
+        });
+        const updated: PaymentMethodItem = res.data.data;
+        const target = paymentMethods.value.find((pm) => pm.id === updated.id);
+        if (target) {
+          target.name = updated.name;
+          target.code = updated.code;
+          target.description = updated.description;
+        }
+        showToast(res.data.message || "পরিশোধের মাধ্যম আপডেট হয়েছে", "success");
+        closeModal();
       }
     } else {
       // ================= CREATE FLOW =================
@@ -1884,6 +2059,15 @@ async function submitModalForm() {
         vendorTypes.value.unshift(res.data.data);
         showToast(res.data.message || "নতুন সরবরাহকারীর ধরন যুক্ত হয়েছে", "success");
         closeModal();
+      } else if (modalType.value === "paymentMethod") {
+        const res = await axios.post("/api/catalog/payment-methods", {
+          name: paymentMethodForm.name,
+          code: paymentMethodForm.code || null,
+          description: paymentMethodForm.description || null
+        });
+        paymentMethods.value.unshift(res.data.data);
+        showToast(res.data.message || "নতুন পরিশোধের মাধ্যম যুক্ত হয়েছে", "success");
+        closeModal();
       }
     }
   } catch (error: any) {
@@ -1897,7 +2081,7 @@ async function submitModalForm() {
  * Toggle Status Switch for any entity with optimistic reactive update (No Reload)
  */
 async function toggleStatus(
-  entity: "category" | "subCategory" | "sizeGroup" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType",
+  entity: "category" | "subCategory" | "sizeGroup" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "paymentMethod",
   item: any
 ) {
   const previousStatus = item.isActive;
@@ -1918,6 +2102,7 @@ async function toggleStatus(
   if (entity === "unit") url = `/api/catalog/units/${item.id}/status`;
   if (entity === "challanType") url = `/api/catalog/challan-types/${item.id}/status`;
   if (entity === "vendorType") url = `/api/catalog/vendor-types/${item.id}/status`;
+  if (entity === "paymentMethod") url = `/api/catalog/payment-methods/${item.id}/status`;
 
   try {
     const res = await axios.patch(url, { isActive: newStatus });

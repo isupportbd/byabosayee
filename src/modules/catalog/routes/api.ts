@@ -26,6 +26,10 @@ import {
   createVendorType,
   updateVendorType,
   toggleVendorTypeStatus,
+  listPaymentMethods,
+  createPaymentMethod,
+  updatePaymentMethod,
+  togglePaymentMethodStatus,
   toggleCategoryStatus,
   toggleColorStatus,
   toggleFabricTypeStatus,
@@ -82,7 +86,11 @@ import {
   CreateVendorTypeSchema,
   UpdateVendorTypeSchema,
   VendorTypeListResponseSchema,
-  VendorTypeResponseSchema
+  VendorTypeResponseSchema,
+  CreatePaymentMethodSchema,
+  UpdatePaymentMethodSchema,
+  PaymentMethodListResponseSchema,
+  PaymentMethodResponseSchema
 } from "@/modules/catalog/controllers/catalog.schema.js";
 
 // Master Bulk
@@ -554,6 +562,54 @@ const toggleVendorTypeStatusRoute = createRoute({
   }
 });
 
+// Payment Methods (পরিশোধের মাধ্যম / Trx Type)
+const listPaymentMethodsRoute = createRoute({
+  path: "/payment-methods",
+  method: "get",
+  tags: ["Catalog - Payment Methods"],
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(PaymentMethodListResponseSchema, "List payment methods")
+  }
+});
+
+const createPaymentMethodRoute = createRoute({
+  path: "/payment-methods",
+  method: "post",
+  tags: ["Catalog - Payment Methods"],
+  request: {
+    body: jsonContent(CreatePaymentMethodSchema, "Create payment method payload")
+  },
+  responses: {
+    [HttpStatusCodes.CREATED]: jsonContent(PaymentMethodResponseSchema, "Payment method created")
+  }
+});
+
+const updatePaymentMethodRoute = createRoute({
+  path: "/payment-methods/{id}",
+  method: "put",
+  tags: ["Catalog - Payment Methods"],
+  request: {
+    params: EntityIdParamsSchema,
+    body: jsonContent(UpdatePaymentMethodSchema, "Update payment method payload")
+  },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(PaymentMethodResponseSchema, "Payment method updated")
+  }
+});
+
+const togglePaymentMethodStatusRoute = createRoute({
+  path: "/payment-methods/{id}/status",
+  method: "patch",
+  tags: ["Catalog - Payment Methods"],
+  request: {
+    params: EntityIdParamsSchema,
+    body: jsonContent(ToggleStatusSchema, "Toggle status payload")
+  },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(PaymentMethodResponseSchema, "Payment method status updated")
+  }
+});
+
 export default createRouter()
   .group(authMiddleware)
   // Master
@@ -604,5 +660,10 @@ export default createRouter()
   .api(listVendorTypesRoute, [requireRole("super_admin", "company_admin")], listVendorTypes)
   .api(createVendorTypeRoute, [requireRole("super_admin")], createVendorType)
   .api(updateVendorTypeRoute, [requireRole("super_admin")], updateVendorType)
-  .api(toggleVendorTypeStatusRoute, [requireRole("super_admin")], toggleVendorTypeStatus);
+  .api(toggleVendorTypeStatusRoute, [requireRole("super_admin")], toggleVendorTypeStatus)
+  // Payment Methods (পরিশোধের মাধ্যম / Trx Type)
+  .api(listPaymentMethodsRoute, [requireRole("super_admin", "company_admin")], listPaymentMethods)
+  .api(createPaymentMethodRoute, [requireRole("super_admin")], createPaymentMethod)
+  .api(updatePaymentMethodRoute, [requireRole("super_admin")], updatePaymentMethod)
+  .api(togglePaymentMethodStatusRoute, [requireRole("super_admin")], togglePaymentMethodStatus);
 

@@ -308,6 +308,38 @@ export const VendorTypeResponseSchema = z.object({
   data: VendorTypeItemSchema
 });
 
+// 9. Payment Methods (পরিশোধের মাধ্যম / Trx Type)
+export const CreatePaymentMethodSchema = z.object({
+  name: z.string().min(1, "পরিশোধের মাধ্যমের নাম আবশ্যক").max(255),
+  code: z.string().max(50).optional().nullable(),
+  description: z.string().optional().nullable()
+});
+
+export const UpdatePaymentMethodSchema = z.object({
+  name: z.string().min(1, "পরিশোধের মাধ্যমের নাম আবশ্যক").max(255),
+  code: z.string().max(50).optional().nullable(),
+  description: z.string().optional().nullable()
+});
+
+export const PaymentMethodItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  code: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  isActive: z.boolean(),
+  createdAt: z.string().nullable().optional()
+});
+
+export const PaymentMethodListResponseSchema = z.object({
+  message: z.string(),
+  data: z.array(PaymentMethodItemSchema)
+});
+
+export const PaymentMethodResponseSchema = z.object({
+  message: z.string(),
+  data: PaymentMethodItemSchema
+});
+
 // Master All Data Schema
 export const MasterCatalogResponseSchema = z.object({
   message: z.string(),
@@ -321,6 +353,8 @@ export const MasterCatalogResponseSchema = z.object({
     fabricTypes: z.array(FabricTypeItemSchema).optional(),
     units: z.array(UnitItemSchema),
     challanTypes: z.array(ChallanTypeItemSchema).optional(),
-    vendorTypes: z.array(VendorTypeItemSchema).optional()
+    vendorTypes: z.array(VendorTypeItemSchema).optional(),
+    paymentMethods: z.array(PaymentMethodItemSchema).optional()
   })
 });
+

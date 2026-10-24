@@ -263,8 +263,8 @@
               </div>
             </div>
 
-            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, একক ক্রয়মূল্য -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 align-items-end">
+            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, ভ্যাট ছাড়া মূল্য, ভ্যাট ছাড়া একক মূল্য -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-6 g-2 align-items-end">
               <!-- ৬. পরিমাণ -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
@@ -316,13 +316,23 @@
                   placeholder="0" />
               </div>
 
-              <!-- ১০. একক ক্রয়মূল্য (অটো) -->
+              <!-- ১০. ভ্যাট ছাড়া মূল্য -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block text-secondary">
+                  ভ্যাট ছাড়া মূল্য (৳) <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1 py-0 px-1" style="font-size: 0.65rem;">অটো</span>
+                </label>
+                <div class="form-control form-control-sm bg-light text-dark fw-bold text-end">
+                  ৳ {{ toBengaliNumber(currentItemPriceExclVat) }}
+                </div>
+              </div>
+
+              <!-- ১১. ভ্যাট ছাড়া একক মূল্য -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-primary">
-                  একক ক্রয়মূল্য <span class="badge bg-primary-subtle text-primary ms-1 py-0 px-1" style="font-size: 0.65rem;">অটো</span>
+                  ভ্যাট ছাড়া একক মূল্য (৳) <span class="badge bg-primary-subtle text-primary ms-1 py-0 px-1" style="font-size: 0.65rem;">অটো</span>
                 </label>
-                <div class="form-control form-control-sm bg-primary-subtle text-primary fw-bold text-center">
-                  ৳ {{ toBengaliNumber(currentItemUnitCost) }}
+                <div class="form-control form-control-sm bg-primary-subtle text-primary fw-bold text-end">
+                  ৳ {{ toBengaliNumber(currentItemUnitCostExclVat) }}
                 </div>
               </div>
             </div>
@@ -485,19 +495,22 @@
                     </small>
                   </div>
 
-                  <!-- পেমেন্ট মাধ্যম -->
+                  <!-- পেমেন্ট মাধ্যম (সুপারএডমিন সেটিংস থেকে Trx Type ড্রপডাউন) -->
                   <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
-                      পরিশোধের মাধ্যম <span class="text-danger">*</span>
+                      পরিশোধের মাধ্যম (Trx Type) <span class="text-danger">*</span>
                     </label>
                     <select
                       v-model="form.paymentMethod"
                       class="form-select form-select-sm"
                       required>
-                      <option value="cash">নগদ / ক্যাশ (Cash)</option>
-                      <option value="bkash">বিকাশ (bKash)</option>
-                      <option value="nagad">নগদ (Nagad)</option>
-                      <option value="bank">ব্যাংক ট্রান্সফার (Bank)</option>
+                      <option value="">পরিশোধের মাধ্যম নির্বাচন করুন</option>
+                      <option
+                        v-for="pm in activePaymentMethods"
+                        :key="pm.id"
+                        :value="pm.code || pm.name">
+                        {{ pm.name }} {{ pm.code ? `(${pm.code})` : '' }}
+                      </option>
                     </select>
                   </div>
 
@@ -882,6 +895,7 @@ const colorsList = ref<any[]>([]);
 const unitsList = ref<any[]>([]);
 const challanTypesList = ref<any[]>([]);
 const vendorTypesList = ref<any[]>([]);
+const paymentMethodsList = ref<any[]>([]);
 const suppliersList = ref<any[]>([]);
 const manufacturersList = ref<any[]>([]);
 const purchasesList = ref<any[]>([]);
@@ -940,6 +954,8 @@ interface PurchaseItemRow {
   quantity: number;
   totalPrice: number;
   vatRate?: number;
+  priceExclVat?: number;
+  unitPriceExclVat?: number;
 }
 
 const editingIndex = ref<number | null>(null);
@@ -957,14 +973,26 @@ const currentItem = reactive<PurchaseItemRow & { vatRate: number }>({
   isCodeCustomized: false,
   quantity: 1,
   totalPrice: 0,
-  vatRate: 0
+  vatRate: 0,
+  priceExclVat: 0,
+  unitPriceExclVat: 0
 });
 
-const currentItemUnitCost = computed(() => {
+// ভ্যাট ছাড়া মূল্য: totalPrice / (1 + vatRate / 100)
+const currentItemPriceExclVat = computed(() => {
+  const total = Number(currentItem.totalPrice) || 0;
+  const vat = Number(currentItem.vatRate) || 0;
+  if (total <= 0) return "0.00";
+  const excl = total / (1 + vat / 100);
+  return excl.toFixed(2);
+});
+
+// ভ্যাট ছাড়া একক মূল্য: priceExclVat / quantity
+const currentItemUnitCostExclVat = computed(() => {
   const qty = Number(currentItem.quantity) || 0;
-  const price = Number(currentItem.totalPrice) || 0;
-  if (qty <= 0) return "0.00";
-  return (price / qty).toFixed(2);
+  const excl = parseFloat(currentItemPriceExclVat.value) || 0;
+  if (qty <= 0 || excl <= 0) return "0.00";
+  return (excl / qty).toFixed(2);
 });
 
 const form = reactive({
@@ -979,6 +1007,11 @@ const form = reactive({
   paidAmount: 0,
   notes: "",
   items: [] as PurchaseItemRow[]
+});
+
+// Active Payment Methods from SuperAdmin Settings
+const activePaymentMethods = computed(() => {
+  return paymentMethodsList.value.filter((pm) => pm.isActive);
 });
 
 // Vendor toggle & dynamic master list
@@ -1243,7 +1276,9 @@ function addItemToList() {
     isCodeCustomized: currentItem.isCodeCustomized,
     quantity: Number(currentItem.quantity) || 1,
     totalPrice: Number(currentItem.totalPrice) || 0,
-    vatRate: Number(currentItem.vatRate) || 0
+    vatRate: Number(currentItem.vatRate) || 0,
+    priceExclVat: parseFloat(currentItemPriceExclVat.value) || 0,
+    unitPriceExclVat: parseFloat(currentItemUnitCostExclVat.value) || 0
   };
 
   if (editingIndex.value !== null && editingIndex.value >= 0) {
@@ -1435,6 +1470,17 @@ async function fetchCatalogData() {
     unitsList.value = master.units || [];
     challanTypesList.value = master.challanTypes || [];
     vendorTypesList.value = master.vendorTypes || [];
+    paymentMethodsList.value = master.paymentMethods || [];
+
+    // Auto-select payment method if not selected or invalid
+    if (activePaymentMethods.value.length > 0) {
+      const currentPmExists = activePaymentMethods.value.some(
+        (pm) => (pm.code || pm.name) === form.paymentMethod
+      );
+      if (!currentPmExists) {
+        form.paymentMethod = activePaymentMethods.value[0].code || activePaymentMethods.value[0].name;
+      }
+    }
 
     // Auto-select first challan type if available
     if (challanTypesList.value.length > 0 && !form.challanTypeId) {
