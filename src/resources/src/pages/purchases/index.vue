@@ -130,37 +130,30 @@
                 <select
                   v-model="vendorType"
                   class="form-select form-select-sm"
-                  required>
+                  required
+                  @change="onVendorTypeChange">
                   <option v-for="vt in activeVendorTypes" :key="vt.id" :value="vt.code || vt.name">
                     {{ vt.name }}
                   </option>
                 </select>
               </div>
 
-              <!-- ৫. সাপ্লায়ার বা প্রস্তুতকারীর নাম ড্রপডাউন -->
+              <!-- ৫. প্রতিষ্ঠানের নাম ড্রপডাউন (নির্বাচিত ধরনের সাথে সম্পূর্ণ ডায়নামিক) -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
-                  {{ isManufacturerVendor ? 'প্রস্তুতকারী' : 'সাপ্লায়ার' }} <span class="text-danger">*</span>
+                  {{ selectedVendorTypeName }} <span class="text-danger">*</span>
                 </label>
                 <select
-                  v-if="!isManufacturerVendor"
-                  v-model="form.supplierId"
+                  v-model="selectedPartnerId"
                   class="form-select form-select-sm"
-                  required>
-                  <option value="" disabled>সাপ্লায়ার নির্বাচন করুন</option>
-                  <option v-for="sup in suppliersList" :key="sup.id" :value="sup.id">
-                    {{ sup.name }} {{ sup.mobile ? `(${sup.mobile})` : '' }}
-                  </option>
-                </select>
-
-                <select
-                  v-else
-                  v-model="form.manufacturerId"
-                  class="form-select form-select-sm"
-                  required>
-                  <option value="" disabled>প্রস্তুতকারী নির্বাচন করুন</option>
-                  <option v-for="mfg in manufacturersList" :key="mfg.id" :value="mfg.id">
-                    {{ mfg.name }} {{ mfg.country ? `[${mfg.country}]` : '' }}
+                  required
+                  @change="onPartnerChange">
+                  <option value="" disabled>{{ selectedVendorTypeName }} নির্বাচন করুন</option>
+                  <option
+                    v-for="v in filteredVendorsBySelectedType"
+                    :key="`${v.source}-${v.id}`"
+                    :value="`${v.source}:${v.id}`">
+                    {{ v.name }} {{ v.mobile ? `(${v.mobile})` : '' }} {{ v.country ? `[${v.country}]` : '' }}
                   </option>
                 </select>
               </div>
@@ -765,14 +758,107 @@ const activeVendorTypes = computed(() => {
   return vendorTypesList.value.filter((vt) => vt.isActive);
 });
 
+const selectedVendorTypeName = computed(() => {
+  const current = (vendorType.value || "").trim().toLowerCase();
+  const selectedVt = activeVendorTypes.value.find(
+    (vt) => (vt.code || "").toLowerCase() === current || vt.name.toLowerCase() === current || String(vt.id) === current
+  );
+  if (selectedVt) return selectedVt.name;
+  if (current === "manufacturer" || current.includes("প্রস্তুত")) return "প্রস্তুতকারী";
+  return vendorType.value || "সাপ্লায়ার";
+});
+
 const isManufacturerVendor = computed(() => {
   const selectedVt = activeVendorTypes.value.find(
     (vt) => vt.code === vendorType.value || vt.name === vendorType.value || String(vt.id) === String(vendorType.value)
   );
   if (selectedVt) {
-    return (selectedVt.code || "").toLowerCase() === "manufacturer" || selectedVt.name.includes("প্রস্তুতকারী");
+    return (selectedVt.code || "").toLowerCase() === "manufacturer" || selectedVt.name.includes("প্রস্তুতকারী") || selectedVt.name.includes("প্রস্তুতকারক");
   }
-  return vendorType.value === "manufacturer" || vendorType.value === "প্রস্তুতকারী";
+  return vendorType.value === "manufacturer" || vendorType.value === "প্রস্তুতকারী" || vendorType.value === "প্রস্তুতকারক";
+});
+
+const selectedPartnerId = ref<string>("");
+
+function onPartnerChange() {
+  if (!selectedPartnerId.value) {
+    form.supplierId = "";
+    form.manufacturerId = "";
+    return;
+  }
+  const [source, idStr] = String(selectedPartnerId.value).split(":");
+  const id = Number(idStr);
+  if (source === "manufacturer") {
+    form.manufacturerId = id;
+    form.supplierId = "";
+  } else {
+    form.supplierId = id;
+    form.manufacturerId = "";
+  }
+}
+
+function onVendorTypeChange() {
+  selectedPartnerId.value = "";
+  form.supplierId = "";
+  form.manufacturerId = "";
+}
+
+const filteredVendorsBySelectedType = computed(() => {
+  const currentType = (vendorType.value || "").trim().toLowerCase();
+  const currentTypeName = (selectedVendorTypeName.value || "").trim().toLowerCase();
+
+  // If manufacturer
+  if (isManufacturerVendor.value) {
+    return manufacturersList.value.map((m) => ({
+      id: m.id,
+      name: m.name,
+      mobile: m.mobile,
+      country: m.country,
+      source: "manufacturer" as const
+    }));
+  }
+
+  // Filter from suppliersList matching this vendorType
+  const matchedFromSuppliers = suppliersList.value.filter((s) => {
+    const sVt = (s.vendorType || "supplier").trim().toLowerCase();
+    if (currentType === "supplier" || currentTypeName === "সাপ্লায়ার") {
+      return !s.vendorType || sVt === "supplier" || sVt === "সাপ্লায়ার";
+    }
+    return sVt === currentType || sVt === currentTypeName;
+  }).map((s) => ({
+    id: s.id,
+    name: s.name,
+    mobile: s.mobile,
+    country: undefined,
+    source: "supplier" as const
+  }));
+
+  const matchedFromManufacturers = manufacturersList.value.filter((m) => {
+    if (!m.vendorType) return false;
+    const mVt = m.vendorType.trim().toLowerCase();
+    return mVt === currentType || mVt === currentTypeName;
+  }).map((m) => ({
+    id: m.id,
+    name: m.name,
+    mobile: m.mobile,
+    country: m.country,
+    source: "manufacturer" as const
+  }));
+
+  const combined = [...matchedFromSuppliers, ...matchedFromManufacturers];
+
+  // If no specific partner is registered under this custom type yet, fallback to all suppliers so dropdown is not empty
+  if (combined.length === 0 && currentType !== "supplier" && currentTypeName !== "সাপ্লায়ার") {
+    return suppliersList.value.map((s) => ({
+      id: s.id,
+      name: s.name,
+      mobile: s.mobile,
+      country: undefined,
+      source: "supplier" as const
+    }));
+  }
+
+  return combined;
 });
 
 // Master Catalog Data
@@ -1008,6 +1094,7 @@ function printChallan() {
 
 // Reset form
 function resetForm() {
+  selectedPartnerId.value = "";
   form.challanNumber = "";
   form.challanDate = todayISO;
   form.supplierId = "";
@@ -1078,12 +1165,8 @@ async function fetchPurchases() {
 
 async function submitPurchase() {
   // Validate vendor
-  if (!isManufacturerVendor.value && !form.supplierId) {
-    showToast("দয়া করে সাপ্লায়ার নির্বাচন করুন", "warning");
-    return;
-  }
-  if (isManufacturerVendor.value && !form.manufacturerId) {
-    showToast("দয়া করে প্রস্তুতকারী নির্বাচন করুন", "warning");
+  if (!form.supplierId && !form.manufacturerId) {
+    showToast(`দয়া করে ${selectedVendorTypeName.value} নির্বাচন করুন`, "warning");
     return;
   }
 
