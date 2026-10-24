@@ -175,179 +175,290 @@
             </div>
           </div>
 
-          <!-- সেকশন ২: পণ্যের তালিকা (Line Items) -->
-          <div class="p-3 bg-white rounded border mb-3">
-            <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+          <!-- সেকশন ২: পণ্যের তথ্য ইনপুট কার্ড (মোবাইল ফ্রেন্ডলি সাধারণ ফিল্ড) -->
+          <div class="p-3 bg-white rounded border mb-3 shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom flex-wrap gap-2">
               <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary rounded-pill">২</span>
-                <h6 class="m-0 fw-semibold text-primary">চালানের পণ্যসমূহ</h6>
-                <span class="badge bg-secondary-subtle text-secondary small">
-                  মোট আইটেম {{ toBengaliNumber(form.items.length) }} টি
+                <h6 class="m-0 fw-semibold text-primary">
+                  {{ editingIndex !== null ? 'পণ্য সংশোধন করুন' : 'পণ্য যোগ করুন' }}
+                </h6>
+                <span v-if="editingIndex !== null" class="badge bg-warning text-dark small">
+                  #{{ toBengaliNumber(editingIndex + 1) }} নং পণ্য সম্পাদনাধীন
                 </span>
               </div>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                @click="addRow">
-                <i class="bi bi-plus-lg me-1"></i>পণ্য যোগ করুন
-              </button>
+              <small class="text-muted">
+                তথ্য পূরণ করে নিচে <strong>"{{ editingIndex !== null ? 'পণ্য আপডেট করুন' : 'তালিকায় যুক্ত করুন' }}"</strong> বোতামে চাপুন
+              </small>
             </div>
 
-            <!-- পণ্যের টেবিল -->
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered align-middle mb-0 line-items-table">
-                <thead class="table-light">
-                  <tr class="small text-nowrap">
-                    <th style="width: 35px;" class="text-center">#</th>
-                    <th style="min-width: 220px;">পণ্যের নাম <span class="text-danger">*</span></th>
-                    <th style="min-width: 110px;">ব্র্যান্ড</th>
-                    <th style="min-width: 95px;">সাইজ <span class="text-danger">*</span></th>
-                    <th style="min-width: 95px;">কালার</th>
-                    <th style="min-width: 140px;" class="bg-warning-subtle text-dark">বার কোড (১৪-ডিজিট)</th>
-                    <th style="width: 90px;">পরিমাণ <span class="text-danger">*</span></th>
-                    <th style="width: 80px;">একক</th>
-                    <th style="width: 110px;">মোট মূল্য (৳) <span class="text-danger">*</span></th>
-                    <th style="width: 115px;" class="bg-primary-subtle text-primary text-center">একক ক্রয়মূল্য (অটো)</th>
-                    <th style="width: 45px;" class="text-center">অ্যাকশন</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, idx) in form.items" :key="idx">
-                    <td class="text-center small text-muted">{{ toBengaliNumber(idx + 1) }}</td>
+            <!-- ফিল্ড সারি ১: পণ্যের নাম, ব্র্যান্ড, সাইজ, কালার, বার কোড -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 mb-2">
+              <!-- ১. পণ্যের নাম -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                  পণ্যের নাম <span class="text-danger">*</span>
+                </label>
+                <select
+                  v-model="currentItem.itemId"
+                  class="form-select form-select-sm"
+                  @change="onCurrentItemSelect">
+                  <option value="" disabled>পণ্য নির্বাচন করুন</option>
+                  <option v-for="it in itemsList" :key="it.id" :value="it.id">
+                    {{ it.name }} {{ it.code ? `(${it.code})` : '' }}
+                  </option>
+                </select>
+              </div>
 
-                    <!-- পণ্যের নাম (পণ্য তালিকা থেকে ড্রপডাউন) -->
-                    <td>
-                      <select
-                        v-model="row.itemId"
-                        class="form-select form-select-sm"
-                        required
-                        @change="onRowItemSelect(row)">
-                        <option value="" disabled>পণ্য নির্বাচন করুন</option>
-                        <option v-for="it in itemsList" :key="it.id" :value="it.id">
-                          {{ it.name }} {{ it.code ? `(${it.code})` : '' }}
-                        </option>
-                      </select>
-                      <small v-if="getItemCategorySubtitle(row.itemId)" class="text-muted d-block text-truncate mt-0.5" style="font-size: 0.72rem;">
-                        <i class="bi bi-tag text-primary me-1"></i>{{ getItemCategorySubtitle(row.itemId) }}
-                      </small>
-                    </td>
+              <!-- ২. ব্র্যান্ড -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">ব্র্যান্ড</label>
+                <select
+                  v-model="currentItem.brandId"
+                  class="form-select form-select-sm"
+                  @change="onCurrentItemBrandChange">
+                  <option value="">(ঐচ্ছিক)</option>
+                  <option v-for="b in brandsList" :key="b.id" :value="b.id">
+                    {{ b.name }}
+                  </option>
+                </select>
+              </div>
 
-                    <!-- ব্র্যান্ড -->
-                    <td>
-                      <select
-                        v-model="row.brandId"
-                        class="form-select form-select-sm"
-                        @change="onBrandChange(row)">
-                        <option value="">(ঐচ্ছিক)</option>
-                        <option v-for="b in brandsList" :key="b.id" :value="b.id">
-                          {{ b.name }}
-                        </option>
-                      </select>
-                    </td>
+              <!-- ৩. সাইজ -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                  সাইজ <span class="text-danger">*</span>
+                </label>
+                <select
+                  v-model="currentItem.sizeId"
+                  class="form-select form-select-sm"
+                  @change="onCurrentItemSizeChange">
+                  <option value="" disabled>সাইজ নির্বাচন করুন</option>
+                  <option v-for="s in sizesList" :key="s.id" :value="s.id">
+                    {{ s.name }}
+                  </option>
+                </select>
+              </div>
 
-                    <!-- সাইজ -->
-                    <td>
-                      <select
-                        v-model="row.sizeId"
-                        class="form-select form-select-sm"
-                        required
-                        @change="onSizeChange(row)">
-                        <option value="" disabled>সাইজ</option>
-                        <option v-for="s in sizesList" :key="s.id" :value="s.id">
-                          {{ s.name }}
-                        </option>
-                      </select>
-                    </td>
+              <!-- ৪. কালার -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">কালার</label>
+                <select v-model="currentItem.colorId" class="form-select form-select-sm">
+                  <option value="">(ঐচ্ছিক)</option>
+                  <option v-for="c in colorsList" :key="c.id" :value="c.id">
+                    {{ c.name }}
+                  </option>
+                </select>
+              </div>
 
-                    <!-- কালার -->
-                    <td>
-                      <select v-model="row.colorId" class="form-select form-select-sm">
-                        <option value="">(ঐচ্ছিক)</option>
-                        <option v-for="c in colorsList" :key="c.id" :value="c.id">
-                          {{ c.name }}
-                        </option>
-                      </select>
-                    </td>
+              <!-- ৫. বার কোড -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                  বার কোড <span class="badge bg-warning-subtle text-dark border ms-1 py-0 px-1 font-monospace" style="font-size: 0.65rem;">১৪-ডিজিট</span>
+                </label>
+                <input
+                  v-model.trim="currentItem.code"
+                  type="text"
+                  maxlength="30"
+                  class="form-control form-control-sm font-monospace fw-bold"
+                  placeholder="অটো জেনারেট"
+                  @input="currentItem.isCodeCustomized = true" />
+              </div>
+            </div>
 
-                    <!-- বার কোড (ব্র্যান্ড সিলেক্ট হলে অটো ১৪ ডিজিট তৈরি, ইউজার চাইলে পরিবর্তনযোগ্য) -->
-                    <td style="min-width: 140px;" class="bg-warning-subtle bg-opacity-10">
-                      <input
-                        v-model.trim="row.code"
-                        type="text"
-                        maxlength="30"
-                        class="form-control form-control-sm font-monospace text-center fw-bold border-warning-subtle"
-                        placeholder="১৪-ডিজিট কোড"
-                        title="ব্র্যান্ড নির্বাচন হলে স্বয়ংক্রিয় ১৪ ডিজিট বারকোড তৈরি হবে। আপনি চাইলে পরিবর্তন করতে পারেন।"
-                        @input="row.isCodeCustomized = true" />
-                    </td>
+            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, একক ক্রয়মূল্য -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 align-items-end">
+              <!-- ৬. পরিমাণ -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                  পরিমাণ <span class="text-danger">*</span>
+                </label>
+                <input
+                  v-model.number="currentItem.quantity"
+                  type="number"
+                  min="1"
+                  class="form-control form-control-sm text-center fw-semibold"
+                  placeholder="১" />
+              </div>
 
-                    <!-- পরিমাণ -->
-                    <td>
-                      <input
-                        v-model.number="row.quantity"
-                        type="number"
-                        min="1"
-                        class="form-control form-control-sm text-center"
-                        required />
-                    </td>
+              <!-- ৭. একক -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">একক</label>
+                <select v-model="currentItem.unitId" class="form-select form-select-sm">
+                  <option value="">একক নির্বাচন</option>
+                  <option v-for="u in unitsList" :key="u.id" :value="u.id">
+                    {{ u.name }}
+                  </option>
+                </select>
+              </div>
 
-                    <!-- একক -->
-                    <td>
-                      <select v-model="row.unitId" class="form-select form-select-sm">
-                        <option value="">একক</option>
-                        <option v-for="u in unitsList" :key="u.id" :value="u.id">
-                          {{ u.name }}
-                        </option>
-                      </select>
-                    </td>
+              <!-- ৮. মোট মূল্য -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                  মোট মূল্য (৳) <span class="text-danger">*</span>
+                </label>
+                <input
+                  v-model.number="currentItem.totalPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="form-control form-control-sm text-end fw-semibold"
+                  placeholder="0.00" />
+              </div>
 
-                    <!-- মোট মূল্য -->
-                    <td>
-                      <input
-                        v-model.number="row.totalPrice"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="form-control form-control-sm text-end"
-                        placeholder="0.00"
-                        required />
-                    </td>
+              <!-- ৯. ভ্যাট -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block">ভ্যাট (%)</label>
+                <div class="input-group input-group-sm">
+                  <input
+                    v-model.number="currentItem.vatRate"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    class="form-control text-center"
+                    placeholder="0" />
+                  <span class="input-group-text">%</span>
+                </div>
+              </div>
 
-                    <!-- অটো একক ক্রয়মূল্য (Landed Unit Cost) প্রিভিউ -->
-                    <td class="bg-primary-subtle text-center fw-bold text-primary small">
-                      ৳ {{ toBengaliNumber(calculateRowUnitCost(row)) }}
-                    </td>
+              <!-- ১০. একক ক্রয়মূল্য (অটো) -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 text-truncate d-block text-primary">
+                  একক ক্রয়মূল্য <span class="badge bg-primary-subtle text-primary ms-1 py-0 px-1" style="font-size: 0.65rem;">অটো</span>
+                </label>
+                <div class="form-control form-control-sm bg-primary-subtle text-primary fw-bold text-center">
+                  ৳ {{ toBengaliNumber(currentItemUnitCost) }}
+                </div>
+              </div>
+            </div>
 
-                    <!-- রিমুভ বাটন -->
-                    <td class="text-center">
-                      <button
-                        type="button"
-                        class="btn btn-link text-danger p-0"
-                        title="এই লাইনটি বাদ দিন"
-                        :disabled="form.items.length <= 1"
-                        @click="removeRow(idx)">
-                        <i class="bi bi-trash fs-6"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- একশন বাটনদ্বয়: রিসেট ও তালিকায় যুক্ত করুন -->
+            <div class="d-flex justify-content-end align-items-center gap-2 mt-3 pt-2 border-top">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary px-3"
+                @click="resetCurrentItem">
+                <i class="bi bi-x-circle me-1"></i>রিসেট
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-primary px-4 fw-semibold shadow-sm"
+                @click="addItemToList">
+                <i :class="editingIndex !== null ? 'bi bi-check2-circle' : 'bi bi-plus-circle'" class="me-1"></i>
+                {{ editingIndex !== null ? 'পণ্য আপডেট করুন' : 'তালিকায় যুক্ত করুন' }}
+              </button>
             </div>
           </div>
 
-          <!-- সেকশন ৩: খরচ সমন্বয়, পেমেন্ট ও সামারি -->
+          <!-- সেকশন ৩: তিনটি কার্ড (১. পণ্যের সংক্ষিপ্ত বিবরণ, ২. খরচ ও সমন্বয়, ৩. চূড়ান্ত হিসাব) -->
           <div class="row g-3 mb-3">
-            <!-- বাম দিক: অতিরিক্ত খরচ ও ডিসকাউন্ট -->
-            <div class="col-12 col-md-6">
-              <div class="p-3 bg-light rounded border h-100">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <span class="badge bg-primary rounded-pill">৩</span>
-                  <h6 class="m-0 fw-semibold text-primary">খরচ সমন্বয় ও পেমেন্ট তথ্য</h6>
+            <!-- কার্ড ১: পণ্যের সংক্ষিপ্ত বিবরণ (টেম্পেরেরি জমা হবে, এডিট/ডিলেট করা যাবে) -->
+            <div class="col-12 col-lg-4">
+              <div class="card h-100 border shadow-sm">
+                <div class="card-header bg-white border-bottom py-2 d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-card-checklist text-primary fs-5"></i>
+                    <h6 class="m-0 fw-bold">পণ্যের সংক্ষিপ্ত বিবরণ</h6>
+                  </div>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace">
+                    {{ toBengaliNumber(form.items.length) }} টি পণ্য
+                  </span>
                 </div>
+                <div class="card-body p-0 d-flex flex-column justify-content-between">
+                  <!-- খালি থাকলে মেসেজ -->
+                  <div v-if="form.items.length === 0" class="text-center text-muted p-4 my-auto">
+                    <i class="bi bi-cart-x fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                    <span class="fw-semibold">এখনও কোনো পণ্য যোগ করা হয়নি</span>
+                    <p class="small text-muted mb-0 mt-1">
+                      উপরের ফর্মটি পূরণ করে <strong class="text-primary">"তালিকায় যুক্ত করুন"</strong> বোতামে ক্লিক করুন।
+                    </p>
+                  </div>
 
-                <div class="row g-2 mb-2">
+                  <!-- পণ্যের তালিকা টেবিল -->
+                  <div v-else class="table-responsive flex-grow-1" style="max-height: 360px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.83rem;">
+                      <thead class="table-light sticky-top">
+                        <tr class="text-nowrap text-secondary">
+                          <th style="width: 30px;" class="text-center">#</th>
+                          <th>নাম</th>
+                          <th>সাইজ</th>
+                          <th class="text-center">পরিমাণ</th>
+                          <th class="text-end">মোট মূল্য</th>
+                          <th style="width: 65px;" class="text-center">অ্যাকশন</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="(it, idx) in form.items"
+                          :key="idx"
+                          :class="{ 'table-warning': editingIndex === idx }">
+                          <td class="text-center text-muted small">{{ toBengaliNumber(idx + 1) }}</td>
+                          <td>
+                            <div class="fw-semibold text-truncate" style="max-width: 130px;" :title="it.name">
+                              {{ it.name }}
+                            </div>
+                            <small v-if="it.code" class="font-monospace text-muted d-block" style="font-size: 0.68rem;">
+                              {{ it.code }}
+                            </small>
+                          </td>
+                          <td>
+                            <span class="badge bg-light text-dark border py-0 px-1">
+                              {{ getSizeName(it.sizeId) }}
+                            </span>
+                          </td>
+                          <td class="text-center fw-bold">
+                            {{ toBengaliNumber(it.quantity) }}
+                            <span class="small text-muted fw-normal" style="font-size: 0.72rem;">{{ getUnitName(it.unitId) }}</span>
+                          </td>
+                          <td class="text-end fw-semibold">
+                            ৳ {{ toBengaliNumber(Number(it.totalPrice || 0).toFixed(2)) }}
+                          </td>
+                          <td class="text-center text-nowrap">
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-link text-primary p-0 me-2"
+                              title="সম্পাদনা করুন"
+                              @click="editItem(idx)">
+                              <i class="bi bi-pencil-square fs-6"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-link text-danger p-0"
+                              title="তালিকা থেকে মুছুন"
+                              @click="deleteItem(idx)">
+                              <i class="bi bi-trash fs-6"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- কার্ড ফুটার সামারি -->
+                  <div class="card-footer bg-light py-2 px-3 border-top d-flex justify-content-between align-items-center">
+                    <span class="small text-muted">
+                      মোট আইটেম: <strong>{{ toBengaliNumber(form.items.length) }}</strong> টি |
+                      পরিমাণ: <strong>{{ toBengaliNumber(totalQuantity) }}</strong>
+                    </span>
+                    <strong class="text-primary small">
+                      উপমোট: ৳ {{ toBengaliNumber(itemsSubtotal.toFixed(2)) }}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- কার্ড ২: খরচ ও সমন্বয় -->
+            <div class="col-12 col-lg-4">
+              <div class="card h-100 border shadow-sm">
+                <div class="card-header bg-white border-bottom py-2 d-flex align-items-center gap-2">
+                  <i class="bi bi-sliders text-warning fs-5"></i>
+                  <h6 class="m-0 fw-bold">খরচ ও সমন্বয়</h6>
+                </div>
+                <div class="card-body p-3">
                   <!-- অন্যান্য খরচ -->
-                  <div class="col-12 col-sm-6">
+                  <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
                       অন্যান্য খরচ (ভাড়া/কুরিয়ার/চার্জ)
                     </label>
@@ -361,13 +472,13 @@
                         class="form-control"
                         placeholder="0.00" />
                     </div>
-                    <small class="text-muted" style="font-size: 0.75rem;">
-                      যাতায়াত, কুরিয়ার চার্জ, কুলি খরচ ইত্যাদি
+                    <small class="text-muted" style="font-size: 0.73rem;">
+                      যাতায়াত, কুরিয়ার, কুলি খরচ ইত্যাদি
                     </small>
                   </div>
 
-                  <!-- ডিসকাউন্ট বা ছাড় -->
-                  <div class="col-12 col-sm-6">
+                  <!-- ডিসকাউন্ট / ছাড় -->
+                  <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
                       চালান ডিসকাউন্ট / ছাড়
                     </label>
@@ -381,19 +492,15 @@
                         class="form-control"
                         placeholder="0.00" />
                     </div>
-                    <small class="text-muted" style="font-size: 0.75rem;">
+                    <small class="text-muted" style="font-size: 0.73rem;">
                       চালানের মোট মূল্যের ওপর প্রাপ্ত ছাড়
                     </small>
                   </div>
-                </div>
 
-                <hr class="my-2" />
-
-                <!-- পেমেন্ট মেথড ও পরিশোধ -->
-                <div class="row g-2">
-                  <div class="col-12 col-sm-6">
+                  <!-- পেমেন্ট মাধ্যম -->
+                  <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
-                      পেমেন্ট মাধ্যম <span class="text-danger">*</span>
+                      পরিশোধের মাধ্যম <span class="text-danger">*</span>
                     </label>
                     <select
                       v-model="form.paymentMethod"
@@ -406,7 +513,8 @@
                     </select>
                   </div>
 
-                  <div class="col-12 col-sm-6">
+                  <!-- পরিশোধিত টাকা -->
+                  <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
                       পরিশোধিত টাকা (Paid Amount)
                     </label>
@@ -417,74 +525,96 @@
                         type="number"
                         min="0"
                         step="0.01"
-                        class="form-control"
+                        class="form-control fw-semibold text-success"
                         placeholder="0.00" />
                     </div>
+                  </div>
+
+                  <!-- চালান মন্তব্য -->
+                  <div>
+                    <label class="form-label small fw-semibold mb-1">
+                      চালান মন্তব্য / বিবরণ
+                    </label>
+                    <textarea
+                      v-model="form.notes"
+                      rows="2"
+                      class="form-control form-control-sm"
+                      placeholder="চালান সম্পর্কিত কোনো বিশেষ বিবরণ..."></textarea>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- ডান দিক: মোট হিসাব সামারি কার্ড -->
-            <div class="col-12 col-md-6">
-              <div class="p-3 bg-white rounded border shadow-sm h-100 d-flex flex-column justify-content-between">
-                <div>
-                  <h6 class="fw-bold mb-3 text-dark d-flex align-items-center justify-content-between">
-                    <span><i class="bi bi-calculator me-1 text-primary"></i>চালানের চূড়ান্ত হিসাব বিবরণী</span>
-                    <span class="badge bg-info-subtle text-info border">অটো ক্যালকুলেটেড</span>
-                  </h6>
-
-                  <div class="summary-line d-flex justify-content-between align-items-center py-1 border-bottom">
-                    <span class="text-muted small">পণ্যের উপমোট মূল্য (Items Subtotal):</span>
-                    <strong class="text-dark">৳ {{ toBengaliNumber(itemsSubtotal.toFixed(2)) }}</strong>
+            <!-- কার্ড ৩: চূড়ান্ত হিসাব -->
+            <div class="col-12 col-lg-4">
+              <div class="card h-100 border shadow-sm">
+                <div class="card-header bg-white border-bottom py-2 d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calculator text-success fs-5"></i>
+                    <h6 class="m-0 fw-bold">চূড়ান্ত হিসাব</h6>
                   </div>
-
-                  <div class="summary-line d-flex justify-content-between align-items-center py-1 border-bottom">
-                    <span class="text-muted small">(+) অন্যান্য খরচাবলী (Landed Expenses):</span>
-                    <span class="text-danger">+ ৳ {{ toBengaliNumber((form.otherExpenses || 0).toFixed(2)) }}</span>
-                  </div>
-
-                  <div class="summary-line d-flex justify-content-between align-items-center py-1 border-bottom">
-                    <span class="text-muted small">(-) চালানের ডিসকাউন্ট (Discount):</span>
-                    <span class="text-success">- ৳ {{ toBengaliNumber((form.discountAmount || 0).toFixed(2)) }}</span>
-                  </div>
-
-                  <div class="summary-line d-flex justify-content-between align-items-center py-2 border-bottom bg-light px-2 rounded mt-1">
-                    <span class="fw-bold text-dark fs-6">মোট চালানের মূল্য (Net Landed Total):</span>
-                    <span class="fw-bold fs-5 text-primary">৳ {{ toBengaliNumber(finalTotalAmount.toFixed(2)) }}</span>
-                  </div>
-
-                  <div class="summary-line d-flex justify-content-between align-items-center py-1 mt-1">
-                    <span class="text-muted small">পরিশোধিত টাকা (Paid):</span>
-                    <span class="text-success fw-semibold">৳ {{ toBengaliNumber((form.paidAmount || 0).toFixed(2)) }}</span>
-                  </div>
-
-                  <div class="summary-line d-flex justify-content-between align-items-center py-1">
-                    <span class="text-muted small">বকেয়া টাকা (Due Amount):</span>
-                    <span
-                      class="fw-bold"
-                      :class="dueAmount > 0 ? 'text-danger' : 'text-muted'">
-                      ৳ {{ toBengaliNumber(dueAmount.toFixed(2)) }}
-                    </span>
-                  </div>
+                  <span class="badge bg-success-subtle text-success border">অটো হিসাব</span>
                 </div>
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                      <span class="text-muted small">পণ্যের উপমোট মূল্য:</span>
+                      <strong class="text-dark">৳ {{ toBengaliNumber(itemsSubtotal.toFixed(2)) }}</strong>
+                    </div>
 
-                <!-- সাবমিট বাটন -->
-                <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="resetForm">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>রিসেট
-                  </button>
-                  <button
-                    type="submit"
-                    class="btn btn-sm btn-primary px-4 fw-semibold"
-                    :disabled="submitting">
-                    <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
-                    <i v-else class="bi bi-check2-circle me-1"></i>
-                    ক্রয় চালান সংরক্ষণ করুন
-                  </button>
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                      <span class="text-muted small">মোট পণ্যের পরিমাণ:</span>
+                      <span class="fw-semibold text-dark">{{ toBengaliNumber(totalQuantity) }} টি</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                      <span class="text-muted small">(+) অন্যান্য খরচ:</span>
+                      <span class="text-danger fw-semibold">+ ৳ {{ toBengaliNumber((form.otherExpenses || 0).toFixed(2)) }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                      <span class="text-muted small">(-) চালান ডিসকাউন্ট / ছাড়:</span>
+                      <span class="text-success fw-semibold">- ৳ {{ toBengaliNumber((form.discountAmount || 0).toFixed(2)) }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom bg-light px-2 rounded mt-2">
+                      <span class="fw-bold text-dark">সর্বমোট প্রদেয় মূল্য:</span>
+                      <span class="fw-bold fs-5 text-primary">৳ {{ toBengaliNumber(finalTotalAmount.toFixed(2)) }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-1 mt-2">
+                      <span class="text-muted small">পরিশোধিত টাকা:</span>
+                      <span class="text-success fw-bold">৳ {{ toBengaliNumber((form.paidAmount || 0).toFixed(2)) }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-1">
+                      <span class="text-muted small">বকেয়া টাকা (Due):</span>
+                      <span
+                        class="fw-bold"
+                        :class="dueAmount > 0 ? 'text-danger' : 'text-muted'">
+                        ৳ {{ toBengaliNumber(dueAmount.toFixed(2)) }}
+                        <span v-if="dueAmount <= 0 && finalTotalAmount > 0" class="badge bg-success-subtle text-success ms-1 py-0 px-1 small">পরিশোধিত</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- ফর্ম একশন বাটনদ্বয় -->
+                  <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="resetForm">
+                      <i class="bi bi-arrow-counterclockwise me-1"></i>রিসেট
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn btn-sm btn-primary px-4 fw-semibold shadow-sm"
+                      :disabled="submitting || form.items.length === 0">
+                      <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
+                      <i v-else class="bi bi-check2-circle me-1"></i>
+                      ক্রয় চালান সংরক্ষণ করুন
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -824,24 +954,33 @@ interface PurchaseItemRow {
   isCodeCustomized?: boolean;
   quantity: number;
   totalPrice: number;
+  vatRate?: number;
 }
 
-function createBlankRow(): PurchaseItemRow {
-  return {
-    itemId: "",
-    categoryId: "",
-    subCategoryId: "",
-    brandId: "",
-    sizeId: "",
-    colorId: "",
-    unitId: "",
-    name: "",
-    code: "",
-    isCodeCustomized: false,
-    quantity: 1,
-    totalPrice: 0
-  };
-}
+const editingIndex = ref<number | null>(null);
+
+const currentItem = reactive<PurchaseItemRow & { vatRate: number }>({
+  itemId: "",
+  categoryId: "",
+  subCategoryId: "",
+  brandId: "",
+  sizeId: "",
+  colorId: "",
+  unitId: "",
+  name: "",
+  code: "",
+  isCodeCustomized: false,
+  quantity: 1,
+  totalPrice: 0,
+  vatRate: 0
+});
+
+const currentItemUnitCost = computed(() => {
+  const qty = Number(currentItem.quantity) || 0;
+  const price = Number(currentItem.totalPrice) || 0;
+  if (qty <= 0) return "0.00";
+  return (price / qty).toFixed(2);
+});
 
 const form = reactive({
   challanTypeId: "" as number | "",
@@ -854,18 +993,8 @@ const form = reactive({
   discountAmount: 0,
   paidAmount: 0,
   notes: "",
-  items: [createBlankRow()] as PurchaseItemRow[]
+  items: [] as PurchaseItemRow[]
 });
-
-function addRow() {
-  form.items.push(createBlankRow());
-}
-
-function removeRow(idx: number) {
-  if (form.items.length > 1) {
-    form.items.splice(idx, 1);
-  }
-}
 
 // Vendor toggle & dynamic master list
 const vendorType = ref<string>("supplier");
@@ -1057,15 +1186,15 @@ const filteredVendorsBySelectedType = computed(() => {
   return combined;
 });
 
-function generateRowBarcode(row: PurchaseItemRow, force: boolean = false) {
-  if (!force && row.isCodeCustomized && row.code) {
+function generateCurrentItemBarcode(force: boolean = false) {
+  if (!force && currentItem.isCodeCustomized && currentItem.code) {
     return;
   }
   // Formula: Category(2) + SubCategory(2) + Brand(2) + Size(2) + YYMM(4) + Batch(2) = 14 digits
-  const cat = String(row.categoryId || 0).padStart(2, "0").slice(-2);
-  const sub = String(row.subCategoryId || 0).padStart(2, "0").slice(-2);
-  const brand = String(row.brandId || 0).padStart(2, "0").slice(-2);
-  const size = String(row.sizeId || 0).padStart(2, "0").slice(-2);
+  const cat = String(currentItem.categoryId || 0).padStart(2, "0").slice(-2);
+  const sub = String(currentItem.subCategoryId || 0).padStart(2, "0").slice(-2);
+  const brand = String(currentItem.brandId || 0).padStart(2, "0").slice(-2);
+  const size = String(currentItem.sizeId || 0).padStart(2, "0").slice(-2);
 
   let d = form.challanDate ? new Date(form.challanDate) : new Date();
   if (isNaN(d.getTime())) d = new Date();
@@ -1074,32 +1203,138 @@ function generateRowBarcode(row: PurchaseItemRow, force: boolean = false) {
   const yymm = `${yy}${mm}`;
   const batch = "01";
 
-  row.code = `${cat}${sub}${brand}${size}${yymm}${batch}`;
+  currentItem.code = `${cat}${sub}${brand}${size}${yymm}${batch}`;
 }
 
-function onBrandChange(row: PurchaseItemRow) {
-  generateRowBarcode(row, true);
+function onCurrentItemBrandChange() {
+  generateCurrentItemBarcode(true);
 }
 
-function onSizeChange(row: PurchaseItemRow) {
-  generateRowBarcode(row, false);
+function onCurrentItemSizeChange() {
+  generateCurrentItemBarcode(false);
 }
 
-function onRowItemSelect(row: PurchaseItemRow) {
-  const selected = itemsList.value.find((it) => it.id === Number(row.itemId));
+function onCurrentItemSelect() {
+  const selected = itemsList.value.find((it) => it.id === Number(currentItem.itemId));
   if (selected) {
-    row.name = selected.name;
-    row.categoryId = selected.categoryId || "";
-    row.subCategoryId = selected.subCategoryId || "";
-    if (selected.brandId) row.brandId = selected.brandId;
-    if (selected.sizeId) row.sizeId = selected.sizeId;
-    if (selected.colorId) row.colorId = selected.colorId;
-    if (selected.unitId) row.unitId = selected.unitId;
-    if (Number(selected.purchasePrice) > 0 && (!row.totalPrice || row.totalPrice === 0)) {
-      row.totalPrice = Number((Number(selected.purchasePrice) * (row.quantity || 1)).toFixed(2));
+    currentItem.name = selected.name;
+    currentItem.categoryId = selected.categoryId || "";
+    currentItem.subCategoryId = selected.subCategoryId || "";
+    if (selected.brandId) currentItem.brandId = selected.brandId;
+    if (selected.sizeId) currentItem.sizeId = selected.sizeId;
+    if (selected.colorId) currentItem.colorId = selected.colorId;
+    if (selected.unitId) currentItem.unitId = selected.unitId;
+    if (Number(selected.purchasePrice) > 0 && (!currentItem.totalPrice || currentItem.totalPrice === 0)) {
+      currentItem.totalPrice = Number((Number(selected.purchasePrice) * (currentItem.quantity || 1)).toFixed(2));
     }
-    generateRowBarcode(row, false);
+    generateCurrentItemBarcode(false);
   }
+}
+
+function addItemToList() {
+  if (!currentItem.itemId && !currentItem.name.trim()) {
+    showToast("অনুগ্রহ করে একটি পণ্য নির্বাচন করুন", "warning");
+    return;
+  }
+  if (!currentItem.sizeId) {
+    showToast("অনুগ্রহ করে পণ্যের সাইজ নির্বাচন করুন", "warning");
+    return;
+  }
+  if ((Number(currentItem.quantity) || 0) <= 0) {
+    showToast("পরিমাণ অবশ্যই ১ বা তার বেশি হতে হবে", "warning");
+    return;
+  }
+
+  const rowData: PurchaseItemRow = {
+    itemId: currentItem.itemId,
+    categoryId: currentItem.categoryId,
+    subCategoryId: currentItem.subCategoryId,
+    brandId: currentItem.brandId,
+    sizeId: currentItem.sizeId,
+    colorId: currentItem.colorId,
+    unitId: currentItem.unitId,
+    name: currentItem.name.trim(),
+    code: currentItem.code?.trim() || "",
+    isCodeCustomized: currentItem.isCodeCustomized,
+    quantity: Number(currentItem.quantity) || 1,
+    totalPrice: Number(currentItem.totalPrice) || 0,
+    vatRate: Number(currentItem.vatRate) || 0
+  };
+
+  if (editingIndex.value !== null && editingIndex.value >= 0) {
+    form.items[editingIndex.value] = rowData;
+    showToast("পণ্য সফলভাবে আপডেট করা হয়েছে", "success");
+    editingIndex.value = null;
+  } else {
+    form.items.push(rowData);
+    showToast("পণ্য তালিকায় যুক্ত করা হয়েছে", "success");
+  }
+
+  resetCurrentItem();
+}
+
+function resetCurrentItem() {
+  editingIndex.value = null;
+  currentItem.itemId = "";
+  currentItem.categoryId = "";
+  currentItem.subCategoryId = "";
+  currentItem.brandId = "";
+  currentItem.sizeId = "";
+  currentItem.colorId = "";
+  currentItem.unitId = "";
+  currentItem.name = "";
+  currentItem.code = "";
+  currentItem.isCodeCustomized = false;
+  currentItem.quantity = 1;
+  currentItem.totalPrice = 0;
+  currentItem.vatRate = 0;
+}
+
+function editItem(index: number) {
+  const it = form.items[index];
+  if (!it) return;
+  editingIndex.value = index;
+  currentItem.itemId = it.itemId;
+  currentItem.categoryId = it.categoryId;
+  currentItem.subCategoryId = it.subCategoryId;
+  currentItem.brandId = it.brandId;
+  currentItem.sizeId = it.sizeId;
+  currentItem.colorId = it.colorId;
+  currentItem.unitId = it.unitId;
+  currentItem.name = it.name;
+  currentItem.code = it.code || "";
+  currentItem.isCodeCustomized = it.isCodeCustomized || false;
+  currentItem.quantity = it.quantity;
+  currentItem.totalPrice = it.totalPrice;
+  currentItem.vatRate = it.vatRate || 0;
+}
+
+function deleteItem(index: number) {
+  if (editingIndex.value === index) {
+    resetCurrentItem();
+  } else if (editingIndex.value !== null && editingIndex.value > index) {
+    editingIndex.value -= 1;
+  }
+  form.items.splice(index, 1);
+  showToast("পণ্য তালিকা থেকে বাদ দেওয়া হয়েছে", "info");
+}
+
+function getSizeName(sizeId: number | ""): string {
+  if (!sizeId) return "-";
+  const s = sizesList.value.find((sz) => sz.id === Number(sizeId));
+  return s ? s.name : "-";
+}
+
+function getUnitName(unitId: number | ""): string {
+  if (!unitId) return "";
+  const u = unitsList.value.find((un) => un.id === Number(unitId));
+  return u ? u.name : "";
+}
+
+function getBrandName(brandId: number | ""): string {
+  if (!brandId) return "-";
+  const b = brandsList.value.find((br) => br.id === Number(brandId));
+  return b ? b.name : "-";
 }
 
 function getItemCategorySubtitle(itemId: number | ""): string {
@@ -1113,6 +1348,10 @@ function getItemCategorySubtitle(itemId: number | ""): string {
 }
 
 // Landed Cost calculations
+const totalQuantity = computed(() => {
+  return form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+});
+
 const itemsSubtotal = computed(() => {
   return form.items.reduce((sum, item) => sum + (Number(item.totalPrice) || 0), 0);
 });
@@ -1129,17 +1368,6 @@ const dueAmount = computed(() => {
   const paid = Number(form.paidAmount) || 0;
   return Math.max(0, total - paid);
 });
-
-// Live calculated Landed Unit Cost for preview
-function calculateRowUnitCost(row: PurchaseItemRow): string {
-  const qty = Math.max(1, Number(row.quantity) || 1);
-  const lineTotal = Math.max(0, Number(row.totalPrice) || 0);
-  const sub = itemsSubtotal.value;
-  const netExtra = (Number(form.otherExpenses) || 0) - (Number(form.discountAmount) || 0);
-  const itemShare = sub > 0 ? (lineTotal / sub) * netExtra : 0;
-  const landedLineTotal = Math.max(0, lineTotal + itemShare);
-  return (landedLineTotal / qty).toFixed(2);
-}
 
 // Filtered purchases
 const filteredPurchases = computed(() => {
@@ -1199,7 +1427,8 @@ function resetForm() {
   form.discountAmount = 0;
   form.paidAmount = 0;
   form.notes = "";
-  form.items = [createBlankRow()];
+  form.items = [];
+  resetCurrentItem();
 }
 
 // API Calls
@@ -1271,20 +1500,9 @@ async function submitPurchase() {
   }
 
   // Validate line items
-  for (let i = 0; i < form.items.length; i++) {
-    const row = form.items[i];
-    if (!row.itemId && !row.name.trim()) {
-      showToast(`লাইন #${i + 1} এর পণ্য নির্বাচন করুন`, "warning");
-      return;
-    }
-    if (!row.sizeId) {
-      showToast(`লাইন #${i + 1} এর সাইজ নির্বাচন করুন`, "warning");
-      return;
-    }
-    if ((Number(row.quantity) || 0) <= 0) {
-      showToast(`লাইন #${i + 1} এর পরিমাণ অবশ্যই ১ বা তার বেশি হতে হবে`, "warning");
-      return;
-    }
+  if (form.items.length === 0) {
+    showToast("অনুগ্রহ করে চালানে অন্তত একটি পণ্য যোগ করুন", "warning");
+    return;
   }
 
   submitting.value = true;
