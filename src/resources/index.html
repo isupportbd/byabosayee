@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="./src/assets/images/favicon/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      (function () {
+        var root = document.documentElement;
+        try {
+          var fontId = localStorage.getItem("app-bangla-font") || "noto-sans-bengali";
+          var fontMap = {
+            "noto-sans-bengali": '"Noto Sans Bengali", sans-serif',
+            "hind-siliguri": '"Hind Siliguri", sans-serif',
+            "anek-bangla": '"Anek Bangla", sans-serif'
+          };
+          var family = fontMap[fontId] || fontMap["noto-sans-bengali"];
+          root.style.setProperty("--app-font-family", family);
+          root.style.setProperty("--bs-body-font-family", family);
+          root.style.setProperty("--bs-font-sans-serif", family);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="modal-show"></div>
+    <div id="toast-show"></div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+
+</html>
