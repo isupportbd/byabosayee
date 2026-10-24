@@ -187,9 +187,6 @@
                   #{{ toBengaliNumber(editingIndex + 1) }} নং পণ্য সম্পাদনাধীন
                 </span>
               </div>
-              <small class="text-muted">
-                তথ্য পূরণ করে নিচে <strong>"{{ editingIndex !== null ? 'পণ্য আপডেট করুন' : 'তালিকায় যুক্ত করুন' }}"</strong> বোতামে চাপুন
-              </small>
             </div>
 
             <!-- ফিল্ড সারি ১: পণ্যের নাম, ব্র্যান্ড, সাইজ, কালার, বার কোড -->
