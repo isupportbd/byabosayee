@@ -251,7 +251,7 @@
               <!-- ৫. বার কোড -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
-                  বার কোড <span class="badge bg-warning-subtle text-dark border ms-1 py-0 px-1 font-monospace" style="font-size: 0.65rem;">১৪-ডিজিট</span>
+                  বার কোড
                 </label>
                 <input
                   v-model.trim="currentItem.code"
@@ -319,7 +319,7 @@
               <!-- ১০. ভ্যাট ছাড়া মূল্য -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-secondary">
-                  ভ্যাট ছাড়া মূল্য (৳) <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1 py-0 px-1" style="font-size: 0.65rem;">অটো</span>
+                  ভ্যাট ছাড়া মূল্য (৳)
                 </label>
                 <div class="form-control form-control-sm bg-light text-dark fw-bold text-end">
                   ৳ {{ toBengaliNumber(currentItemPriceExclVat) }}
@@ -329,7 +329,7 @@
               <!-- ১১. ভ্যাট ছাড়া একক মূল্য -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-primary">
-                  ভ্যাট ছাড়া একক মূল্য (৳) <span class="badge bg-primary-subtle text-primary ms-1 py-0 px-1" style="font-size: 0.65rem;">অটো</span>
+                  ভ্যাট ছাড়া একক মূল্য (৳)
                 </label>
                 <div class="form-control form-control-sm bg-primary-subtle text-primary fw-bold text-end">
                   ৳ {{ toBengaliNumber(currentItemUnitCostExclVat) }}
