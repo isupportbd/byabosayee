@@ -100,8 +100,20 @@ export async function ensureVendorTypesTable() {
     if (existing.length === 0) {
       await db.insert(vendorTypes).values([
         { name: "সাপ্লায়ার", code: "supplier", description: "পণ্য বা কাঁচামাল সরবরাহকারী প্রতিষ্ঠান", isActive: true },
-        { name: "প্রস্তুতকারী", code: "manufacturer", description: "পোশাক বা পণ্য উৎপাদন ও প্রস্তুতকারক প্রতিষ্ঠান", isActive: true }
+        { name: "প্রস্তুতকারী", code: "manufacturer", description: "পোশাক বা পণ্য উৎপাদন ও প্রস্তুতকারক প্রতিষ্ঠান", isActive: true },
+        { name: "রপ্তানিকারক", code: "exporter", description: "আন্তর্জাতিক বা রফতানি/আমদানি সরবরাহকারী প্রতিষ্ঠান", isActive: true }
       ]);
+    } else {
+      const exporterExisting = await db
+        .select()
+        .from(vendorTypes)
+        .where(sql`LOWER("name") LIKE '%রপ্তানি%' OR LOWER("code") LIKE '%export%'`)
+        .limit(1);
+      if (exporterExisting.length === 0) {
+        await db.insert(vendorTypes).values([
+          { name: "রপ্তানিকারক", code: "exporter", description: "আন্তর্জাতিক বা রফতানি/আমদানি সরবরাহকারী প্রতিষ্ঠান", isActive: true }
+        ]);
+      }
     }
     vendorTypesTableEnsured = true;
   } catch (e) {

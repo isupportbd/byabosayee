@@ -124,16 +124,31 @@
 
               <!-- ৪. সরবরাহকারীর ধরন ড্রপডাউন (সুপারএডমিন সেটিংস হতে ড্রপ ডাউন) -->
               <div class="col">
-                <label class="form-label small fw-semibold mb-1 text-truncate d-block">
-                  সরবরাহকারীর ধরন <span class="text-danger">*</span>
-                </label>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <label class="form-label small fw-semibold mb-0 text-truncate">
+                    সরবরাহকারীর ধরন <span class="text-danger">*</span>
+                  </label>
+                  <span
+                    v-if="isBillOfEntry"
+                    class="badge bg-secondary-subtle text-secondary border px-1 py-0 font-monospace"
+                    style="font-size: 0.65rem;"
+                    title="বিল অব এন্ট্রি চালানে সরবরাহকারী অটোমেটিক রপ্তানিকারক ও ফ্রিজ">
+                    <i class="bi bi-lock-fill me-0.5"></i>লকড
+                  </span>
+                </div>
                 <select
                   v-model="vendorType"
                   class="form-select form-select-sm"
+                  :disabled="isBillOfEntry"
+                  :class="{ 'bg-light text-muted border-secondary-subtle': isBillOfEntry }"
+                  :title="isBillOfEntry ? 'বিল অব এন্ট্রি চালানে সরবরাহকারী অটোমেটিক রপ্তানিকারক ও লকড থাকে' : ''"
                   required
                   @change="onVendorTypeChange">
                   <option v-for="vt in activeVendorTypes" :key="vt.id" :value="vt.code || vt.name">
                     {{ vt.name }}
+                  </option>
+                  <option v-if="isBillOfEntry && !hasExporterInVendorTypes" value="রপ্তানিকারক">
+                    রপ্তানিকারক
                   </option>
                 </select>
               </div>
@@ -741,7 +756,7 @@
 
 <script setup lang="ts">
 import axios from "axios";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 
 // View State
 const activeView = ref<"form" | "list">("form");
@@ -758,6 +773,77 @@ const activeVendorTypes = computed(() => {
   return vendorTypesList.value.filter((vt) => vt.isActive);
 });
 
+// Challan Type & Bill of Entry check
+const selectedChallanType = computed(() => {
+  if (!form.challanTypeId) return null;
+  return challanTypesList.value.find((ct) => String(ct.id) === String(form.challanTypeId)) || null;
+});
+
+const isBillOfEntry = computed(() => {
+  const ct = selectedChallanType.value;
+  if (!ct) return false;
+  const name = (ct.name || "").toLowerCase().trim();
+  const code = (ct.code || "").toLowerCase().trim();
+  return (
+    name.includes("বিল অব এন্ট্রি") ||
+    name.includes("বিল অফ এন্ট্রি") ||
+    name.includes("bill of entry") ||
+    code === "bill_of_entry" ||
+    code.includes("entry")
+  );
+});
+
+const exporterVendorType = computed(() => {
+  return (
+    activeVendorTypes.value.find((vt) => {
+      const name = (vt.name || "").toLowerCase().trim();
+      const code = (vt.code || "").toLowerCase().trim();
+      return name.includes("রপ্তানি") || code.includes("export");
+    }) || null
+  );
+});
+
+const hasExporterInVendorTypes = computed(() => !!exporterVendorType.value);
+
+const previousVendorTypeBeforeFreeze = ref<string>("");
+
+// Watch for changes in Challan Type: if Bill of Entry, auto-set to exporter & freeze
+watch(
+  () => isBillOfEntry.value,
+  (isBOE, oldBOE) => {
+    if (isBOE) {
+      if (!oldBOE) {
+        previousVendorTypeBeforeFreeze.value = vendorType.value;
+      }
+      const exporterVal = exporterVendorType.value
+        ? exporterVendorType.value.code || exporterVendorType.value.name
+        : "রপ্তানিকারক";
+      vendorType.value = exporterVal;
+      onVendorTypeChange();
+    } else if (oldBOE) {
+      // Switched away from Bill of Entry -> unfreeze and restore previous or fallback
+      if (previousVendorTypeBeforeFreeze.value) {
+        vendorType.value = previousVendorTypeBeforeFreeze.value;
+      } else if (activeVendorTypes.value.length > 0) {
+        vendorType.value = activeVendorTypes.value[0].code || activeVendorTypes.value[0].name;
+      } else {
+        vendorType.value = "supplier";
+      }
+      onVendorTypeChange();
+    }
+  }
+);
+
+// If active vendor types load and isBillOfEntry is already true, ensure vendorType points to exporter
+watch(
+  exporterVendorType,
+  (exp) => {
+    if (isBillOfEntry.value && exp) {
+      vendorType.value = exp.code || exp.name;
+    }
+  }
+);
+
 const selectedVendorTypeName = computed(() => {
   const current = (vendorType.value || "").trim().toLowerCase();
   const selectedVt = activeVendorTypes.value.find(
@@ -765,6 +851,7 @@ const selectedVendorTypeName = computed(() => {
   );
   if (selectedVt) return selectedVt.name;
   if (current === "manufacturer" || current.includes("প্রস্তুত")) return "প্রস্তুতকারী";
+  if (current === "exporter" || current.includes("রপ্তানি")) return "রপ্তানিকারক";
   return vendorType.value || "সাপ্লায়ার";
 });
 
@@ -818,9 +905,14 @@ const filteredVendorsBySelectedType = computed(() => {
     }));
   }
 
-  // Filter from suppliersList matching this vendorType
+  // Filter from suppliersList & manufacturersList matching this vendorType
+  const isExporterMode = currentType.includes("export") || currentTypeName.includes("রপ্তানি");
+
   const matchedFromSuppliers = suppliersList.value.filter((s) => {
     const sVt = (s.vendorType || "supplier").trim().toLowerCase();
+    if (isExporterMode) {
+      return sVt.includes("export") || sVt.includes("রপ্তানি") || sVt === currentType;
+    }
     if (currentType === "supplier" || currentTypeName === "সাপ্লায়ার") {
       return !s.vendorType || sVt === "supplier" || sVt === "সাপ্লায়ার";
     }
@@ -836,6 +928,9 @@ const filteredVendorsBySelectedType = computed(() => {
   const matchedFromManufacturers = manufacturersList.value.filter((m) => {
     if (!m.vendorType) return false;
     const mVt = m.vendorType.trim().toLowerCase();
+    if (isExporterMode) {
+      return mVt.includes("export") || mVt.includes("রপ্তানি") || mVt === currentType;
+    }
     return mVt === currentType || mVt === currentTypeName;
   }).map((m) => ({
     id: m.id,
@@ -1127,19 +1222,24 @@ async function fetchCatalogData() {
     challanTypesList.value = master.challanTypes || [];
     vendorTypesList.value = master.vendorTypes || [];
 
-    // Auto-select first active vendor type if available
-    if (activeVendorTypes.value.length > 0) {
+    // Auto-select first challan type if available
+    if (challanTypesList.value.length > 0 && !form.challanTypeId) {
+      form.challanTypeId = challanTypesList.value[0].id;
+    }
+
+    // Auto-select vendor type: if Bill of Entry, auto-select exporter; otherwise first active
+    if (isBillOfEntry.value) {
+      const exporterVal = exporterVendorType.value
+        ? exporterVendorType.value.code || exporterVendorType.value.name
+        : "রপ্তানিকারক";
+      vendorType.value = exporterVal;
+    } else if (activeVendorTypes.value.length > 0) {
       const currentExists = activeVendorTypes.value.some(
         (vt) => (vt.code || vt.name) === vendorType.value
       );
       if (!currentExists) {
         vendorType.value = activeVendorTypes.value[0].code || activeVendorTypes.value[0].name;
       }
-    }
-
-    // Auto-select first challan type if available
-    if (challanTypesList.value.length > 0 && !form.challanTypeId) {
-      form.challanTypeId = challanTypesList.value[0].id;
     }
 
     brandsList.value = brandRes.data?.data || [];
