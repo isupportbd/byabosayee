@@ -460,84 +460,79 @@
                   <i class="bi bi-sliders text-warning fs-5"></i>
                   <h6 class="m-0 fw-bold">খরচ ও সমন্বয়</h6>
                 </div>
-                <div class="card-body p-3">
-                  <!-- অন্যান্য খরচ -->
-                  <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">
-                      অন্যান্য খরচ (ভাড়া/কুরিয়ার/চার্জ) (৳)
-                    </label>
-                    <input
-                      v-model.number="form.otherExpenses"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      placeholder="0.00" />
-                    <small class="text-muted" style="font-size: 0.73rem;">
-                      যাতায়াত, কুরিয়ার, কুলি খরচ ইত্যাদি
-                    </small>
-                  </div>
-
-                  <!-- ডিসকাউন্ট / ছাড় -->
-                  <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">
-                      চালান ডিসকাউন্ট / ছাড় (৳)
-                    </label>
-                    <input
-                      v-model.number="form.discountAmount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm"
-                      placeholder="0.00" />
-                    <small class="text-muted" style="font-size: 0.73rem;">
-                      চালানের মোট মূল্যের ওপর প্রাপ্ত ছাড়
-                    </small>
-                  </div>
-
-                  <!-- পেমেন্ট মাধ্যম (সুপারএডমিন সেটিংস থেকে Trx Type ড্রপডাউন) -->
-                  <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">
-                      পরিশোধের মাধ্যম (Trx Type) <span class="text-danger">*</span>
-                    </label>
-                    <select
-                      v-model="form.paymentMethod"
-                      class="form-select form-select-sm"
-                      required>
-                      <option value="">পরিশোধের মাধ্যম নির্বাচন করুন</option>
-                      <option
-                        v-for="pm in activePaymentMethods"
-                        :key="pm.id"
-                        :value="pm.code || pm.name">
-                        {{ pm.name }} {{ pm.code ? `(${pm.code})` : '' }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <!-- পরিশোধিত টাকা -->
-                  <div class="mb-2">
-                    <label class="form-label small fw-semibold mb-1">
-                      পরিশোধিত টাকা (৳) (Paid Amount)
-                    </label>
-                    <input
-                      v-model.number="form.paidAmount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="form-control form-control-sm fw-semibold text-success"
-                      placeholder="0.00" />
-                  </div>
-
-                  <!-- চালান মন্তব্য -->
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
                   <div>
-                    <label class="form-label small fw-semibold mb-1">
-                      চালান মন্তব্য / বিবরণ
-                    </label>
-                    <textarea
-                      v-model="form.notes"
-                      rows="2"
-                      class="form-control form-control-sm"
-                      placeholder="চালান সম্পর্কিত কোনো বিশেষ বিবরণ..."></textarea>
+                    <!-- বিবিধ খরচ -->
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold mb-1">
+                        বিবিধ খরচ (৳)
+                      </label>
+                      <input
+                        v-model.number="form.otherExpenses"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="form-control form-control-sm"
+                        placeholder="0.00" />
+                    </div>
+
+                    <!-- চালান ডিসকাউন্ট -->
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold mb-1">
+                        চালান ডিসকাউন্ট (৳)
+                      </label>
+                      <input
+                        v-model.number="form.discountAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="form-control form-control-sm"
+                        placeholder="0.00" />
+                    </div>
+
+                    <!-- পেমেন্ট মাধ্যম (সুপারএডমিন সেটিংস থেকে Trx Type ড্রপডাউন) -->
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold mb-1">
+                        পরিশোধের মাধ্যম (Trx Type) <span class="text-danger">*</span>
+                      </label>
+                      <select
+                        v-model="form.paymentMethod"
+                        class="form-select form-select-sm"
+                        required>
+                        <option value="">পরিশোধের মাধ্যম নির্বাচন করুন</option>
+                        <option
+                          v-for="pm in activePaymentMethods"
+                          :key="pm.id"
+                          :value="pm.code || pm.name">
+                          {{ pm.name }} {{ pm.code ? `(${pm.code})` : '' }}
+                        </option>
+                      </select>
+                    </div>
+
+                    <!-- পরিশোধিত টাকা -->
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold mb-1">
+                        পরিশোধিত টাকা (৳)
+                      </label>
+                      <input
+                        v-model.number="form.paidAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="form-control form-control-sm fw-semibold text-success"
+                        placeholder="0.00" />
+                    </div>
+                  </div>
+
+                  <!-- ক্যালকুলেট বাটন -->
+                  <div class="pt-2">
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-2 py-2"
+                      @click="handleCalculate">
+                      <i class="bi bi-calculator-fill fs-5"></i>
+                      <span>ক্যালকুলেট</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1337,6 +1332,10 @@ function deleteItem(index: number) {
   }
   form.items.splice(index, 1);
   showToast("পণ্য তালিকা থেকে বাদ দেওয়া হয়েছে", "info");
+}
+
+function handleCalculate() {
+  // ক্যালকুলেট বাটনের পরবর্তী কাজের জন্য প্রস্তুত
 }
 
 function getSizeName(sizeId: number | ""): string {
