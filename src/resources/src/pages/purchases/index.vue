@@ -306,17 +306,14 @@
               <!-- ৯. ভ্যাট -->
               <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">ভ্যাট (%)</label>
-                <div class="input-group input-group-sm">
-                  <input
-                    v-model.number="currentItem.vatRate"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    class="form-control text-center"
-                    placeholder="0" />
-                  <span class="input-group-text">%</span>
-                </div>
+                <input
+                  v-model.number="currentItem.vatRate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="form-control form-control-sm text-center"
+                  placeholder="0" />
               </div>
 
               <!-- ১০. একক ক্রয়মূল্য (অটো) -->
@@ -457,18 +454,15 @@
                   <!-- অন্যান্য খরচ -->
                   <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
-                      অন্যান্য খরচ (ভাড়া/কুরিয়ার/চার্জ)
+                      অন্যান্য খরচ (ভাড়া/কুরিয়ার/চার্জ) (৳)
                     </label>
-                    <div class="input-group input-group-sm">
-                      <span class="input-group-text">৳</span>
-                      <input
-                        v-model.number="form.otherExpenses"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="form-control"
-                        placeholder="0.00" />
-                    </div>
+                    <input
+                      v-model.number="form.otherExpenses"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      placeholder="0.00" />
                     <small class="text-muted" style="font-size: 0.73rem;">
                       যাতায়াত, কুরিয়ার, কুলি খরচ ইত্যাদি
                     </small>
@@ -477,18 +471,15 @@
                   <!-- ডিসকাউন্ট / ছাড় -->
                   <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
-                      চালান ডিসকাউন্ট / ছাড়
+                      চালান ডিসকাউন্ট / ছাড় (৳)
                     </label>
-                    <div class="input-group input-group-sm">
-                      <span class="input-group-text">৳</span>
-                      <input
-                        v-model.number="form.discountAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="form-control"
-                        placeholder="0.00" />
-                    </div>
+                    <input
+                      v-model.number="form.discountAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm"
+                      placeholder="0.00" />
                     <small class="text-muted" style="font-size: 0.73rem;">
                       চালানের মোট মূল্যের ওপর প্রাপ্ত ছাড়
                     </small>
@@ -513,18 +504,15 @@
                   <!-- পরিশোধিত টাকা -->
                   <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">
-                      পরিশোধিত টাকা (Paid Amount)
+                      পরিশোধিত টাকা (৳) (Paid Amount)
                     </label>
-                    <div class="input-group input-group-sm">
-                      <span class="input-group-text">৳</span>
-                      <input
-                        v-model.number="form.paidAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="form-control fw-semibold text-success"
-                        placeholder="0.00" />
-                    </div>
+                    <input
+                      v-model.number="form.paidAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="form-control form-control-sm fw-semibold text-success"
+                      placeholder="0.00" />
                   </div>
 
                   <!-- চালান মন্তব্য -->
