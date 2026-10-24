@@ -80,9 +80,9 @@
               <span class="badge bg-primary rounded-pill">১</span>
               <h6 class="m-0 fw-semibold text-primary">চালানের প্রাথমিক তথ্য</h6>
             </div>
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2">
-              <!-- ১. চালানের ধরন -->
-              <div class="col">
+            <div class="row g-2 align-items-end">
+              <!-- ১. চালানের ধরন (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালানের ধরন <span class="text-danger">*</span>
                 </label>
@@ -97,8 +97,8 @@
                 </select>
               </div>
 
-              <!-- ২. চালান নং -->
-              <div class="col">
+              <!-- ২. চালান নং (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালান নং <span class="text-danger">*</span>
                 </label>
@@ -110,8 +110,8 @@
                   required />
               </div>
 
-              <!-- ৩. চালানের তারিখ -->
-              <div class="col">
+              <!-- ৩. চালানের তারিখ (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালানের তারিখ <span class="text-danger">*</span>
                 </label>
@@ -122,8 +122,8 @@
                   required />
               </div>
 
-              <!-- ৪. সরবরাহকারীর ধরন ড্রপডাউন (সুপারএডমিন সেটিংস হতে ড্রপ ডাউন) -->
-              <div class="col">
+              <!-- ৪. সরবরাহকারীর ধরন ড্রপডাউন (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <div class="d-flex align-items-center justify-content-between mb-1">
                   <label class="form-label small fw-semibold mb-0 text-truncate">
                     সরবরাহকারীর ধরন <span class="text-danger">*</span>
@@ -153,8 +153,8 @@
                 </select>
               </div>
 
-              <!-- ৫. প্রতিষ্ঠানের নাম ড্রপডাউন (নির্বাচিত ধরনের সাথে সম্পূর্ণ ডায়নামিক) -->
-              <div class="col">
+              <!-- ৫. প্রতিষ্ঠানের নাম ড্রপডাউন (২ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-4 col-lg-4">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   {{ selectedVendorTypeName }} <span class="text-danger">*</span>
                 </label>
@@ -189,10 +189,10 @@
               </div>
             </div>
 
-            <!-- ফিল্ড সারি ১: পণ্যের নাম, ব্র্যান্ড, সাইজ, কালার, বার কোড -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 mb-2">
-              <!-- ১. পণ্যের নাম -->
-              <div class="col">
+            <!-- ফিল্ড সারি ১: পণ্যের নাম (২ কলাম), ব্র্যান্ড, সাইজ, কালার, বার কোড (মোট ৬ কলাম) -->
+            <div class="row g-2 mb-2 align-items-end">
+              <!-- ১. পণ্যের নাম (২ কলাম) -->
+              <div class="col-12 col-md-4 col-lg-4">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   পণ্যের নাম <span class="text-danger">*</span>
                 </label>
@@ -207,8 +207,8 @@
                 </select>
               </div>
 
-              <!-- ২. ব্র্যান্ড -->
-              <div class="col">
+              <!-- ২. ব্র্যান্ড (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">ব্র্যান্ড</label>
                 <select
                   v-model="currentItem.brandId"
@@ -221,8 +221,8 @@
                 </select>
               </div>
 
-              <!-- ৩. সাইজ -->
-              <div class="col">
+              <!-- ৩. সাইজ (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   সাইজ <span class="text-danger">*</span>
                 </label>
@@ -237,8 +237,8 @@
                 </select>
               </div>
 
-              <!-- ৪. কালার -->
-              <div class="col">
+              <!-- ৪. কালার (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">কালার</label>
                 <select v-model="currentItem.colorId" class="form-select form-select-sm">
                   <option value="">(ঐচ্ছিক)</option>
@@ -248,8 +248,8 @@
                 </select>
               </div>
 
-              <!-- ৫. বার কোড -->
-              <div class="col">
+              <!-- ৫. বার কোড (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   বার কোড
                 </label>
@@ -263,10 +263,10 @@
               </div>
             </div>
 
-            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, ভ্যাট ছাড়া মূল্য, ভ্যাট ছাড়া একক মূল্য -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-6 g-2 align-items-end">
-              <!-- ৬. পরিমাণ -->
-              <div class="col">
+            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, ভ্যাট ছাড়া মূল্য, ভ্যাট ছাড়া একক মূল্য (প্রতিটি ১ কলাম = ৬ কলাম) -->
+            <div class="row g-2 align-items-end">
+              <!-- ৬. পরিমাণ (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   পরিমাণ <span class="text-danger">*</span>
                 </label>
@@ -278,8 +278,8 @@
                   placeholder="১" />
               </div>
 
-              <!-- ৭. একক -->
-              <div class="col">
+              <!-- ৭. একক (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">একক</label>
                 <select v-model="currentItem.unitId" class="form-select form-select-sm">
                   <option value="">একক নির্বাচন</option>
@@ -289,8 +289,8 @@
                 </select>
               </div>
 
-              <!-- ৮. মোট মূল্য -->
-              <div class="col">
+              <!-- ৮. মোট মূল্য (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   মোট মূল্য (৳) <span class="text-danger">*</span>
                 </label>
@@ -303,8 +303,8 @@
                   placeholder="0.00" />
               </div>
 
-              <!-- ৯. ভ্যাট -->
-              <div class="col">
+              <!-- ৯. ভ্যাট (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">ভ্যাট (%)</label>
                 <input
                   v-model.number="currentItem.vatRate"
@@ -316,8 +316,8 @@
                   placeholder="0" />
               </div>
 
-              <!-- ১০. ভ্যাট ছাড়া মূল্য -->
-              <div class="col">
+              <!-- ১০. ভ্যাট ছাড়া মূল্য (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-secondary">
                   ভ্যাট ছাড়া মূল্য (৳)
                 </label>
@@ -326,8 +326,8 @@
                 </div>
               </div>
 
-              <!-- ১১. ভ্যাট ছাড়া একক মূল্য -->
-              <div class="col">
+              <!-- ১১. ভ্যাট ছাড়া একক মূল্য (১ কলাম) -->
+              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-primary">
                   ভ্যাট ছাড়া একক মূল্য (৳)
                 </label>
