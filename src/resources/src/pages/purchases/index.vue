@@ -80,9 +80,9 @@
               <span class="badge bg-primary rounded-pill">১</span>
               <h6 class="m-0 fw-semibold text-primary">চালানের প্রাথমিক তথ্য</h6>
             </div>
-            <div class="row g-2 align-items-end">
-              <!-- ১. চালানের ধরন (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2">
+              <!-- ১. চালানের ধরন -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালানের ধরন <span class="text-danger">*</span>
                 </label>
@@ -97,8 +97,8 @@
                 </select>
               </div>
 
-              <!-- ২. চালান নং (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ২. চালান নং -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালান নং <span class="text-danger">*</span>
                 </label>
@@ -110,8 +110,8 @@
                   required />
               </div>
 
-              <!-- ৩. চালানের তারিখ (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৩. চালানের তারিখ -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালানের তারিখ <span class="text-danger">*</span>
                 </label>
@@ -122,8 +122,8 @@
                   required />
               </div>
 
-              <!-- ৪. সরবরাহকারীর ধরন ড্রপডাউন (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৪. সরবরাহকারীর ধরন ড্রপডাউন (সুপারএডমিন সেটিংস হতে ড্রপ ডাউন) -->
+              <div class="col">
                 <div class="d-flex align-items-center justify-content-between mb-1">
                   <label class="form-label small fw-semibold mb-0 text-truncate">
                     সরবরাহকারীর ধরন <span class="text-danger">*</span>
@@ -153,8 +153,8 @@
                 </select>
               </div>
 
-              <!-- ৫. প্রতিষ্ঠানের নাম ড্রপডাউন (২ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-4 col-lg-4">
+              <!-- ৫. প্রতিষ্ঠানের নাম ড্রপডাউন (নির্বাচিত ধরনের সাথে সম্পূর্ণ ডায়নামিক) -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   {{ selectedVendorTypeName }} <span class="text-danger">*</span>
                 </label>
@@ -189,10 +189,10 @@
               </div>
             </div>
 
-            <!-- ফিল্ড সারি ১: পণ্যের নাম (২ কলাম), ব্র্যান্ড, সাইজ, কালার, বার কোড (মোট ৬ কলাম) -->
-            <div class="row g-2 mb-2 align-items-end">
-              <!-- ১. পণ্যের নাম (২ কলাম) -->
-              <div class="col-12 col-md-4 col-lg-4">
+            <!-- ফিল্ড সারি ১: পণ্যের নাম, ব্র্যান্ড, সাইজ, কালার, বার কোড, অ্যাকশন বাটনদ্বয় (৬ কলাম) -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-6 g-2 mb-2 align-items-end">
+              <!-- ১. পণ্যের নাম -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   পণ্যের নাম <span class="text-danger">*</span>
                 </label>
@@ -207,8 +207,8 @@
                 </select>
               </div>
 
-              <!-- ২. ব্র্যান্ড (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ২. ব্র্যান্ড -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">ব্র্যান্ড</label>
                 <select
                   v-model="currentItem.brandId"
@@ -221,8 +221,8 @@
                 </select>
               </div>
 
-              <!-- ৩. সাইজ (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৩. সাইজ -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   সাইজ <span class="text-danger">*</span>
                 </label>
@@ -237,8 +237,8 @@
                 </select>
               </div>
 
-              <!-- ৪. কালার (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৪. কালার -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">কালার</label>
                 <select v-model="currentItem.colorId" class="form-select form-select-sm">
                   <option value="">(ঐচ্ছিক)</option>
@@ -248,8 +248,8 @@
                 </select>
               </div>
 
-              <!-- ৫. বার কোড (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৫. বার কোড -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   বার কোড
                 </label>
@@ -261,12 +261,37 @@
                   placeholder="অটো জেনারেট"
                   @input="currentItem.isCodeCustomized = true" />
               </div>
+
+              <!-- ৬. অ্যাকশন বাটনদ্বয় (রিসেট ও যোগ) -->
+              <div class="col">
+                <label class="form-label small fw-semibold mb-1 d-block text-muted text-truncate">
+                  অ্যাকশন
+                </label>
+                <div class="d-flex align-items-center gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                    style="height: 31px; width: 34px;"
+                    title="রিসেট"
+                    @click="resetCurrentItem">
+                    <i class="bi bi-arrow-counterclockwise fs-6"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary flex-grow-1 fw-semibold d-inline-flex align-items-center justify-content-center gap-1 text-nowrap px-2 shadow-sm"
+                    style="height: 31px;"
+                    @click="addItemToList">
+                    <i :class="editingIndex !== null ? 'bi bi-check2' : 'bi bi-plus-lg'"></i>
+                    <span>{{ editingIndex !== null ? 'আপডেট' : 'যোগ' }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, ভ্যাট ছাড়া মূল্য, ভ্যাট ছাড়া একক মূল্য (প্রতিটি ১ কলাম = ৬ কলাম) -->
-            <div class="row g-2 align-items-end">
-              <!-- ৬. পরিমাণ (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+            <!-- ফিল্ড সারি ২: পরিমাণ, একক, মোট মূল্য, ভ্যাট, ভ্যাট ছাড়া মূল্য, ভ্যাট ছাড়া একক মূল্য (৬ কলাম) -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-6 g-2 align-items-end">
+              <!-- ৭. পরিমাণ -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   পরিমাণ <span class="text-danger">*</span>
                 </label>
@@ -278,8 +303,8 @@
                   placeholder="১" />
               </div>
 
-              <!-- ৭. একক (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৮. একক -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">একক</label>
                 <select v-model="currentItem.unitId" class="form-select form-select-sm">
                   <option value="">একক নির্বাচন</option>
@@ -289,8 +314,8 @@
                 </select>
               </div>
 
-              <!-- ৮. মোট মূল্য (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ৯. মোট মূল্য -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   মোট মূল্য (৳) <span class="text-danger">*</span>
                 </label>
@@ -303,8 +328,8 @@
                   placeholder="0.00" />
               </div>
 
-              <!-- ৯. ভ্যাট (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ১০. ভ্যাট -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">ভ্যাট (%)</label>
                 <input
                   v-model.number="currentItem.vatRate"
@@ -316,8 +341,8 @@
                   placeholder="0" />
               </div>
 
-              <!-- ১০. ভ্যাট ছাড়া মূল্য (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ১১. ভ্যাট ছাড়া মূল্য -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-secondary">
                   ভ্যাট ছাড়া মূল্য (৳)
                 </label>
@@ -326,8 +351,8 @@
                 </div>
               </div>
 
-              <!-- ১১. ভ্যাট ছাড়া একক মূল্য (১ কলাম) -->
-              <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+              <!-- ১২. ভ্যাট ছাড়া একক মূল্য -->
+              <div class="col">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block text-primary">
                   ভ্যাট ছাড়া একক মূল্য (৳)
                 </label>
@@ -335,23 +360,6 @@
                   ৳ {{ toBengaliNumber(currentItemUnitCostExclVat) }}
                 </div>
               </div>
-            </div>
-
-            <!-- একশন বাটনদ্বয়: রিসেট ও তালিকায় যুক্ত করুন -->
-            <div class="d-flex justify-content-end align-items-center gap-2 mt-3 pt-2 border-top">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary px-3"
-                @click="resetCurrentItem">
-                <i class="bi bi-x-circle me-1"></i>রিসেট
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-primary px-4 fw-semibold shadow-sm"
-                @click="addItemToList">
-                <i :class="editingIndex !== null ? 'bi bi-check2-circle' : 'bi bi-plus-circle'" class="me-1"></i>
-                {{ editingIndex !== null ? 'পণ্য আপডেট করুন' : 'তালিকায় যুক্ত করুন' }}
-              </button>
             </div>
           </div>
 
