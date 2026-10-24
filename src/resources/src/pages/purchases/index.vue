@@ -758,6 +758,20 @@
 import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 
+// Master Catalog Data
+const categoriesList = ref<any[]>([]);
+const subCategoriesList = ref<any[]>([]);
+const brandsList = ref<any[]>([]);
+const sizesList = ref<any[]>([]);
+const colorsList = ref<any[]>([]);
+const unitsList = ref<any[]>([]);
+const challanTypesList = ref<any[]>([]);
+const vendorTypesList = ref<any[]>([]);
+const suppliersList = ref<any[]>([]);
+const manufacturersList = ref<any[]>([]);
+const purchasesList = ref<any[]>([]);
+const itemsList = ref<any[]>([]);
+
 // View State
 const activeView = ref<"form" | "list">("form");
 const submitting = ref(false);
@@ -765,9 +779,96 @@ const loadingPurchases = ref(false);
 const searchQuery = ref("");
 const selectedPurchase = ref<any>(null);
 
+// Toast Notification
+const toast = reactive({
+  show: false,
+  message: "",
+  type: "success" as "success" | "danger" | "warning" | "info"
+});
+
+function showToast(message: string, type: "success" | "danger" | "warning" | "info" = "success") {
+  toast.message = message;
+  toast.type = type;
+  toast.show = true;
+  setTimeout(() => {
+    toast.show = false;
+  }, 4000);
+}
+
+// Bengali Number Converter
+function toBengaliNumber(num: number | string | null | undefined): string {
+  if (num === null || num === undefined) return "০";
+  const bengaliDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+  return String(num).replace(/[0-9]/g, (w) => bengaliDigits[+w]);
+}
+
+// Today date strings (Format: DD/MM/YYYY)
+const now = new Date();
+const todayISO = now.toISOString().split("T")[0];
+const day = String(now.getDate()).padStart(2, "0");
+const month = String(now.getMonth() + 1).padStart(2, "0");
+const year = now.getFullYear();
+const todayFormatted = `${day}/${month}/${year}`;
+
+// Form state
+interface PurchaseItemRow {
+  itemId: number | "";
+  categoryId: number | "";
+  subCategoryId: number | "";
+  brandId: number | "";
+  sizeId: number | "";
+  colorId: number | "";
+  unitId: number | "";
+  name: string;
+  code: string;
+  isCodeCustomized?: boolean;
+  quantity: number;
+  totalPrice: number;
+}
+
+function createBlankRow(): PurchaseItemRow {
+  return {
+    itemId: "",
+    categoryId: "",
+    subCategoryId: "",
+    brandId: "",
+    sizeId: "",
+    colorId: "",
+    unitId: "",
+    name: "",
+    code: "",
+    isCodeCustomized: false,
+    quantity: 1,
+    totalPrice: 0
+  };
+}
+
+const form = reactive({
+  challanTypeId: "" as number | "",
+  challanNumber: "",
+  challanDate: todayISO,
+  supplierId: "" as number | "",
+  manufacturerId: "" as number | "",
+  paymentMethod: "cash",
+  otherExpenses: 0,
+  discountAmount: 0,
+  paidAmount: 0,
+  notes: "",
+  items: [createBlankRow()] as PurchaseItemRow[]
+});
+
+function addRow() {
+  form.items.push(createBlankRow());
+}
+
+function removeRow(idx: number) {
+  if (form.items.length > 1) {
+    form.items.splice(idx, 1);
+  }
+}
+
 // Vendor toggle & dynamic master list
 const vendorType = ref<string>("supplier");
-const vendorTypesList = ref<any[]>([]);
 
 const activeVendorTypes = computed(() => {
   return vendorTypesList.value.filter((vt) => vt.isActive);
@@ -806,43 +907,6 @@ const exporterVendorType = computed(() => {
 const hasExporterInVendorTypes = computed(() => !!exporterVendorType.value);
 
 const previousVendorTypeBeforeFreeze = ref<string>("");
-
-// Watch for changes in Challan Type: if Bill of Entry, auto-set to exporter & freeze
-watch(
-  () => isBillOfEntry.value,
-  (isBOE, oldBOE) => {
-    if (isBOE) {
-      if (!oldBOE) {
-        previousVendorTypeBeforeFreeze.value = vendorType.value;
-      }
-      const exporterVal = exporterVendorType.value
-        ? exporterVendorType.value.code || exporterVendorType.value.name
-        : "রপ্তানিকারক";
-      vendorType.value = exporterVal;
-      onVendorTypeChange();
-    } else if (oldBOE) {
-      // Switched away from Bill of Entry -> unfreeze and restore previous or fallback
-      if (previousVendorTypeBeforeFreeze.value) {
-        vendorType.value = previousVendorTypeBeforeFreeze.value;
-      } else if (activeVendorTypes.value.length > 0) {
-        vendorType.value = activeVendorTypes.value[0].code || activeVendorTypes.value[0].name;
-      } else {
-        vendorType.value = "supplier";
-      }
-      onVendorTypeChange();
-    }
-  }
-);
-
-// If active vendor types load and isBillOfEntry is already true, ensure vendorType points to exporter
-watch(
-  exporterVendorType,
-  (exp) => {
-    if (isBillOfEntry.value && exp) {
-      vendorType.value = exp.code || exp.name;
-    }
-  }
-);
 
 const selectedVendorTypeName = computed(() => {
   const current = (vendorType.value || "").trim().toLowerCase();
@@ -889,6 +953,43 @@ function onVendorTypeChange() {
   form.supplierId = "";
   form.manufacturerId = "";
 }
+
+// Watch for changes in Challan Type: if Bill of Entry, auto-set to exporter & freeze
+watch(
+  () => isBillOfEntry.value,
+  (isBOE, oldBOE) => {
+    if (isBOE) {
+      if (!oldBOE) {
+        previousVendorTypeBeforeFreeze.value = vendorType.value;
+      }
+      const exporterVal = exporterVendorType.value
+        ? exporterVendorType.value.code || exporterVendorType.value.name
+        : "রপ্তানিকারক";
+      vendorType.value = exporterVal;
+      onVendorTypeChange();
+    } else if (oldBOE) {
+      // Switched away from Bill of Entry -> unfreeze and restore previous or fallback
+      if (previousVendorTypeBeforeFreeze.value) {
+        vendorType.value = previousVendorTypeBeforeFreeze.value;
+      } else if (activeVendorTypes.value.length > 0) {
+        vendorType.value = activeVendorTypes.value[0].code || activeVendorTypes.value[0].name;
+      } else {
+        vendorType.value = "supplier";
+      }
+      onVendorTypeChange();
+    }
+  }
+);
+
+// If active vendor types load and isBillOfEntry is already true, ensure vendorType points to exporter
+watch(
+  exporterVendorType,
+  (exp) => {
+    if (isBillOfEntry.value && exp) {
+      vendorType.value = exp.code || exp.name;
+    }
+  }
+);
 
 const filteredVendorsBySelectedType = computed(() => {
   const currentType = (vendorType.value || "").trim().toLowerCase();
@@ -955,107 +1056,6 @@ const filteredVendorsBySelectedType = computed(() => {
 
   return combined;
 });
-
-// Master Catalog Data
-const categoriesList = ref<any[]>([]);
-const subCategoriesList = ref<any[]>([]);
-const brandsList = ref<any[]>([]);
-const sizesList = ref<any[]>([]);
-const colorsList = ref<any[]>([]);
-const unitsList = ref<any[]>([]);
-const challanTypesList = ref<any[]>([]);
-const suppliersList = ref<any[]>([]);
-const manufacturersList = ref<any[]>([]);
-const purchasesList = ref<any[]>([]);
-const itemsList = ref<any[]>([]);
-
-// Toast Notification
-const toast = reactive({
-  show: false,
-  message: "",
-  type: "success" as "success" | "danger" | "warning" | "info"
-});
-
-function showToast(message: string, type: "success" | "danger" | "warning" | "info" = "success") {
-  toast.message = message;
-  toast.type = type;
-  toast.show = true;
-  setTimeout(() => {
-    toast.show = false;
-  }, 4000);
-}
-
-// Bengali Number Converter
-function toBengaliNumber(num: number | string | null | undefined): string {
-  if (num === null || num === undefined) return "০";
-  const bengaliDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-  return String(num).replace(/[0-9]/g, (w) => bengaliDigits[+w]);
-}
-
-// Today date strings (Format: DD/MM/YYYY)
-const now = new Date();
-const todayISO = now.toISOString().split("T")[0];
-const day = String(now.getDate()).padStart(2, "0");
-const month = String(now.getMonth() + 1).padStart(2, "0");
-const year = now.getFullYear();
-const todayFormatted = `${day}/${month}/${year}`;
-
-// Form state
-interface PurchaseItemRow {
-  itemId: number | "";
-  categoryId: number | "";
-  subCategoryId: number | "";
-  brandId: number | "";
-  sizeId: number | "";
-  colorId: number | "";
-  unitId: number | "";
-  name: string;
-  code: string;
-  isCodeCustomized?: boolean;
-  quantity: number;
-  totalPrice: number;
-}
-
-const form = reactive({
-  challanTypeId: "" as number | "",
-  challanNumber: "",
-  challanDate: todayISO,
-  supplierId: "" as number | "",
-  manufacturerId: "" as number | "",
-  paymentMethod: "cash",
-  otherExpenses: 0,
-  discountAmount: 0,
-  paidAmount: 0,
-  notes: "",
-  items: [createBlankRow()] as PurchaseItemRow[]
-});
-
-function createBlankRow(): PurchaseItemRow {
-  return {
-    itemId: "",
-    categoryId: "",
-    subCategoryId: "",
-    brandId: "",
-    sizeId: "",
-    colorId: "",
-    unitId: "",
-    name: "",
-    code: "",
-    isCodeCustomized: false,
-    quantity: 1,
-    totalPrice: 0
-  };
-}
-
-function addRow() {
-  form.items.push(createBlankRow());
-}
-
-function removeRow(idx: number) {
-  if (form.items.length > 1) {
-    form.items.splice(idx, 1);
-  }
-}
 
 function generateRowBarcode(row: PurchaseItemRow, force: boolean = false) {
   if (!force && row.isCodeCustomized && row.code) {
