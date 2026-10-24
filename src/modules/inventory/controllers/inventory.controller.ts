@@ -81,6 +81,8 @@ export async function ensureInventoryTables() {
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "owner_mobile" varchar(50);
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "manager_name" varchar(150);
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "manager_mobile" varchar(50);
+      ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "vendor_type" varchar(100);
+      ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "vendor_type" varchar(100);
     `);
 
     await db.execute(sql`
@@ -419,6 +421,7 @@ export const createSupplier: Handler = async (c: any) => {
       mobile: (body.mobile || body.ownerMobile || firstContact.mobile || "").trim() || null,
       email: body.email?.trim() || null,
       address: body.address?.trim() || null,
+      vendorType: body.vendorType?.trim() || null,
       contacts: contacts.length > 0 ? contacts : null
     })
     .returning();
@@ -466,6 +469,7 @@ export const updateSupplier: Handler = async (c: any) => {
   if (body.managerName !== undefined) updateData.managerName = (body.managerName || "").trim() || null;
   if (body.managerMobile !== undefined) updateData.managerMobile = (body.managerMobile || "").trim() || null;
   if (body.contacts !== undefined) updateData.contacts = body.contacts;
+  if (body.vendorType !== undefined) updateData.vendorType = body.vendorType?.trim() || null;
   if (body.ownerName || body.managerName || body.contactPerson) {
     updateData.contactPerson = (body.ownerName || body.managerName || body.contactPerson || "").trim() || null;
   }
@@ -525,6 +529,7 @@ export const createManufacturer: Handler = async (c: any) => {
       country: body.country?.trim() || "বাংলাদেশ",
       mobile: (body.mobile || body.ownerMobile || firstContact.mobile || "").trim() || null,
       factoryAddress: (body.factoryAddress || body.address || "").trim() || null,
+      vendorType: body.vendorType?.trim() || null,
       contacts: contacts.length > 0 ? contacts : null,
       notes: body.notes?.trim() || null
     })
@@ -575,6 +580,7 @@ export const updateManufacturer: Handler = async (c: any) => {
   if (body.managerName !== undefined) updateData.managerName = (body.managerName || "").trim() || null;
   if (body.managerMobile !== undefined) updateData.managerMobile = (body.managerMobile || "").trim() || null;
   if (body.contacts !== undefined) updateData.contacts = body.contacts;
+  if (body.vendorType !== undefined) updateData.vendorType = body.vendorType?.trim() || null;
   if (body.ownerName || body.managerName || body.contactPerson) {
     updateData.contactPerson = (body.ownerName || body.managerName || body.contactPerson || "").trim() || null;
   }

@@ -25,7 +25,7 @@
         <form @submit.prevent="submitVendorForm">
           <!-- Row 1: প্রতিষ্ঠানের তথ্য (4 Equal Columns) -->
           <div class="row g-2 mb-2 align-items-start">
-            <!-- 1. Vendor Type Selection Dropdown -->
+            <!-- 1. Vendor Type Selection Dropdown (Loaded dynamically from SuperAdmin Settings) -->
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" for="vendorTypeSelect" title="প্রতিষ্ঠানের ধরন">
                 প্রতিষ্ঠানের ধরন <span class="text-danger">*</span>
@@ -36,8 +36,10 @@
                 class="form-select form-select-sm text-truncate"
                 :disabled="isEditing"
                 required>
-                <option value="supplier">সাপ্লায়ার (পাইকার/মহাজন)</option>
-                <option value="manufacturer">প্রস্তুতকারক (গার্মেন্টস/ফ্যাক্টরি)</option>
+                <option v-for="vt in activeVendorTypes" :key="vt.id" :value="vt.code || vt.name">
+                  {{ vt.name }}
+                </option>
+                <option v-if="activeVendorTypes.length === 0" value="supplier">সাপ্লায়ার</option>
               </select>
             </div>
 
@@ -257,7 +259,7 @@
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <!-- Filter Tabs (Unified Segmented Control) -->
+          <!-- Filter Tabs (Dynamic from SuperAdmin Settings) -->
           <div class="filter-tabs-wrapper">
             <button
               type="button"
@@ -267,18 +269,13 @@
               সকল ({{ toBengaliNumber(unifiedVendors.length) }})
             </button>
             <button
+              v-for="vt in activeVendorTypes"
+              :key="vt.id"
               type="button"
               class="filter-tab-btn"
-              :class="{ active: activeFilter === 'supplier' }"
-              @click="activeFilter = 'supplier'">
-              সাপ্লায়ার ({{ toBengaliNumber(supplierCount) }})
-            </button>
-            <button
-              type="button"
-              class="filter-tab-btn"
-              :class="{ active: activeFilter === 'manufacturer' }"
-              @click="activeFilter = 'manufacturer'">
-              প্রস্তুতকারক ({{ toBengaliNumber(manufacturerCount) }})
+              :class="{ active: activeFilter === (vt.code || vt.name) }"
+              @click="activeFilter = (vt.code || vt.name)">
+              {{ vt.name }} ({{ toBengaliNumber(getVendorCountByType(vt.code || vt.name)) }})
             </button>
           </div>
 
@@ -353,10 +350,10 @@
                 <td>
                   <span
                     class="badge"
-                    :class="v.type === 'supplier' ? 'vendor-badge-supplier' : 'vendor-badge-manufacturer'"
+                    :class="isManufacturer(v.vendorType || v.type) ? 'vendor-badge-manufacturer' : 'vendor-badge-supplier'"
                     style="font-size: 0.70rem;">
-                    <i class="bi me-1" :class="v.type === 'supplier' ? 'bi-shop' : 'bi-gear-wide-connected'"></i>
-                    {{ v.type === 'supplier' ? 'সাপ্লায়ার' : 'প্রস্তুতকারক' }}
+                    <i class="bi me-1" :class="isManufacturer(v.vendorType || v.type) ? 'bi-gear-wide-connected' : 'bi-shop'"></i>
+                    {{ getVendorTypeName(v.vendorType || v.type) }}
                   </span>
                   <div v-if="v.address" class="small vendor-address-cell text-truncate mt-1" style="max-width: 230px;" :title="v.address">
                     <i class="bi bi-geo-alt opacity-75 me-1"></i>{{ v.address }}
@@ -597,8 +594,50 @@ function onManagerMobileInput(e: Event) {
 const loading = ref(false);
 const submitting = ref(false);
 const togglingStatusId = ref<string | null>(null);
-const activeFilter = ref<"all" | "supplier" | "manufacturer">("all");
+const activeFilter = ref<string>("all");
 const searchQuery = ref("");
+
+// Dynamic Vendor Types from SuperAdmin Settings
+const vendorTypesList = ref<any[]>([]);
+
+const activeVendorTypes = computed(() => {
+  return vendorTypesList.value.filter((vt) => vt.isActive);
+});
+
+function getVendorTypeName(codeOrName: string) {
+  if (!codeOrName) return "সাপ্লায়ার";
+  const matched = activeVendorTypes.value.find(
+    (vt) => vt.code === codeOrName || vt.name === codeOrName
+  );
+  if (matched) return matched.name;
+  if (codeOrName === "supplier") return "সাপ্লায়ার";
+  if (codeOrName === "manufacturer") return "প্রস্তুতকারক";
+  return codeOrName;
+}
+
+function isManufacturer(typeVal: string): boolean {
+  if (!typeVal) return false;
+  const val = String(typeVal).toLowerCase().trim();
+  if (val === "manufacturer" || val.includes("প্রস্তুতকারক") || val.includes("প্রস্তুতকারী")) {
+    return true;
+  }
+  const matched = activeVendorTypes.value.find(
+    (vt) => (vt.code || vt.name).toLowerCase() === val || vt.name.toLowerCase() === val
+  );
+  if (matched) {
+    const mCode = (matched.code || "").toLowerCase();
+    const mName = matched.name.toLowerCase();
+    return mCode === "manufacturer" || mName.includes("প্রস্তুতকারক") || mName.includes("প্রস্তুতকারী");
+  }
+  return false;
+}
+
+function getVendorCountByType(typeVal: string) {
+  return unifiedVendors.value.filter((v) => {
+    const vt = v.vendorType || v.type;
+    return vt === typeVal || (isManufacturer(typeVal) && isManufacturer(vt)) || (!isManufacturer(typeVal) && !isManufacturer(vt) && (typeVal === "supplier" || vt === "supplier"));
+  }).length;
+}
 
 // Edit Mode State
 const isEditing = ref(false);
@@ -623,7 +662,7 @@ const manufacturersList = ref<any[]>([]);
 
 // Form State
 const form = reactive({
-  type: "supplier" as "supplier" | "manufacturer",
+  type: "supplier" as string,
   name: "",
   mobile: "",
   address: "",
@@ -634,6 +673,11 @@ const form = reactive({
 });
 
 function resetForm() {
+  if (activeVendorTypes.value.length > 0) {
+    form.type = activeVendorTypes.value[0].code || activeVendorTypes.value[0].name;
+  } else {
+    form.type = "supplier";
+  }
   form.name = "";
   form.mobile = "";
   form.address = "";
@@ -649,7 +693,7 @@ function resetForm() {
 function startEdit(v: any) {
   isEditing.value = true;
   editingVendor.value = v;
-  form.type = v.type;
+  form.type = v.vendorType || v.type;
   form.name = v.name;
   form.mobile = v.mobile || "";
   form.address = v.address || "";
@@ -671,7 +715,6 @@ function cancelEdit() {
   resetForm();
 }
 
-// Fetch Suppliers & Manufacturers
 async function fetchSuppliers() {
   try {
     const res = await axios.get("/api/inventory/suppliers");
@@ -690,9 +733,24 @@ async function fetchManufacturers() {
   }
 }
 
+async function fetchVendorTypes() {
+  try {
+    const res = await axios.get("/api/catalog/vendor-types");
+    vendorTypesList.value = res.data?.data || [];
+    if (activeVendorTypes.value.length > 0) {
+      const match = activeVendorTypes.value.some((vt) => (vt.code || vt.name) === form.type);
+      if (!match) {
+        form.type = activeVendorTypes.value[0].code || activeVendorTypes.value[0].name;
+      }
+    }
+  } catch {
+    vendorTypesList.value = [];
+  }
+}
+
 async function fetchAll() {
   loading.value = true;
-  await Promise.all([fetchSuppliers(), fetchManufacturers()]);
+  await Promise.all([fetchSuppliers(), fetchManufacturers(), fetchVendorTypes()]);
   loading.value = false;
 }
 
@@ -705,6 +763,7 @@ const unifiedVendors = computed(() => {
       ...s,
       compositeId: `supplier_${s.id}`,
       type: "supplier",
+      vendorType: s.vendorType || "supplier",
       isActive: s.isActive !== false && s.is_active !== false,
       mobile: s.mobile || "",
       address: s.address || "",
@@ -722,6 +781,7 @@ const unifiedVendors = computed(() => {
       ...m,
       compositeId: `manufacturer_${m.id}`,
       type: "manufacturer",
+      vendorType: m.vendorType || "manufacturer",
       isActive: m.isActive !== false && m.is_active !== false,
       mobile: m.mobile || "",
       address: m.factoryAddress || m.factory_address || m.country || "",
@@ -742,7 +802,10 @@ const filteredVendors = computed(() => {
   let list = unifiedVendors.value;
 
   if (activeFilter.value !== "all") {
-    list = list.filter((v) => v.type === activeFilter.value);
+    list = list.filter((v) => {
+      const vt = v.vendorType || v.type;
+      return vt === activeFilter.value || (isManufacturer(activeFilter.value) && isManufacturer(vt)) || (!isManufacturer(activeFilter.value) && !isManufacturer(vt) && (activeFilter.value === "supplier" || vt === "supplier"));
+    });
   }
 
   if (searchQuery.value.trim()) {
@@ -817,14 +880,15 @@ async function submitVendorForm() {
       managerName: form.managerName.trim(),
       managerMobile: form.managerMobile.trim(),
       contactPerson: form.ownerName.trim() || form.managerName.trim() || "",
+      vendorType: form.type,
       contacts
     };
 
     if (isEditing.value && editingVendor.value) {
       // Edit Mode (Organization name is unchanged on server)
-      if (form.type === "supplier") {
+      if (!isManufacturer(form.type)) {
         const res = await axios.put(`/api/inventory/suppliers/${editingVendor.value.id}`, payload);
-        showToast(res.data?.message || "সাপ্লায়ারের তথ্য সফলভাবে আপডেট করা হয়েছে", "success");
+        showToast(res.data?.message || "তথ্য সফলভাবে আপডেট করা হয়েছে", "success");
         await fetchSuppliers();
       } else {
         const res = await axios.put(`/api/inventory/manufacturers/${editingVendor.value.id}`, {
@@ -832,15 +896,15 @@ async function submitVendorForm() {
           country: "বাংলাদেশ",
           factoryAddress: form.address.trim()
         });
-        showToast(res.data?.message || "প্রস্তুতকারকের তথ্য সফলভাবে আপডেট করা হয়েছে", "success");
+        showToast(res.data?.message || "তথ্য সফলভাবে আপডেট করা হয়েছে", "success");
         await fetchManufacturers();
       }
       cancelEdit();
     } else {
       // Create Mode
-      if (form.type === "supplier") {
+      if (!isManufacturer(form.type)) {
         const res = await axios.post("/api/inventory/suppliers", payload);
-        showToast(res.data?.message || "সাপ্লায়ার সফলভাবে যোগ করা হয়েছে", "success");
+        showToast(res.data?.message || `${getVendorTypeName(form.type)} সফলভাবে যোগ করা হয়েছে`, "success");
         await fetchSuppliers();
       } else {
         const res = await axios.post("/api/inventory/manufacturers", {
@@ -848,7 +912,7 @@ async function submitVendorForm() {
           country: "বাংলাদেশ",
           factoryAddress: form.address.trim()
         });
-        showToast(res.data?.message || "প্রস্তুতকারক সফলভাবে যোগ করা হয়েছে", "success");
+        showToast(res.data?.message || `${getVendorTypeName(form.type)} সফলভাবে যোগ করা হয়েছে`, "success");
         await fetchManufacturers();
       }
       resetForm();
