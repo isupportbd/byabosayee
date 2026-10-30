@@ -8,6 +8,27 @@ import RoleSeeder from "@/modules/auth/database/seeders/role.js";
 let autoInitDone = false;
 
 /**
+ * Executes a block of SQL statements one by one.
+ * Necessary because PostgreSQL / postgres.js does not allow multiple commands
+ * in a single prepared statement (Extended Query Protocol error: cannot insert multiple commands into a prepared statement).
+ */
+export async function executeRawSql(sqlBlock: string): Promise<void> {
+  const rawStatements = sqlBlock
+    .split(/;\s*(?:\r?\n|$)/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith("--"));
+
+  for (const statement of rawStatements) {
+    if (!statement || statement.length < 5) continue;
+    try {
+      await db.execute(sql.raw(statement));
+    } catch (err: any) {
+      console.warn(`[Auto-Init SQL Warning] ${err?.message || err}`);
+    }
+  }
+}
+
+/**
  * Automatically initializes all database tables, columns, constraints and default seeders
  * at application boot. Essential for zero-terminal deployment platforms like Coolify,
  * Docker, and cloud PaaS.
@@ -17,7 +38,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
 
   try {
     // 1. Roles table
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "roles" (
         "id" serial PRIMARY KEY NOT NULL,
         "name" varchar(255) NOT NULL UNIQUE,
@@ -27,7 +48,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
     `);
 
     // 2. Users table
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "users" (
         "id" serial PRIMARY KEY NOT NULL,
         "company_name" varchar(255),
@@ -44,7 +65,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
     `);
 
     // 3. Auth tokens
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "email_verification_tokens" (
         "id" serial PRIMARY KEY NOT NULL,
         "email" varchar(255) NOT NULL,
@@ -72,7 +93,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
     `);
 
     // 4. Catalog tables
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "categories" (
         "id" serial PRIMARY KEY NOT NULL,
         "name" varchar(255) NOT NULL UNIQUE,
@@ -199,7 +220,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
     `);
 
     // 5. Settings and Company Settings
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "settings" (
         "id" serial PRIMARY KEY NOT NULL,
         "key" varchar(255) NOT NULL UNIQUE,

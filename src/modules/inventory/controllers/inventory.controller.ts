@@ -18,12 +18,13 @@ import {
 } from "@/modules/inventory/database/models/inventory.js";
 import { companySettings } from "@/modules/company/database/models/company.js";
 import { challanTypes } from "@/modules/catalog/database/models/catalog.js";
+import { executeRawSql } from "@/framework/database/auto-init.js";
 
 let inventoryTablesEnsured = false;
 export async function ensureInventoryTables() {
   if (inventoryTablesEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "brands" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -34,16 +35,12 @@ export async function ensureInventoryTables() {
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
-    `);
+      );
 
-    await db.execute(sql`
       ALTER TABLE "brands" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE SET NULL;
       ALTER TABLE "brands" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE SET NULL;
       ALTER TABLE "brands" ADD COLUMN IF NOT EXISTS "is_active" boolean DEFAULT true NOT NULL;
-    `);
 
-    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "suppliers" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -55,10 +52,8 @@ export async function ensureInventoryTables() {
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
-    `);
+      );
 
-    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "manufacturers" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -70,10 +65,8 @@ export async function ensureInventoryTables() {
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
-    `);
+      );
 
-    await db.execute(sql`
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "mobile" varchar(50);
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "contact_person" varchar(150);
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "contacts" jsonb;
@@ -81,16 +74,15 @@ export async function ensureInventoryTables() {
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "owner_mobile" varchar(50);
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "manager_name" varchar(150);
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "manager_mobile" varchar(50);
+      ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "vendor_type" varchar(100);
+
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "contacts" jsonb;
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "owner_name" varchar(150);
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "owner_mobile" varchar(50);
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "manager_name" varchar(150);
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "manager_mobile" varchar(50);
       ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "vendor_type" varchar(100);
-      ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "vendor_type" varchar(100);
-    `);
 
-    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "customers" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -104,14 +96,10 @@ export async function ensureInventoryTables() {
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
-    `);
+      );
 
-    await db.execute(sql`
       ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "alt_mobile" varchar(50);
-    `);
 
-    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "items" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -135,10 +123,8 @@ export async function ensureInventoryTables() {
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
-    `);
+      );
 
-    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "purchases" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -151,10 +137,8 @@ export async function ensureInventoryTables() {
         "notes" text,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
-    `);
+      );
 
-    await db.execute(sql`
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "manufacturer_id" integer REFERENCES "manufacturers"("id") ON DELETE SET NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "challan_type_id" integer REFERENCES "challan_types"("id") ON DELETE SET NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "challan_number" varchar(100);
@@ -166,18 +150,7 @@ export async function ensureInventoryTables() {
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "payment_method" varchar(50) DEFAULT 'cash' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "document_url" text;
-    `);
 
-    await db.execute(sql`
-      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "unit_price_excl_vat" numeric(12, 2) DEFAULT '0' NOT NULL;
-      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "vat_rate" numeric(5, 2) DEFAULT '0' NOT NULL;
-      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
-      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "unit_price_with_vat" numeric(12, 2) DEFAULT '0' NOT NULL;
-      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "allocated_expense" numeric(12, 2) DEFAULT '0' NOT NULL;
-      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "selling_price" numeric(12, 2) DEFAULT '0' NOT NULL;
-    `);
-
-    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "purchase_items" (
         "id" serial PRIMARY KEY NOT NULL,
         "purchase_id" integer NOT NULL REFERENCES "purchases"("id") ON DELETE CASCADE,
@@ -196,9 +169,14 @@ export async function ensureInventoryTables() {
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
-    `);
 
-    await db.execute(sql`
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "unit_price_excl_vat" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "vat_rate" numeric(5, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "unit_price_with_vat" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "allocated_expense" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "selling_price" numeric(12, 2) DEFAULT '0' NOT NULL;
+
       CREATE TABLE IF NOT EXISTS "sales" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -252,9 +230,7 @@ export async function ensureInventoryTables() {
       ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "vat_rate" numeric(5, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
-    `);
 
-    await db.execute(sql`
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "price_effective_date" varchar(50);
 
       CREATE TABLE IF NOT EXISTS "item_pricings" (

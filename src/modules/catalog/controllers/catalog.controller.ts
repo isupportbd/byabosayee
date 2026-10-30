@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ne, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { db, HttpStatusCodes } from "@/framework/facade.js";
+import { executeRawSql } from "@/framework/database/auto-init.js";
 import {
   categories,
   colors,
@@ -19,7 +20,7 @@ let paymentMethodsTableEnsured = false;
 export async function ensurePaymentMethodsTable() {
   if (paymentMethodsTableEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "payment_methods" (
         "id" serial PRIMARY KEY NOT NULL,
         "name" varchar(255) NOT NULL UNIQUE,
@@ -41,7 +42,7 @@ export async function ensurePaymentMethodsTable() {
         { name: "ব্যাংক ট্রান্সফার (Bank)", code: "bank", description: "ব্যাংক অ্যাকাউন্ট ও অনলাইন ট্রান্সফার", isActive: true }
       ]);
     } else {
-      await db.execute(sql`
+      await executeRawSql(`
         UPDATE "payment_methods" SET "name" = 'নগদ / ক্যাশ (Cash)' WHERE "code" = 'cash';
         UPDATE "payment_methods" SET "name" = 'বিকাশ (bKash)' WHERE "code" = 'bkash';
         UPDATE "payment_methods" SET "name" = 'নগদ (Nagad)' WHERE "code" = 'nagad';
@@ -59,7 +60,7 @@ let productTypesTableEnsured = false;
 export async function ensureProductTypesTable() {
   if (productTypesTableEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "product_types" (
         "id" serial PRIMARY KEY NOT NULL,
         "category_id" integer NOT NULL REFERENCES "categories"("id") ON DELETE CASCADE,
@@ -83,7 +84,7 @@ let sizesColumnsEnsured = false;
 export async function ensureSizesTableColumns() {
   if (sizesColumnsEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       ALTER TABLE "sizes" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
       ALTER TABLE "sizes" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE;
       ALTER TABLE "sizes" ALTER COLUMN "size_group_id" DROP NOT NULL;
@@ -98,7 +99,7 @@ let challanTypesTableEnsured = false;
 export async function ensureChallanTypesTable() {
   if (challanTypesTableEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "challan_types" (
         "id" serial PRIMARY KEY NOT NULL,
         "name" varchar(255) NOT NULL UNIQUE,
@@ -128,7 +129,7 @@ let vendorTypesTableEnsured = false;
 export async function ensureVendorTypesTable() {
   if (vendorTypesTableEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "vendor_types" (
         "id" serial PRIMARY KEY NOT NULL,
         "name" varchar(255) NOT NULL UNIQUE,
@@ -1248,7 +1249,7 @@ let unitsTableColumnsEnsured = false;
 export async function ensureUnitsTableColumns() {
   if (unitsTableColumnsEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "units" (
         "id" serial PRIMARY KEY NOT NULL,
         "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE,

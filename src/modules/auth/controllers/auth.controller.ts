@@ -33,14 +33,35 @@ export const register: Handler = async (c: any) => {
       return c.json({ message: "Email already exists" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
     }
 
-    const insertResult = await db.insert(users).values({
-      name: body.name,
-      email: body.email,
-      password: await password.hashPassword(body.password),
-      roleId: defaultRole?.id ?? null
-    });
+    let insertedId: number | null = null;
+    try {
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          name: body.name,
+          email: body.email,
+          password: await password.hashPassword(body.password),
+          roleId: defaultRole?.id ?? null
+        })
+        .returning({ id: users.id });
+      if (inserted?.id) {
+        insertedId = Number(inserted.id);
+      }
+    } catch {
+      const insertResult = await db.insert(users).values({
+        name: body.name,
+        email: body.email,
+        password: await password.hashPassword(body.password),
+        roleId: defaultRole?.id ?? null
+      });
+      insertedId = Number((insertResult as any)[0]?.insertId ?? (insertResult as any).insertId);
+    }
 
-    const insertedId = Number((insertResult as any)[0]?.insertId ?? (insertResult as any).insertId);
+    if (!insertedId) {
+      const found = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+      insertedId = found ? found.id : null;
+    }
+
     if (!insertedId) {
       throw new Error("Failed to resolve inserted user id");
     }

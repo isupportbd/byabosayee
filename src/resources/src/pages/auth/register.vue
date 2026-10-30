@@ -123,7 +123,8 @@ const onSubmit = async () => {
       },
       onError: (_errors, error) => {
         isError.value = true;
-        message.value = error instanceof Error ? error.message : "Unable to register right now";
+        const respMsg = (error as any)?.response?.data?.message;
+        message.value = respMsg || (error instanceof Error ? error.message : "Unable to register right now");
       }
     }
   );
