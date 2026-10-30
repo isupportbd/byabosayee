@@ -1,7 +1,7 @@
 import { appConfig } from "@/config/index.js";
 import { validateConfig } from "@/config/validate.js";
 import { initDatabase } from "@/framework/database/connection.js";
-import { ensureInventoryTables } from "@/modules/inventory/controllers/inventory.controller.js";
+import { ensureAllDatabaseTablesAndSeeds } from "@/framework/database/auto-init.js";
 import { createHttpApp } from "@/framework/http/app.js";
 import { ensurePublicDir, hasUiBuild, uiIndexMiddleware, uiStaticMiddleware } from "@/framework/http/static.js";
 import { registerModuleRoutes } from "@/framework/modules/routes.js";
@@ -26,7 +26,7 @@ export async function createKernel() {
   const app = createHttpApp();
 
   await initDatabase();
-  await ensureInventoryTables();
+  await ensureAllDatabaseTablesAndSeeds();
   await bootQueueJobs();
   await registerModuleRoutes(app);
 
