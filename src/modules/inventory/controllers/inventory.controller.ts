@@ -779,9 +779,6 @@ export const createItem: Handler = async (c: any) => {
   if (!body.name || !body.name.trim()) {
     return c.json({ message: "আইটেমের নাম আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
   }
-  if (!body.brandId) {
-    return c.json({ message: "ব্র্যান্ড নির্বাচন করা বাধ্যতামূলক" }, HttpStatusCodes.BAD_REQUEST);
-  }
 
   // Generate code if not provided - company prefix + sequential 1, 2, 3...
   let code = body.code?.trim();

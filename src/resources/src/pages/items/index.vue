@@ -30,49 +30,15 @@
       </div>
     </div>
 
-    <!-- Top Action / Navigation Bar -->
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-      <div class="d-flex align-items-center gap-2">
-        <i class="bi bi-tag-fill text-warning fs-4"></i>
-        <div>
-          <h5 class="m-0 fw-bold">পণ্য ব্যবস্থাপনা</h5>
-          <span class="text-muted small">
-            {{ activeView === 'form' ? (isEditing ? 'পণ্য তথ্য সম্পাদন ফরম' : 'নতুন পণ্য / আইটেম তৈরি ফরম') : 'সকল নিবন্ধিত পণ্যের তালিকা' }}
-          </span>
-        </div>
-      </div>
-
-      <div class="d-flex align-items-center gap-2">
-        <button
-          v-if="activeView === 'list'"
-          type="button"
-          class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 shadow-sm"
-          @click="openNewItemForm">
-          <i class="bi bi-plus-circle"></i>
-          <span>নতুন পণ্য যোগ করুন</span>
-        </button>
-
-        <button
-          v-if="activeView === 'form'"
-          type="button"
-          class="btn btn-sm btn-primary text-white d-inline-flex align-items-center gap-1.5 shadow-sm px-3"
-          @click="switchView('list')">
-          <i class="bi bi-card-list"></i>
-          <span>পণ্যের তালিকা</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- VIEW 1: পণ্য তৈরি ও সম্পাদনা ফর্ম -->
+    <!-- Top Card: আইটেম এন্ট্রি ফর্ম (সাব-ক্যাটাগরি ও সাইজ দিলে অটো আইটেম তৈরি হবে) -->
     <div
-      v-show="activeView === 'form'"
       class="card border shadow-sm mb-3 item-form-card"
       :class="{ 'item-form-edit-mode': isEditing }">
       <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between py-2">
         <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-pencil-square text-warning fs-5"></i>
+          <i class="bi bi-tag-fill text-warning fs-5"></i>
           <h6 class="m-0 fw-bold">
-            {{ isEditing ? 'পণ্য তথ্য সম্পাদনা' : 'নতুন পণ্য / আইটেম তৈরি করুন' }}
+            {{ isEditing ? 'পণ্য তথ্য সম্পাদনা' : 'নতুন পণ্য তৈরি করুন' }}
           </h6>
           <span
             v-if="isEditing"
@@ -80,199 +46,145 @@
             এডিটিং মোড
           </span>
         </div>
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-3 shadow-sm fw-medium"
-          @click="switchView('list')">
-          <i class="bi bi-card-list"></i>
-          <span>পণ্যের তালিকা</span>
-        </button>
       </div>
 
       <div class="card-body p-3">
         <form @submit.prevent="submitForm">
-          <div class="row g-2.5">
-            <!-- পণ্যের নাম -->
-            <div class="col-12 col-md-8">
-              <label class="form-label fw-semibold small mb-1">পণ্যের নাম <span class="text-danger">*</span></label>
-              <input
-                v-model.trim="form.name"
-                type="text"
-                class="form-control form-control-sm"
-                placeholder="যেমন: মেনস ক্যাজুয়াল কটন শার্ট"
-                required />
-            </div>
-
-            <!-- বারকোড / আইটেম কোড -->
-            <div class="col-12 col-md-4">
-              <label class="form-label fw-semibold small mb-1">বারকোড / আইটেম কোড</label>
-              <input
-                v-model.trim="form.code"
-                type="text"
-                class="form-control form-control-sm font-monospace"
-                placeholder="অটো তৈরি হবে (বা লিখুন)" />
-            </div>
-
-            <!-- ক্যাটাগরি -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">ক্যাটাগরি</label>
+          <!-- ৬ কলামে মূল ফিল্ডগুলো: ক্যাটাগরি, সাব-ক্যাটাগরি, পণ্যের নাম, পণ্য কোড (অটো), সাইজ, একক -->
+          <div class="row g-2 mb-3 align-items-start">
+            <!-- ১. ক্যাটাগরি -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                ক্যাটাগরি <span class="text-danger">*</span>
+              </label>
               <select
                 v-model="form.categoryId"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm single-row-input"
+                required
                 @change="onCategoryChange">
-                <option :value="null">-- ক্যাটাগরি নির্বাচন করুন --</option>
+                <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
                 <option v-for="cat in categoriesList" :key="cat.id" :value="cat.id">
                   {{ cat.name }}
                 </option>
               </select>
             </div>
 
-            <!-- সাব-ক্যাটাগরি -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">সাব-ক্যাটাগরি</label>
+            <!-- ২. সাব-ক্যাটাগরি -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                সাব-ক্যাটাগরি <span class="text-danger">*</span>
+              </label>
               <select
                 v-model="form.subCategoryId"
-                class="form-select form-select-sm"
-                :disabled="!availableSubCategories.length"
+                class="form-select form-select-sm single-row-input"
+                :class="{ 'frozen-input': !form.categoryId }"
+                :disabled="!form.categoryId"
+                required
                 @change="onSubCategoryChange">
-                <option :value="null">-- সাব-ক্যাটাগরি --</option>
-                <option v-for="sub in availableSubCategories" :key="sub.id" :value="sub.id">
+                <option value="" disabled>
+                  {{ form.categoryId ? 'সাব-ক্যাটাগরি নির্বাচন করুন' : 'আগে ক্যাটাগরি দিন' }}
+                </option>
+                <option v-for="sub in filteredSubCategories" :key="sub.id" :value="sub.id">
                   {{ sub.name }}
                 </option>
               </select>
             </div>
 
-            <!-- পণ্যের ধরন (Style/Type) -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">পণ্যের ধরন (Style/Type)</label>
+            <!-- ৩. পণ্যের নাম -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
+                পণ্যের নাম <span class="text-danger">*</span>
+              </label>
+              <input
+                v-model.trim="form.name"
+                type="text"
+                class="form-control form-control-sm single-row-input"
+                :class="{ 'frozen-input': !form.categoryId }"
+                :placeholder="!form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : 'পণ্যের নাম দিন'"
+                required />
+            </div>
+
+            <!-- ৪. পণ্য কোড (অটো) -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কোম্পানীর অভ্যন্তরীণ পণ্য কোড (অটো)">
+                পণ্য কোড (অটো) <span class="text-danger">*</span>
+              </label>
+              <input
+                v-model.trim="form.code"
+                type="text"
+                class="form-control form-control-sm single-row-input font-monospace frozen-input"
+                readonly
+                tabindex="-1"
+                placeholder="অটো কোড"
+                required />
+            </div>
+
+            <!-- ৫. সাইজ -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                সাইজ <span class="text-danger">*</span>
+              </label>
               <select
-                v-model="form.productTypeId"
-                class="form-select form-select-sm"
-                :disabled="!availableProductTypes.length">
-                <option :value="null">-- ধরন নির্বাচন --</option>
-                <option v-for="pt in availableProductTypes" :key="pt.id" :value="pt.id">
-                  {{ pt.name }}
+                v-model="form.sizeId"
+                class="form-select form-select-sm single-row-input"
+                :class="{ 'frozen-input': !form.subCategoryId }"
+                :disabled="!form.subCategoryId"
+                required
+                @change="onSizeChange">
+                <option value="" disabled>
+                  {{ form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন' }}
+                </option>
+                <option v-for="s in filteredSizesList" :key="s.id" :value="s.id">
+                  {{ s.name }}
                 </option>
               </select>
             </div>
 
-            <!-- ব্রান্ড নেম -->
-            <div class="col-12 col-sm-4">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label fw-semibold small mb-0">ব্র্যান্ড নেম</label>
-                <button type="button" class="btn btn-link p-0 text-primary small text-decoration-none" style="font-size: 11px;" @click="openBrandModal">+নতুন ব্র্যান্ড</button>
-              </div>
-              <select v-model="form.brandId" class="form-select form-select-sm">
-                <option :value="null">-- ব্র্যান্ড বাছুন --</option>
-                <option v-for="b in brandsList" :key="b.id" :value="b.id">{{ b.name }}</option>
+            <!-- ৬. পরিমাপের একক -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+                একক (Unit) <span class="text-danger">*</span>
+              </label>
+              <select
+                v-model="form.unitId"
+                class="form-select form-select-sm single-row-input"
+                :class="{ 'frozen-input': !form.categoryId || !form.subCategoryId }"
+                :disabled="!form.categoryId || !form.subCategoryId"
+                required>
+                <option value="" disabled>
+                  {{ !form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : filteredUnitsList.length === 0 ? 'এই সাব-ক্যাটাগরির কোনো একক নেই' : 'একক নির্বাচন করুন' }}
+                </option>
+                <option v-for="u in filteredUnitsList" :key="u.id" :value="u.id">
+                  {{ u.name }} {{ u.shortName ? `(${u.shortName})` : '' }}
+                </option>
               </select>
-            </div>
-
-            <!-- সাপ্লায়ার -->
-            <div class="col-12 col-sm-4">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label fw-semibold small mb-0">সাপ্লায়ার</label>
-                <button type="button" class="btn btn-link p-0 text-danger small text-decoration-none" style="font-size: 11px;" @click="openSupplierModal">+নতুন সাপ্লায়ার</button>
-              </div>
-              <select v-model="form.supplierId" class="form-select form-select-sm">
-                <option :value="null">-- সাপ্লায়ার বাছুন --</option>
-                <option v-for="s in suppliersList" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-
-            <!-- প্রস্তুতকারক -->
-            <div class="col-12 col-sm-4">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label fw-semibold small mb-0">প্রস্তুতকারক</label>
-                <button type="button" class="btn btn-link p-0 text-primary small text-decoration-none" style="font-size: 11px;" @click="openManufacturerModal">+নতুন প্রস্তুতকারক</button>
-              </div>
-              <select v-model="form.manufacturerId" class="form-select form-select-sm">
-                <option :value="null">-- প্রস্তুতকারক বাছুন --</option>
-                <option v-for="m in manufacturersList" :key="m.id" :value="m.id">{{ m.name }}</option>
-              </select>
-            </div>
-
-            <!-- রং (Color) -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">রং (Color)</label>
-              <select v-model="form.colorId" class="form-select form-select-sm">
-                <option :value="null">-- রং নির্বাচন --</option>
-                <option v-for="col in colorsList" :key="col.id" :value="col.id">{{ col.name }}</option>
-              </select>
-            </div>
-
-            <!-- সাইজ (Size) -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">সাইজ (Size)</label>
-              <select v-model="form.sizeId" class="form-select form-select-sm" @change="onSizeChange">
-                <option :value="null">-- সাইজ নির্বাচন --</option>
-                <option v-for="sz in filteredSizesList" :key="sz.id" :value="sz.id">{{ sz.name }}</option>
-              </select>
-            </div>
-
-            <!-- একক (Unit) -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">একক (Unit)</label>
-              <select v-model="form.unitId" class="form-select form-select-sm">
-                <option :value="null">-- একক নির্বাচন --</option>
-                <option v-for="u in filteredUnitsList" :key="u.id" :value="u.id">{{ u.name }} {{ u.shortName ? `(${u.shortName})` : '' }}</option>
-              </select>
-            </div>
-
-            <!-- ক্রয়মূল্য -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">ক্রয়মূল্য (Purchase Price)</label>
-              <div class="input-group input-group-sm">
-                <input v-model.number="form.purchasePrice" type="number" min="0" step="any" class="form-control" placeholder="0" />
-                <span class="input-group-text">৳</span>
-              </div>
-            </div>
-
-            <!-- বিক্রয়মূল্য -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">বিক্রয়মূল্য (Selling Price)</label>
-              <div class="input-group input-group-sm">
-                <input v-model.number="form.sellingPrice" type="number" min="0" step="any" class="form-control" placeholder="0" />
-                <span class="input-group-text">৳</span>
-              </div>
-            </div>
-
-            <!-- প্রারম্ভিক স্টক -->
-            <div class="col-12 col-sm-4">
-              <label class="form-label fw-semibold small mb-1">প্রারম্ভিক স্টক (Stock Qty)</label>
-              <input v-model.number="form.stockQuantity" type="number" min="0" class="form-control form-control-sm" placeholder="0" />
-            </div>
-
-            <!-- পণ্যের ছবি -->
-            <div class="col-12">
-              <label class="form-label fw-semibold small mb-1">পণ্যের ছবি (URL বা পাথ)</label>
-              <input v-model.trim="form.imageUrl" type="text" class="form-control form-control-sm" placeholder="ছবির লিংক বা পাথ দিন" />
             </div>
           </div>
 
-          <!-- বাটনসমূহ -->
-          <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top mt-3">
+          <!-- Form Submit Actions -->
+          <div class="d-flex align-items-center justify-content-end gap-2 pt-2 border-top">
             <button
               v-if="isEditing"
               type="button"
-              class="btn btn-sm btn-secondary px-3"
+              class="btn btn-sm btn-outline-secondary px-3"
               @click="cancelEdit">
+              <i class="bi bi-x-circle me-1"></i>
               বাতিল
             </button>
             <button
               v-else
               type="button"
-              class="btn btn-sm btn-secondary px-3"
+              class="btn btn-sm px-3 item-btn-reset"
               @click="resetForm">
-              বাতিল
+              রিসেট
             </button>
             <button
               type="submit"
-              class="btn btn-sm btn-primary d-inline-flex align-items-center px-3"
-              style="gap: 8px;"
+              class="btn btn-sm px-3 d-inline-flex align-items-center gap-1 shadow-sm item-btn-submit"
+              :class="isEditing ? 'btn-primary' : ''"
               :disabled="submitting">
-              <span v-if="submitting" class="spinner-border spinner-border-sm" role="status"></span>
-              <i v-else class="bi bi-check-circle"></i>
+              <span v-if="submitting" class="spinner-border spinner-border-sm me-1" role="status"></span>
+              <i v-else :class="isEditing ? 'bi bi-arrow-repeat' : 'bi bi-check-circle'"></i>
               <span>{{ isEditing ? 'আপডেট করুন' : 'সংরক্ষণ করুন' }}</span>
             </button>
           </div>
@@ -280,8 +192,8 @@
       </div>
     </div>
 
-    <!-- VIEW 2: পণ্যের তালিকা (ফিল্টার + টেবিল) -->
-    <div v-show="activeView === 'list'" class="card border shadow-sm">
+    <!-- Bottom Card: পণ্যের তালিকা (ফিল্টার + টেবিল) -->
+    <div class="card border shadow-sm">
       <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
         <div class="d-flex align-items-center gap-2">
           <h6 class="m-0 fw-bold">সকল পণ্যের তালিকা</h6>
@@ -414,7 +326,7 @@
                 <!-- ৩. পণ্যের নাম (রেগুলার ফন্ট) -->
                 <td>
                   <span class="item-cell-text item-name-cell">
-                    {{ displayName(item) }}
+                    {{ item.name }}
                   </span>
                 </td>
 
@@ -470,140 +382,18 @@
         </div>
       </div>
     </div>
-    <!-- কুইক ব্র্যান্ড যোগ করার মডাল -->
-    <div
-      v-if="showBrandModal"
-      class="modal fade show d-block modal-backdrop-custom"
-      tabindex="-1"
-      style="z-index: 1060;"
-      @click.self="showBrandModal = false">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow border-0">
-          <div class="modal-header border-bottom py-2 d-flex justify-content-between align-items-center w-100">
-            <h6 class="modal-title fw-bold m-0"><i class="bi bi-bookmark-star text-secondary me-2"></i>নতুন ব্র্যান্ড যোগ করুন</h6>
-            <button type="button" class="btn-close m-0" @click="showBrandModal = false"></button>
-          </div>
-          <form @submit.prevent="submitBrandForm">
-            <div class="modal-body p-3">
-              <div class="mb-2">
-                <label class="form-label small fw-semibold mb-1">ব্র্যান্ডের নাম <span class="text-danger">*</span></label>
-                <input v-model.trim="brandForm.name" type="text" class="form-control form-control-sm" placeholder="যেমন: Zara, Richman, নিজস্ব ব্র্যান্ড" required />
-              </div>
-            </div>
-            <div class="modal-footer border-top py-2">
-              <button type="button" class="btn btn-sm btn-secondary" @click="showBrandModal = false">বাতিল</button>
-              <button type="submit" class="btn btn-sm btn-primary" :disabled="brandSubmitting">
-                <span v-if="brandSubmitting" class="spinner-border spinner-border-sm"></span>
-                <span v-else>সংরক্ষণ করুন</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- কুইক পার্টনার যোগ করার মডাল (সাপ্লায়ার / প্রস্তুতকারক) -->
-    <div
-      v-if="showPartnerModal"
-      class="modal fade show d-block modal-backdrop-custom"
-      tabindex="-1"
-      style="z-index: 1060;"
-      @click.self="showPartnerModal = false">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow border-0">
-          <div class="modal-header border-bottom py-2 d-flex justify-content-between align-items-center w-100">
-            <h6 class="modal-title fw-bold m-0">
-              <i class="bi bi-person-plus-fill me-2" :class="partnerModalType === 'supplier' ? 'text-danger' : 'text-primary'"></i>
-              <span>{{ partnerModalType === 'supplier' ? 'নতুন সাপ্লায়ার যোগ করুন' : 'নতুন প্রস্তুতকারক যোগ করুন' }}</span>
-            </h6>
-            <button type="button" class="btn-close m-0" @click="showPartnerModal = false"></button>
-          </div>
-          <form @submit.prevent="submitPartnerForm">
-            <div class="modal-body p-3">
-              <div class="mb-2">
-                <label class="form-label small fw-semibold mb-1">প্রতিষ্ঠানের নাম <span class="text-danger">*</span></label>
-                <input v-model.trim="partnerForm.organizationName" type="text" class="form-control form-control-sm" placeholder="প্রতিষ্ঠানের নাম" required />
-              </div>
-              <div class="mb-2">
-                <label class="form-label small fw-semibold mb-1">যোগাযোগকারীর নাম</label>
-                <input v-model.trim="partnerForm.contactPerson" type="text" class="form-control form-control-sm" placeholder="ব্যক্তির নাম" />
-              </div>
-              <div class="mb-2">
-                <label class="form-label small fw-semibold mb-1">মোবাইল নম্বর <span class="text-danger">*</span></label>
-                <input v-model.trim="partnerForm.mobile" type="tel" class="form-control form-control-sm" placeholder="01XXXXXXXXX" required />
-              </div>
-            </div>
-            <div class="modal-footer border-top py-2">
-              <button type="button" class="btn btn-sm btn-secondary" @click="showPartnerModal = false">বাতিল</button>
-              <button type="submit" class="btn btn-sm btn-primary" :disabled="partnerSubmitting">
-                <span v-if="partnerSubmitting" class="spinner-border spinner-border-sm"></span>
-                <span v-else>সংরক্ষণ করুন</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, reactive, computed, onMounted } from "vue";
 import axios from "axios";
 
-const route = useRoute();
-const router = useRouter();
-
-// View State: 'list' (default) vs 'form'
-const activeView = ref<"list" | "form">(route.query.view === "form" ? "form" : "list");
-
-watch(
-  () => route.query.view,
-  (view) => {
-    if (view === "form") {
-      activeView.value = "form";
-    } else {
-      activeView.value = "list";
-    }
-  },
-  { immediate: true }
-);
-
-function switchView(view: "list" | "form") {
-  activeView.value = view;
-  if (router) {
-    router.replace({ query: { ...route.query, view } });
-  }
-}
-
-function openNewItemForm() {
-  resetForm();
-  switchView("form");
-}
-
+// Bengali Number Formatter
 function toBengaliNumber(num: number | string | null | undefined): string {
   if (num === null || num === undefined || num === "") return "০";
   const bengaliDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
   return String(num).replace(/[0-9]/g, (w) => bengaliDigits[+w]);
-}
-
-// Display Product Name without Size suffix
-function displayName(item: any): string {
-  if (!item?.name) return "-";
-  let name = item.name;
-  if (item.size?.name) {
-    const sName = String(item.size.name).trim();
-    // Strip trailing _size or -size
-    if (name.toLowerCase().endsWith("_" + sName.toLowerCase())) {
-      name = name.slice(0, -(sName.length + 1));
-    } else if (name.toLowerCase().endsWith("-" + sName.toLowerCase())) {
-      name = name.slice(0, -(sName.length + 1));
-    } else if (name.toLowerCase().endsWith(" " + sName.toLowerCase())) {
-      name = name.slice(0, -(sName.length + 1));
-    }
-  }
-  return name.trim() || item.name;
 }
 
 // Toast
@@ -630,97 +420,11 @@ const togglingStatusId = ref<number | null>(null);
 // Catalog Lists
 const categoriesList = ref<any[]>([]);
 const allSubCategoriesList = ref<any[]>([]);
-const productTypesList = ref<any[]>([]);
 const allSizesList = ref<any[]>([]);
 const colorsList = ref<any[]>([]);
 const unitsList = ref<any[]>([]);
 const brandsList = ref<any[]>([]);
-const suppliersList = ref<any[]>([]);
-const manufacturersList = ref<any[]>([]);
 const itemsList = ref<any[]>([]);
-
-// Quick Modals State
-const showBrandModal = ref(false);
-const brandSubmitting = ref(false);
-const brandForm = reactive({ name: "" });
-
-function openBrandModal() {
-  brandForm.name = "";
-  showBrandModal.value = true;
-}
-
-async function submitBrandForm() {
-  if (!brandForm.name.trim()) return;
-  brandSubmitting.value = true;
-  try {
-    const res = await axios.post("/api/inventory/brands", brandForm);
-    showToast(res.data?.message || "ব্র্যান্ড সফলভাবে তৈরি হয়েছে", "success");
-    showBrandModal.value = false;
-    await fetchBrands();
-    if (res.data?.data?.id) {
-      form.brandId = res.data.data.id;
-    }
-  } catch (err: any) {
-    showToast(err.response?.data?.message || "ব্র্যান্ড সংরক্ষণ ব্যর্থ হয়েছে", "danger");
-  } finally {
-    brandSubmitting.value = false;
-  }
-}
-
-const showPartnerModal = ref(false);
-const partnerModalType = ref<"supplier" | "manufacturer">("supplier");
-const partnerSubmitting = ref(false);
-const partnerForm = reactive({
-  organizationName: "",
-  contactPerson: "",
-  mobile: ""
-});
-
-function openSupplierModal() {
-  partnerModalType.value = "supplier";
-  partnerForm.organizationName = "";
-  partnerForm.contactPerson = "";
-  partnerForm.mobile = "";
-  showPartnerModal.value = true;
-}
-
-function openManufacturerModal() {
-  partnerModalType.value = "manufacturer";
-  partnerForm.organizationName = "";
-  partnerForm.contactPerson = "";
-  partnerForm.mobile = "";
-  showPartnerModal.value = true;
-}
-
-async function submitPartnerForm() {
-  if (!partnerForm.organizationName.trim()) return;
-  partnerSubmitting.value = true;
-  try {
-    const payload = {
-      type: partnerModalType.value,
-      organizationName: partnerForm.organizationName.trim(),
-      contactPerson: partnerForm.contactPerson.trim(),
-      mobile: partnerForm.mobile.trim()
-    };
-    const res = await axios.post("/api/inventory/vendors", payload);
-    showToast(
-      res.data?.message || (partnerModalType.value === "supplier" ? "সাপ্লায়ার তৈরি হয়েছে" : "প্রস্তুতকারক তৈরি হয়েছে"),
-      "success"
-    );
-    showPartnerModal.value = false;
-    if (partnerModalType.value === "supplier") {
-      await fetchSuppliers();
-      if (res.data?.data?.id) form.supplierId = res.data.data.id;
-    } else {
-      await fetchManufacturers();
-      if (res.data?.data?.id) form.manufacturerId = res.data.data.id;
-    }
-  } catch (err: any) {
-    showToast(err.response?.data?.message || "পার্টনার সংরক্ষণ ব্যর্থ হয়েছে", "danger");
-  } finally {
-    partnerSubmitting.value = false;
-  }
-}
 
 // Edit State
 const isEditing = ref(false);
@@ -728,44 +432,22 @@ const editingItem = ref<any>(null);
 
 // Form
 const form = reactive({
+  categoryId: "" as string | number,
+  subCategoryId: "" as string | number,
+  sizeId: "" as string | number,
   name: "",
   code: "",
-  categoryId: null as number | null,
-  subCategoryId: null as number | null,
-  productTypeId: null as number | null,
-  brandId: null as number | null,
-  supplierId: null as number | null,
-  manufacturerId: null as number | null,
-  colorId: null as number | null,
-  sizeId: null as number | null,
-  unitId: null as number | null,
-  purchasePrice: 0,
-  sellingPrice: 0,
-  stockQuantity: 0,
-  imageUrl: ""
+  unitId: "" as string | number
 });
+
+// Flag to indicate if name was auto-generated
+const isAutoGenerated = ref(false);
 
 // Filtered Subcategories based on selected category (in Form)
-const availableSubCategories = computed(() => {
+const filteredSubCategories = computed(() => {
   if (!form.categoryId) return [];
   return allSubCategoriesList.value.filter(
-    (s: any) => Number(s.categoryId) === Number(form.categoryId)
-  );
-});
-
-// Filtered Product Types based on Category / SubCategory
-const availableProductTypes = computed(() => {
-  if (!form.categoryId) return [];
-  if (form.subCategoryId) {
-    const list = productTypesList.value.filter(
-      (pt: any) =>
-        Number(pt.categoryId) === Number(form.categoryId) &&
-        Number(pt.subCategoryId) === Number(form.subCategoryId)
-    );
-    if (list.length > 0) return list;
-  }
-  return productTypesList.value.filter(
-    (pt: any) => Number(pt.categoryId) === Number(form.categoryId)
+    (s: any) => String(s.categoryId) === String(form.categoryId)
   );
 });
 
@@ -773,13 +455,13 @@ const availableProductTypes = computed(() => {
 const filteredSizesList = computed(() => {
   if (form.subCategoryId) {
     const matched = allSizesList.value.filter(
-      (s: any) => Number(s.subCategoryId) === Number(form.subCategoryId)
+      (s: any) => String(s.subCategoryId) === String(form.subCategoryId)
     );
     if (matched.length > 0) return matched;
   }
   if (form.categoryId) {
     const matched = allSizesList.value.filter(
-      (s: any) => Number(s.categoryId) === Number(form.categoryId)
+      (s: any) => String(s.categoryId) === String(form.categoryId)
     );
     if (matched.length > 0) return matched;
   }
@@ -790,13 +472,13 @@ const filteredSizesList = computed(() => {
 const filteredUnitsList = computed(() => {
   if (form.subCategoryId) {
     const matched = unitsList.value.filter(
-      (u: any) => Number(u.subCategoryId) === Number(form.subCategoryId)
+      (u: any) => String(u.subCategoryId) === String(form.subCategoryId)
     );
     if (matched.length > 0) return matched;
   }
   if (form.categoryId) {
     const matched = unitsList.value.filter(
-      (u: any) => Number(u.categoryId) === Number(form.categoryId)
+      (u: any) => String(u.categoryId) === String(form.categoryId)
     );
     if (matched.length > 0) return matched;
   }
@@ -804,41 +486,53 @@ const filteredUnitsList = computed(() => {
   return unassigned.length > 0 ? unassigned : unitsList.value;
 });
 
+/**
+ * অটো আইটেম তৈরির লজিক:
+ * সাব-ক্যাটাগরি ও সাইজ উভয়ই পাওয়া গেলে আইটেমের নাম হবে: "[সাব-ক্যাটাগরি] সাইজ-[সাইজ]"
+ * যেমন: লোফার সাইজ-৩৯, ডেনিম শার্ট সাইজ-M ইত্যাদি
+ */
 function updateAutoItemName() {
-  if (isEditing.value) return;
+  if (isEditing.value) return; // Do not overwrite on edit unless user changes dropdowns deliberately
 
   const subCat = allSubCategoriesList.value.find(
-    (s: any) => Number(s.id) === Number(form.subCategoryId)
-  );
-  const brand = brandsList.value.find(
-    (b: any) => Number(b.id) === Number(form.brandId)
+    (s: any) => String(s.id) === String(form.subCategoryId)
   );
   const sizeObj = allSizesList.value.find(
-    (s: any) => Number(s.id) === Number(form.sizeId)
+    (s: any) => String(s.id) === String(form.sizeId)
   );
 
-  const parts = [];
-  if (subCat) parts.push(subCat.name);
-  if (brand) parts.push(brand.name);
-
-  if (parts.length > 0 && !form.name) {
-    form.name = parts.join("_");
+  if (subCat && sizeObj) {
+    form.name = `${subCat.name} সাইজ-${sizeObj.name}`;
+    isAutoGenerated.value = true;
   }
 }
 
 function onCategoryChange() {
-  form.subCategoryId = null;
-  form.productTypeId = null;
-  form.sizeId = null;
-  form.unitId = null;
-  updateAutoItemName();
+  form.subCategoryId = "";
+  form.sizeId = "";
+  form.name = "";
+  form.unitId = "";
+  if (!form.code) {
+    form.code = generateNextProductCode();
+  }
+  isAutoGenerated.value = false;
 }
 
 function onSubCategoryChange() {
-  form.productTypeId = null;
-  form.sizeId = null;
-  form.unitId = null;
+  form.sizeId = "";
+  const subCat = allSubCategoriesList.value.find(
+    (s: any) => String(s.id) === String(form.subCategoryId)
+  );
+  if (subCat && !form.name) {
+    form.name = subCat.name;
+  }
+  if (!form.code) {
+    form.code = generateNextProductCode();
+  }
   updateAutoItemName();
+  if (filteredUnitsList.value.length === 1 && !form.unitId) {
+    form.unitId = filteredUnitsList.value[0].id;
+  }
 }
 
 function onSizeChange() {
@@ -846,51 +540,33 @@ function onSizeChange() {
   if (!form.code) {
     form.code = generateNextProductCode();
   }
+  // Auto-select unit if exactly 1 matching unit exists for this subcategory/category and unit isn't selected
   if (filteredUnitsList.value.length === 1 && !form.unitId) {
     form.unitId = filteredUnitsList.value[0].id;
   }
 }
 
 function resetForm() {
+  form.categoryId = "";
+  form.subCategoryId = "";
+  form.sizeId = "";
   form.name = "";
   form.code = generateNextProductCode();
-  form.categoryId = null;
-  form.subCategoryId = null;
-  form.productTypeId = null;
-  form.brandId = null;
-  form.supplierId = null;
-  form.manufacturerId = null;
-  form.colorId = null;
-  form.sizeId = null;
-  form.unitId = null;
-  form.purchasePrice = 0;
-  form.sellingPrice = 0;
-  form.stockQuantity = 0;
-  form.imageUrl = "";
-  isEditing.value = false;
-  editingItem.value = null;
+  form.unitId = "";
+  isAutoGenerated.value = false;
 }
 
 function startEdit(item: any) {
   isEditing.value = true;
   editingItem.value = item;
+  form.categoryId = item.categoryId || (item.category ? item.category.id : "");
+  form.subCategoryId = item.subCategoryId || (item.subCategory ? item.subCategory.id : "");
+  form.sizeId = item.sizeId || (item.size ? item.size.id : "");
   form.name = item.name || "";
   form.code = item.code || "";
-  form.categoryId = item.categoryId || (item.category ? item.category.id : null);
-  form.subCategoryId = item.subCategoryId || (item.subCategory ? item.subCategory.id : null);
-  form.productTypeId = item.productTypeId || null;
-  form.brandId = item.brandId || (item.brand ? item.brand.id : null);
-  form.supplierId = item.supplierId || (item.supplier ? item.supplier.id : null);
-  form.manufacturerId = item.manufacturerId || (item.manufacturer ? item.manufacturer.id : null);
-  form.colorId = item.colorId || (item.color ? item.color.id : null);
-  form.sizeId = item.sizeId || (item.size ? item.size.id : null);
-  form.unitId = item.unitId || (item.unit ? item.unit.id : null);
-  form.purchasePrice = item.purchasePrice ? Number(item.purchasePrice) : 0;
-  form.sellingPrice = item.sellingPrice ? Number(item.sellingPrice) : 0;
-  form.stockQuantity = item.stockQuantity ? Number(item.stockQuantity) : 0;
-  form.imageUrl = item.imageUrl || "";
+  form.unitId = item.unitId || (item.unit ? item.unit.id : "");
+  isAutoGenerated.value = false;
 
-  switchView("form");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -898,7 +574,6 @@ function cancelEdit() {
   isEditing.value = false;
   editingItem.value = null;
   resetForm();
-  switchView("list");
 }
 
 // Filters State
@@ -946,6 +621,7 @@ function resetAllFilters() {
 const filteredItems = computed(() => {
   let list = itemsList.value;
 
+  // 1. Category Filter
   if (categoryFilter.value !== "all") {
     list = list.filter(
       (item) =>
@@ -954,6 +630,7 @@ const filteredItems = computed(() => {
     );
   }
 
+  // 2. Sub-category Filter
   if (subCategoryFilter.value !== "all") {
     list = list.filter(
       (item) =>
@@ -962,10 +639,12 @@ const filteredItems = computed(() => {
     );
   }
 
+  // 3. Size Filter
   if (sizeFilter.value !== "all") {
     list = list.filter((item) => item.size?.name === sizeFilter.value);
   }
 
+  // 4. Search Query Filter
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase();
     list = list.filter((item) => {
@@ -1003,32 +682,39 @@ async function toggleStatus(item: any) {
 
 // Submit Form (Create or Update)
 async function submitForm() {
+  if (!form.categoryId) {
+    showToast("ক্যাটাগরি নির্বাচন করা আবশ্যক", "warning");
+    return;
+  }
+  if (!form.subCategoryId) {
+    showToast("সাব-ক্যাটাগরি নির্বাচন করা আবশ্যক", "warning");
+    return;
+  }
+  if (!form.sizeId) {
+    showToast("সাইজ নির্বাচন করা আবশ্যক", "warning");
+    return;
+  }
   if (!form.name.trim()) {
     showToast("পণ্যের নাম আবশ্যক", "warning");
     return;
   }
-  if (!form.brandId) {
-    showToast("ব্র্যান্ড নির্বাচন করা আবশ্যক", "warning");
+  if (!form.code.trim()) {
+    showToast("পণ্য কোড / বারকোড আবশ্যক", "warning");
+    return;
+  }
+  if (!form.unitId) {
+    showToast("পরিমাপের একক নির্বাচন করা আবশ্যক (ক্রয়, বিক্রয় ও স্টক ব্যবস্থাপনার ভিত্তি)", "warning");
     return;
   }
   submitting.value = true;
   try {
     const payload = {
       name: form.name.trim(),
-      code: form.code?.trim() || null,
-      categoryId: form.categoryId ? Number(form.categoryId) : null,
-      subCategoryId: form.subCategoryId ? Number(form.subCategoryId) : null,
-      productTypeId: form.productTypeId ? Number(form.productTypeId) : null,
-      brandId: form.brandId ? Number(form.brandId) : null,
-      supplierId: form.supplierId ? Number(form.supplierId) : null,
-      manufacturerId: form.manufacturerId ? Number(form.manufacturerId) : null,
-      colorId: form.colorId ? Number(form.colorId) : null,
-      sizeId: form.sizeId ? Number(form.sizeId) : null,
-      unitId: form.unitId ? Number(form.unitId) : null,
-      purchasePrice: Number(form.purchasePrice || 0),
-      sellingPrice: Number(form.sellingPrice || 0),
-      stockQuantity: Number(form.stockQuantity || 0),
-      imageUrl: form.imageUrl?.trim() || null
+      code: form.code.trim(),
+      categoryId: Number(form.categoryId),
+      subCategoryId: Number(form.subCategoryId),
+      sizeId: Number(form.sizeId),
+      unitId: Number(form.unitId)
     };
 
     if (isEditing.value && editingItem.value) {
@@ -1039,7 +725,6 @@ async function submitForm() {
       const res = await axios.post("/api/inventory/items", payload);
       showToast(res.data?.message || "পণ্য সফলভাবে তৈরি হয়েছে", "success");
       resetForm();
-      switchView("list");
     }
     await fetchItems();
   } catch (err: any) {
@@ -1049,14 +734,13 @@ async function submitForm() {
   }
 }
 
-// Fetch Catalog Data
+// Fetch Catalog Data (Categories, Sub-categories, Sizes, Colors, Units)
 async function fetchCatalogData() {
   try {
     const masterRes = await axios.get("/api/catalog/master");
     const data = masterRes.data?.data || {};
     categoriesList.value = data.categories || [];
     allSubCategoriesList.value = data.subCategories || [];
-    productTypesList.value = data.productTypes || [];
     allSizesList.value = data.sizes || [];
     colorsList.value = data.colors || [];
     unitsList.value = data.units || [];
@@ -1081,26 +765,6 @@ async function fetchBrands() {
     brandsList.value = res.data?.data || [];
   } catch {
     brandsList.value = [];
-  }
-}
-
-// Fetch Suppliers
-async function fetchSuppliers() {
-  try {
-    const res = await axios.get("/api/inventory/vendors/suppliers");
-    suppliersList.value = res.data?.data || [];
-  } catch {
-    suppliersList.value = [];
-  }
-}
-
-// Fetch Manufacturers
-async function fetchManufacturers() {
-  try {
-    const res = await axios.get("/api/inventory/vendors/manufacturers");
-    manufacturersList.value = res.data?.data || [];
-  } catch {
-    manufacturersList.value = [];
   }
 }
 
@@ -1137,14 +801,7 @@ async function fetchCompanySettings() {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    fetchCompanySettings(),
-    fetchCatalogData(),
-    fetchBrands(),
-    fetchSuppliers(),
-    fetchManufacturers(),
-    fetchItems()
-  ]);
+  await Promise.all([fetchCompanySettings(), fetchCatalogData(), fetchBrands(), fetchItems()]);
   if (!isEditing.value) {
     form.code = generateNextProductCode();
   }
@@ -1152,10 +809,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.modal-backdrop-custom {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
 .items-page {
   font-family: inherit;
 }
@@ -1230,15 +883,15 @@ onMounted(async () => {
 }
 
 .item-category-cell {
-  color: var(--app-text, inherit);
+  color: #374151;
 }
 
 .item-subcategory-cell {
-  color: var(--app-text-muted, #6c757d);
+  color: #4b5563;
 }
 
 .item-name-cell {
-  color: var(--app-text, inherit);
+  color: #111827;
 }
 
 /* বাটনগুলো কার্ডের টপ বার কালারের (#d97706) সাথে হুবহু সামঞ্জস্যপূর্ণ */
