@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { broadcast, db, HttpStatusCodes } from "@/framework/facade.js";
 import { settings } from "../database/models/settings.js";
@@ -26,7 +26,9 @@ export async function ensureSettingsTable() {
 
 export const getPublicSettings: Handler = async (c: any) => {
   await ensureSettingsTable();
-  const publicList = await db.select().from(settings).where(eq(settings.group, "general"));
+  const publicList = await db.select().from(settings).where(
+    or(eq(settings.group, "general"), eq(settings.group, "media"))
+  );
   return c.json({ data: publicList });
 };
 

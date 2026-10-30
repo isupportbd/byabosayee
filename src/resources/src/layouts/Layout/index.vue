@@ -23,8 +23,34 @@
                 </router-link>
               </template>
             </li>
+            <!-- Custom multi-item breadcrumbs if provided -->
+            <template v-if="!isHome && customBreadcrumbs && customBreadcrumbs.length > 0">
+              <li
+                v-for="(crumb, idx) in customBreadcrumbs"
+                :key="idx"
+                class="breadcrumb-item d-flex align-items-center"
+                :class="{ 'active fw-medium': idx === customBreadcrumbs.length - 1 }"
+                :style="idx === customBreadcrumbs.length - 1 ? 'color: #0d6efd !important;' : ''"
+                :aria-current="idx === customBreadcrumbs.length - 1 ? 'page' : undefined">
+                <router-link
+                  v-if="crumb.to && idx !== customBreadcrumbs.length - 1"
+                  :to="crumb.to"
+                  class="text-decoration-none text-muted">
+                  {{ crumb.label }}
+                </router-link>
+                <a
+                  v-else-if="crumb.onClick && idx !== customBreadcrumbs.length - 1"
+                  href="javascript:void(0)"
+                  class="text-decoration-none text-muted"
+                  role="button"
+                  @click.prevent="crumb.onClick">
+                  {{ crumb.label }}
+                </a>
+                <span v-else>{{ crumb.label }}</span>
+              </li>
+            </template>
             <li
-              v-if="!isHome && currentPageTitle && currentPageTitle.toLowerCase() !== 'dashboard' && currentPageTitle !== 'হোম'"
+              v-else-if="!isHome && currentPageTitle && currentPageTitle.toLowerCase() !== 'dashboard' && currentPageTitle !== 'হোম'"
               class="breadcrumb-item active fw-medium"
               style="color: #0d6efd !important;"
               aria-current="page">
@@ -64,15 +90,28 @@ const disableTransition = ref(true);
 
 const isHome = computed(() => route.path === "/" || route.path === "/dashboard");
 
+export interface BreadcrumbItem {
+  label: string;
+  to?: string;
+  onClick?: () => void;
+}
+
+const customBreadcrumbs = ref<BreadcrumbItem[] | null>(null);
+provide("setBreadcrumbs", (crumbs: BreadcrumbItem[] | null) => {
+  customBreadcrumbs.value = crumbs;
+});
+
 const customTitle = ref("");
 provide("setPageTitle", (t: string) => {
   customTitle.value = t;
+  customBreadcrumbs.value = null;
 });
 
 watch(
   () => route.path,
   () => {
     customTitle.value = "";
+    customBreadcrumbs.value = null;
   }
 );
 

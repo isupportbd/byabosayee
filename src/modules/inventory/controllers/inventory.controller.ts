@@ -1,14 +1,19 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { db, HttpStatusCodes } from "@/framework/facade.js";
+import { settings } from "@/modules/settings/database/models/settings.js";
 import {
   brands,
   customers,
   items,
+  itemPricings,
   manufacturers,
   purchases,
   purchaseItems,
   sales,
+  saleItems,
   suppliers
 } from "@/modules/inventory/database/models/inventory.js";
 import { companySettings } from "@/modules/company/database/models/company.js";
@@ -154,10 +159,22 @@ export async function ensureInventoryTables() {
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "challan_type_id" integer REFERENCES "challan_types"("id") ON DELETE SET NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "challan_number" varchar(100);
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "challan_date" varchar(50);
+      ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "vat_mode" varchar(20) DEFAULT 'excl' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "items_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "total_vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "other_expenses" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "payment_method" varchar(50) DEFAULT 'cash' NOT NULL;
+      ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "document_url" text;
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "unit_price_excl_vat" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "vat_rate" numeric(5, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "unit_price_with_vat" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "allocated_expense" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "purchase_items" ADD COLUMN IF NOT EXISTS "selling_price" numeric(12, 2) DEFAULT '0' NOT NULL;
     `);
 
     await db.execute(sql`
@@ -194,7 +211,73 @@ export async function ensureInventoryTables() {
         "status" varchar(50) DEFAULT 'completed' NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
+      );
+
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_id" integer REFERENCES "customers"("id") ON DELETE SET NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "cashier_name" varchar(255);
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "sale_date" varchar(50);
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "subtotal" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "change_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "payment_method" varchar(50) DEFAULT 'cash' NOT NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "transaction_id" varchar(100);
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "vat_mode" varchar(20) DEFAULT 'inclusive' NOT NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "document_url" text;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "notes" text;
+
+      CREATE TABLE IF NOT EXISTS "sale_items" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "sale_id" integer NOT NULL REFERENCES "sales"("id") ON DELETE CASCADE,
+        "item_id" integer REFERENCES "items"("id") ON DELETE SET NULL,
+        "barcode" varchar(50),
+        "name" varchar(255) NOT NULL,
+        "category_name" varchar(100),
+        "brand_name" varchar(100),
+        "size_name" varchar(50),
+        "color_name" varchar(50),
+        "quantity" integer DEFAULT 1 NOT NULL,
+        "unit_cost" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "unit_price" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "vat_rate" numeric(5, 2) DEFAULT '0' NOT NULL,
+        "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "total_price" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "size_name" varchar(50);
+      ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "color_name" varchar(50);
+      ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "vat_rate" numeric(5, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+      ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "price_effective_date" varchar(50);
+
+      CREATE TABLE IF NOT EXISTS "item_pricings" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "item_id" integer NOT NULL REFERENCES "items"("id") ON DELETE CASCADE,
+        "purchase_price" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "selling_price" numeric(12, 2) NOT NULL,
+        "effective_date" varchar(50) NOT NULL,
+        "challan_date" varchar(50),
+        "vat_rate" numeric(5, 2) DEFAULT '0',
+        "vat_type" varchar(20) DEFAULT 'inclusive',
+        "notes" text,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      ALTER TABLE "item_pricings" ADD COLUMN IF NOT EXISTS "vat_rate" numeric(5, 2) DEFAULT '0';
+      ALTER TABLE "item_pricings" ADD COLUMN IF NOT EXISTS "vat_type" varchar(20) DEFAULT 'inclusive';
+      ALTER TABLE "item_pricings" ADD COLUMN IF NOT EXISTS "discount" numeric(12, 2) DEFAULT '0';
+      ALTER TABLE "item_pricings" ADD COLUMN IF NOT EXISTS "discount_type" varchar(20) DEFAULT 'percent';
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "discount" numeric(12, 2) DEFAULT '0';
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "discount_type" varchar(20) DEFAULT 'percent';
     `);
 
     inventoryTablesEnsured = true;
@@ -618,7 +701,89 @@ export const listItems: Handler = async (c: any) => {
     }
   });
 
-  return c.json({ message: "Success", data: list }, HttpStatusCodes.OK);
+    // Query latest pricing info from item_pricings (for accurate selling price & VAT rate per user request)
+    let enriched = list;
+    try {
+      const [latestPurchases, latestPricings] = await Promise.all([
+        db.execute(sql`
+          SELECT DISTINCT ON (pi.item_id) 
+            pi.item_id as "itemId",
+            p.challan_date as "challanDate",
+            p.challan_number as "challanNumber",
+            pi.unit_cost as "unitCost",
+            pi.code as "barcode",
+            pi.vat_rate as "vatRate"
+          FROM "purchase_items" pi
+          JOIN "purchases" p ON p.id = pi.purchase_id
+          WHERE p.user_id = ${userId} AND pi.item_id IS NOT NULL
+          ORDER BY pi.item_id, p.id DESC, pi.id DESC
+        `),
+        db.execute(sql`
+          SELECT DISTINCT ON (ip.item_id)
+            ip.item_id as "itemId",
+            ip.selling_price as "sellingPrice",
+            ip.vat_rate as "vatRate",
+            ip.vat_type as "vatType",
+            ip.discount as "discount",
+            ip.discount_type as "discountType"
+          FROM "item_pricings" ip
+          WHERE ip.user_id = ${userId} AND ip.item_id IS NOT NULL
+          ORDER BY ip.item_id, ip.id DESC
+        `)
+      ]);
+
+      const lpMap = new Map<number, any>();
+      const rows: any[] = (latestPurchases.rows || latestPurchases) as any[];
+      for (const r of rows) {
+        const id = Number(r.itemId ?? r.itemid ?? r.item_id);
+        if (id) lpMap.set(id, r);
+      }
+
+      const priceMap = new Map<number, any>();
+      const pRows: any[] = (latestPricings.rows || latestPricings) as any[];
+      for (const pr of pRows) {
+        const id = Number(pr.itemId ?? pr.itemid ?? pr.item_id);
+        if (id) priceMap.set(id, pr);
+      }
+
+      enriched = list.map((it: any) => {
+        const lp = lpMap.get(Number(it.id));
+        const pr = priceMap.get(Number(it.id));
+        const unitCostVal = lp?.unitCost ?? lp?.unitcost ?? lp?.unit_cost;
+
+        // User instruction: "ভ্যাট হিসাব হবে আইটেমের মূল্য নির্ধারণ পেইজে থেকে। সবসময় লাস্ট রেট অনুযায়ী হিসাব হবে।"
+        const pricingVatRate = pr?.vatRate ?? pr?.vatrate ?? pr?.vat_rate;
+        const purchaseVatRate = lp?.vatRate ?? lp?.vatrate ?? lp?.vat_rate;
+        const finalVatRate = pricingVatRate !== undefined && pricingVatRate !== null
+          ? Number(pricingVatRate)
+          : (purchaseVatRate !== undefined && purchaseVatRate !== null ? Number(purchaseVatRate) : 0);
+
+        const pricingSellingPrice = pr?.sellingPrice ?? pr?.sellingprice ?? pr?.selling_price;
+        const finalSellingPrice = pricingSellingPrice !== undefined && pricingSellingPrice !== null && Number(pricingSellingPrice) > 0
+          ? String(Number(pricingSellingPrice).toFixed(2))
+          : String(Number(it.sellingPrice || 0).toFixed(2));
+
+        const purchaseBarcode = lp?.barcode || lp?.code || null;
+        return {
+          ...it,
+          code: it.code,
+          barcode: purchaseBarcode,
+          latestChallanDate: lp?.challanDate || lp?.challandate || lp?.challan_date || null,
+          latestChallanNumber: lp?.challanNumber || lp?.challannumber || lp?.challan_number || null,
+          latestUnitCost: unitCostVal !== undefined && unitCostVal !== null ? Number(unitCostVal) : Number(it.purchasePrice || 0),
+          latestBarcode: purchaseBarcode,
+          sellingPrice: finalSellingPrice,
+          latestVatRate: finalVatRate,
+          latestVatType: pr?.vatType || "inclusive",
+          latestDiscount: pr?.discount !== undefined && pr?.discount !== null ? Number(pr.discount) : Number(it.discount || 0),
+          latestDiscountType: pr?.discountType || pr?.discount_type || it.discountType || "percent"
+        };
+      });
+    } catch (err) {
+      console.error("Enrich items with latest purchase and pricing error:", err);
+    }
+
+  return c.json({ message: "Success", data: enriched }, HttpStatusCodes.OK);
 };
 
 export const createItem: Handler = async (c: any) => {
@@ -629,6 +794,9 @@ export const createItem: Handler = async (c: any) => {
   const body = await c.req.json();
   if (!body.name || !body.name.trim()) {
     return c.json({ message: "আইটেমের নাম আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
+  }
+  if (!body.brandId) {
+    return c.json({ message: "ব্র্যান্ড নির্বাচন করা বাধ্যতামূলক" }, HttpStatusCodes.BAD_REQUEST);
   }
 
   // Generate code if not provided - company prefix + sequential 1, 2, 3...
@@ -844,6 +1012,7 @@ export const listPurchases: Handler = async (c: any) => {
         challanType: true,
         items: {
           with: {
+            item: true,
             category: true,
             subCategory: true,
             brand: true,
@@ -886,18 +1055,62 @@ export const createPurchase: Handler = async (c: any) => {
     const manufacturerId = body.manufacturerId ? Number(body.manufacturerId) : null;
     const challanNumber = (body.challanNumber || "").trim();
     const challanDate = (body.challanDate || new Date().toISOString().split("T")[0]).trim();
-    const paymentMethod = (body.paymentMethod || "cash").trim();
-    const notes = body.notes ? body.notes.trim() : null;
-
     const otherExpenses = Math.max(0, Number(body.otherExpenses) || 0);
     const discountAmount = Math.max(0, Number(body.discountAmount) || 0);
     const paidAmount = Math.max(0, Number(body.paidAmount) || 0);
 
-    // 1. Calculate items subtotal
+    const paymentMethod = paidAmount > 0 && body.paymentMethod ? String(body.paymentMethod).trim() : null;
+    const notes = body.notes ? body.notes.trim() : null;
+
+    const vatMode = (body.vatMode || "excl").trim().toLowerCase() === "incl" ? "incl" : "excl";
+
+    // 1. Calculate items pricing, subtotal, and total vat
     let itemsAmount = 0;
+    let totalVatAmount = 0;
+
     for (const item of rawItems) {
-      const lineTotal = Math.max(0, Number(item.totalPrice) || 0);
-      itemsAmount += lineTotal;
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const unit = Number(item.unitPrice) || 0;
+      const vatRate = Math.max(0, Number(item.vatRate) || 0);
+
+      let unitWithVat = 0;
+      let totalWithVat = 0;
+      let unitExclVat = 0;
+      let totalExclVat = 0;
+      let vatAmount = 0;
+
+      if (vatMode === "incl") {
+        unitWithVat = unit;
+        totalWithVat = Number((qty * unitWithVat).toFixed(2));
+        unitExclVat = vatRate > 0 ? Number((unit / (1 + vatRate / 100)).toFixed(2)) : unit;
+        totalExclVat = Number((qty * unitExclVat).toFixed(2));
+        vatAmount = Number((totalWithVat - totalExclVat).toFixed(2));
+      } else {
+        unitExclVat = unit;
+        totalExclVat = Number((qty * unitExclVat).toFixed(2));
+        unitWithVat = Number((unit * (1 + vatRate / 100)).toFixed(2));
+        totalWithVat = Number((qty * unitWithVat).toFixed(2));
+        vatAmount = Number((totalWithVat - totalExclVat).toFixed(2));
+      }
+
+      if (item.unitPriceExclVat !== undefined && Number(item.unitPriceExclVat) > 0) {
+        unitExclVat = Number(item.unitPriceExclVat);
+      }
+      if (item.unitPriceWithVat !== undefined && Number(item.unitPriceWithVat) > 0) {
+        unitWithVat = Number(item.unitPriceWithVat);
+      }
+
+      item._computed = {
+        unitExclVat,
+        totalExclVat,
+        unitWithVat,
+        totalWithVat,
+        vatRate,
+        vatAmount
+      };
+
+      itemsAmount += totalWithVat;
+      totalVatAmount += vatAmount;
     }
 
     const totalAmount = Math.max(0, itemsAmount + otherExpenses - discountAmount);
@@ -913,7 +1126,9 @@ export const createPurchase: Handler = async (c: any) => {
         challanTypeId,
         challanNumber,
         challanDate,
+        vatMode,
         itemsAmount: String(itemsAmount.toFixed(2)),
+        totalVatAmount: String(totalVatAmount.toFixed(2)),
         otherExpenses: String(otherExpenses.toFixed(2)),
         discountAmount: String(discountAmount.toFixed(2)),
         totalAmount: String(totalAmount.toFixed(2)),
@@ -935,7 +1150,8 @@ export const createPurchase: Handler = async (c: any) => {
 
     for (const item of rawItems) {
       const qty = Math.max(1, Number(item.quantity) || 1);
-      const lineTotal = Math.max(0, Number(item.totalPrice) || 0);
+      const comp = item._computed || {};
+      const lineTotal = comp.totalWithVat || Math.max(0, Number(item.totalPrice) || 0);
 
       // Landed cost proportional distribution:
       const netExtra = otherExpenses - discountAmount;
@@ -946,6 +1162,9 @@ export const createPurchase: Handler = async (c: any) => {
       const categoryId = item.categoryId ? Number(item.categoryId) : null;
       const subCategoryId = item.subCategoryId ? Number(item.subCategoryId) : null;
       const brandId = item.brandId ? Number(item.brandId) : null;
+      if (!brandId) {
+        return c.json({ message: `"${itemName || 'পণ্য'}" এর জন্য ব্র্যান্ড নির্বাচন করা বাধ্যতামূলক` }, HttpStatusCodes.BAD_REQUEST);
+      }
       const sizeId = item.sizeId ? Number(item.sizeId) : null;
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
@@ -965,7 +1184,7 @@ export const createPurchase: Handler = async (c: any) => {
           FROM "purchase_items" 
           WHERE "category_id" = ${categoryId}
             AND "sub_category_id" = ${subCategoryId}
-            AND "brand_id" = ${brandId}
+            AND "brand_id" IS NOT DISTINCT FROM ${brandId}
             AND "size_id" = ${sizeId}
             AND "code" LIKE ${`%${yymm}%`}
         `);
@@ -976,6 +1195,11 @@ export const createPurchase: Handler = async (c: any) => {
 
       // Create or update item in items table to increment stock and set purchase price
       let itemId = item.itemId ? Number(item.itemId) : null;
+      const sellingPriceNum = item.sellingPrice !== undefined && item.sellingPrice !== null && !isNaN(Number(item.sellingPrice))
+        ? Math.max(0, Number(item.sellingPrice))
+        : 0;
+      const sellingPriceVal = String(sellingPriceNum.toFixed(2));
+
       if (itemId) {
         const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
         if (existingItem) {
@@ -984,6 +1208,7 @@ export const createPurchase: Handler = async (c: any) => {
             .set({
               stockQuantity: existingItem.stockQuantity + qty,
               purchasePrice: String(unitCost),
+              sellingPrice: sellingPriceVal,
               updatedAt: new Date()
             })
             .where(eq(items.id, itemId));
@@ -1005,6 +1230,7 @@ export const createPurchase: Handler = async (c: any) => {
             supplierId,
             manufacturerId,
             purchasePrice: String(unitCost),
+            sellingPrice: sellingPriceVal,
             stockQuantity: qty,
             isActive: true
           })
@@ -1012,7 +1238,7 @@ export const createPurchase: Handler = async (c: any) => {
         itemId = newItem.id;
       }
 
-      // Insert purchase item record
+      // Insert purchase item record with all 21 audit/accounting fields
       const [pItem] = await db
         .insert(purchaseItems)
         .values({
@@ -1026,8 +1252,14 @@ export const createPurchase: Handler = async (c: any) => {
           colorId,
           unitId,
           quantity: qty,
+          unitPriceExclVat: String((comp.unitExclVat ?? 0).toFixed(2)),
+          vatRate: String((comp.vatRate ?? 0).toFixed(2)),
+          vatAmount: String((comp.vatAmount ?? 0).toFixed(2)),
+          unitPriceWithVat: String((comp.unitWithVat ?? 0).toFixed(2)),
           totalPrice: String(lineTotal.toFixed(2)),
+          allocatedExpense: String(itemExtra.toFixed(2)),
           unitCost: String(unitCost.toFixed(2)),
+          sellingPrice: sellingPriceVal,
           code
         })
         .returning();
@@ -1048,6 +1280,1024 @@ export const createPurchase: Handler = async (c: any) => {
   } catch (error) {
     console.error("Create purchase error:", error);
     return c.json({ message: "ক্রয় চালান সংরক্ষণ করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const updatePurchase: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const purchaseId = Number(c.req.param("id"));
+  if (isNaN(purchaseId)) return c.json({ message: "অবৈধ চালান আইডি" }, HttpStatusCodes.BAD_REQUEST);
+
+  try {
+    const [existingPurchase] = await db
+      .select()
+      .from(purchases)
+      .where(and(eq(purchases.id, purchaseId), eq(purchases.userId, userId)));
+
+    if (!existingPurchase) {
+      return c.json({ message: "ক্রয় চালান পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    const body = await c.req.json();
+    const rawItems = Array.isArray(body.items) ? body.items : [];
+
+    if (rawItems.length === 0) {
+      return c.json({ message: "চালানে অন্তত একটি পণ্য যোগ করুন" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+    }
+
+    const challanTypeId = body.challanTypeId ? Number(body.challanTypeId) : null;
+    const supplierId = body.supplierId ? Number(body.supplierId) : null;
+    const manufacturerId = body.manufacturerId ? Number(body.manufacturerId) : null;
+    const challanNumber = (body.challanNumber || "").trim();
+    const challanDate = (body.challanDate || new Date().toISOString().split("T")[0]).trim();
+    const otherExpenses = Math.max(0, Number(body.otherExpenses) || 0);
+    const discountAmount = Math.max(0, Number(body.discountAmount) || 0);
+    const paidAmount = Math.max(0, Number(body.paidAmount) || 0);
+
+    const paymentMethod = paidAmount > 0 && body.paymentMethod ? String(body.paymentMethod).trim() : null;
+    const notes = body.notes ? body.notes.trim() : null;
+
+    const vatMode = (body.vatMode || "excl").trim().toLowerCase() === "incl" ? "incl" : "excl";
+
+    // Revert stock for existing purchase items
+    const oldPItems = await db
+      .select()
+      .from(purchaseItems)
+      .where(eq(purchaseItems.purchaseId, purchaseId));
+
+    for (const oldIt of oldPItems) {
+      if (oldIt.itemId) {
+        const [existingItem] = await db
+          .select()
+          .from(items)
+          .where(and(eq(items.id, oldIt.itemId), eq(items.userId, userId)));
+        if (existingItem) {
+          const newQty = Math.max(0, existingItem.stockQuantity - oldIt.quantity);
+          await db
+            .update(items)
+            .set({ stockQuantity: newQty, updatedAt: new Date() })
+            .where(eq(items.id, oldIt.itemId));
+        }
+      }
+    }
+
+    // Delete old purchase items
+    await db.delete(purchaseItems).where(eq(purchaseItems.purchaseId, purchaseId));
+
+    // Calculate items pricing, subtotal, and total vat
+    let itemsAmount = 0;
+    let totalVatAmount = 0;
+
+    for (const item of rawItems) {
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const unit = Number(item.unitPrice) || 0;
+      const vatRate = Math.max(0, Number(item.vatRate) || 0);
+
+      let unitWithVat = 0;
+      let totalWithVat = 0;
+      let unitExclVat = 0;
+      let totalExclVat = 0;
+      let vatAmount = 0;
+
+      if (vatMode === "incl") {
+        unitWithVat = unit;
+        totalWithVat = Number((qty * unitWithVat).toFixed(2));
+        unitExclVat = vatRate > 0 ? Number((unit / (1 + vatRate / 100)).toFixed(2)) : unit;
+        totalExclVat = Number((qty * unitExclVat).toFixed(2));
+        vatAmount = Number((totalWithVat - totalExclVat).toFixed(2));
+      } else {
+        unitExclVat = unit;
+        totalExclVat = Number((qty * unitExclVat).toFixed(2));
+        unitWithVat = Number((unit * (1 + vatRate / 100)).toFixed(2));
+        totalWithVat = Number((qty * unitWithVat).toFixed(2));
+        vatAmount = Number((totalWithVat - totalExclVat).toFixed(2));
+      }
+
+      if (item.unitPriceExclVat !== undefined && Number(item.unitPriceExclVat) > 0) {
+        unitExclVat = Number(item.unitPriceExclVat);
+      }
+      if (item.unitPriceWithVat !== undefined && Number(item.unitPriceWithVat) > 0) {
+        unitWithVat = Number(item.unitPriceWithVat);
+      }
+
+      item._computed = {
+        unitExclVat,
+        totalExclVat,
+        unitWithVat,
+        totalWithVat,
+        vatRate,
+        vatAmount
+      };
+
+      itemsAmount += totalWithVat;
+      totalVatAmount += vatAmount;
+    }
+
+    const totalAmount = Math.max(0, itemsAmount + otherExpenses - discountAmount);
+    const dueAmount = Math.max(0, totalAmount - paidAmount);
+
+    // Update purchase header
+    const [updatedPurchase] = await db
+      .update(purchases)
+      .set({
+        supplierId,
+        manufacturerId,
+        challanTypeId,
+        challanNumber,
+        challanDate,
+        vatMode,
+        itemsAmount: String(itemsAmount.toFixed(2)),
+        totalVatAmount: String(totalVatAmount.toFixed(2)),
+        otherExpenses: String(otherExpenses.toFixed(2)),
+        discountAmount: String(discountAmount.toFixed(2)),
+        totalAmount: String(totalAmount.toFixed(2)),
+        paidAmount: String(paidAmount.toFixed(2)),
+        dueAmount: String(dueAmount.toFixed(2)),
+        paymentMethod,
+        status: dueAmount > 0 ? "partial" : "completed",
+        notes,
+        updatedAt: new Date()
+      })
+      .where(and(eq(purchases.id, purchaseId), eq(purchases.userId, userId)))
+      .returning();
+
+    // Process line items with Landed Unit Cost
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yymm = `${yy}${mm}`;
+
+    const createdItems = [];
+
+    for (const item of rawItems) {
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const comp = item._computed || {};
+      const lineTotal = comp.totalWithVat || Math.max(0, Number(item.totalPrice) || 0);
+
+      const netExtra = otherExpenses - discountAmount;
+      const itemExtra = itemsAmount > 0 ? (lineTotal / itemsAmount) * netExtra : 0;
+      const finalLineCost = Math.max(0, lineTotal + itemExtra);
+      const unitCost = Number((finalLineCost / qty).toFixed(2));
+
+      const categoryId = item.categoryId ? Number(item.categoryId) : null;
+      const subCategoryId = item.subCategoryId ? Number(item.subCategoryId) : null;
+      const brandId = item.brandId ? Number(item.brandId) : null;
+      if (!brandId) {
+        return c.json(
+          { message: `"${itemName || 'পণ্য'}" এর জন্য ব্র্যান্ড নির্বাচন করা বাধ্যতামূলক` },
+          HttpStatusCodes.BAD_REQUEST
+        );
+      }
+      const sizeId = item.sizeId ? Number(item.sizeId) : null;
+      const colorId = item.colorId ? Number(item.colorId) : null;
+      const unitId = item.unitId ? Number(item.unitId) : null;
+      const itemName = (item.name || "").trim();
+
+      let code = (item.code || "").trim();
+      if (!code) {
+        const catStr = String(categoryId || 0).padStart(2, "0").slice(-2);
+        const subStr = String(subCategoryId || 0).padStart(2, "0").slice(-2);
+        const brandStr = String(brandId || 0).padStart(2, "0").slice(-2);
+        const sizeStr = String(sizeId || 0).padStart(2, "0").slice(-2);
+
+        const existingCountRes = await db.execute(sql`
+          SELECT count(*)::int as count 
+          FROM "purchase_items" 
+          WHERE "category_id" = ${categoryId}
+            AND "sub_category_id" = ${subCategoryId}
+            AND "brand_id" IS NOT DISTINCT FROM ${brandId}
+            AND "size_id" = ${sizeId}
+            AND "code" LIKE ${`%${yymm}%`}
+        `);
+        const existingCount = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
+        const batchSerial = String(existingCount + 1).padStart(2, "0").slice(-2);
+        code = `${catStr}${subStr}${brandStr}${sizeStr}${yymm}${batchSerial}`;
+      }
+
+      let itemId = item.itemId ? Number(item.itemId) : null;
+      const sellingPriceNum = item.sellingPrice !== undefined && item.sellingPrice !== null && !isNaN(Number(item.sellingPrice))
+        ? Math.max(0, Number(item.sellingPrice))
+        : 0;
+      const sellingPriceVal = String(sellingPriceNum.toFixed(2));
+
+      if (itemId) {
+        const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
+        if (existingItem) {
+          await db
+            .update(items)
+            .set({
+              stockQuantity: existingItem.stockQuantity + qty,
+              purchasePrice: String(unitCost),
+              sellingPrice: sellingPriceVal,
+              updatedAt: new Date()
+            })
+            .where(eq(items.id, itemId));
+        }
+      } else {
+        const [newItem] = await db
+          .insert(items)
+          .values({
+            userId,
+            name: itemName,
+            code,
+            categoryId,
+            subCategoryId,
+            brandId,
+            sizeId,
+            colorId,
+            unitId,
+            supplierId,
+            manufacturerId,
+            purchasePrice: String(unitCost),
+            sellingPrice: sellingPriceVal,
+            stockQuantity: qty,
+            isActive: true
+          })
+          .returning();
+        itemId = newItem.id;
+      }
+
+      const [pItem] = await db
+        .insert(purchaseItems)
+        .values({
+          purchaseId,
+          itemId,
+          name: itemName,
+          categoryId,
+          subCategoryId,
+          brandId,
+          sizeId,
+          colorId,
+          unitId,
+          quantity: qty,
+          unitPriceExclVat: String((comp.unitExclVat ?? 0).toFixed(2)),
+          vatRate: String((comp.vatRate ?? 0).toFixed(2)),
+          vatAmount: String((comp.vatAmount ?? 0).toFixed(2)),
+          unitPriceWithVat: String((comp.unitWithVat ?? 0).toFixed(2)),
+          totalPrice: String(lineTotal.toFixed(2)),
+          allocatedExpense: String(itemExtra.toFixed(2)),
+          unitCost: String(unitCost.toFixed(2)),
+          sellingPrice: sellingPriceVal,
+          code
+        })
+        .returning();
+
+      createdItems.push(pItem);
+    }
+
+    return c.json(
+      {
+        message: "ক্রয় চালান সফলভাবে আপডেট করা হয়েছে এবং স্টক সমন্বয় করা হয়েছে",
+        data: {
+          ...updatedPurchase,
+          items: createdItems
+        }
+      },
+      HttpStatusCodes.OK
+    );
+  } catch (error) {
+    console.error("Update purchase error:", error);
+    return c.json({ message: "ক্রয় চালান আপডেট করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const deletePurchase: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const purchaseId = Number(c.req.param("id"));
+  if (isNaN(purchaseId)) return c.json({ message: "অবৈধ চালান আইডি" }, HttpStatusCodes.BAD_REQUEST);
+
+  try {
+    const [purchase] = await db
+      .select()
+      .from(purchases)
+      .where(and(eq(purchases.id, purchaseId), eq(purchases.userId, userId)));
+
+    if (!purchase) {
+      return c.json({ message: "ক্রয় চালান পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    // Revert stock for all purchase items
+    const pItems = await db
+      .select()
+      .from(purchaseItems)
+      .where(eq(purchaseItems.purchaseId, purchaseId));
+
+    for (const pItem of pItems) {
+      if (pItem.itemId) {
+        const [existingItem] = await db
+          .select()
+          .from(items)
+          .where(and(eq(items.id, pItem.itemId), eq(items.userId, userId)));
+
+        if (existingItem) {
+          const newQty = Math.max(0, existingItem.stockQuantity - pItem.quantity);
+          await db
+            .update(items)
+            .set({ stockQuantity: newQty, updatedAt: new Date() })
+            .where(eq(items.id, pItem.itemId));
+        }
+      }
+    }
+
+    // Delete purchase items & purchase
+    await db.delete(purchaseItems).where(eq(purchaseItems.purchaseId, purchaseId));
+    await db.delete(purchases).where(eq(purchases.id, purchaseId));
+
+    return c.json({ message: "ক্রয় চালান সফলভাবে মুছে ফেলা হয়েছে এবং স্টক সমন্বয় করা হয়েছে" }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("Delete purchase error:", error);
+    return c.json({ message: "ক্রয় চালান মুছতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+/**
+ * Get Media Configuration (Current Superadmin settings)
+ */
+export const getMediaConfig: Handler = async (c: any) => {
+  try {
+    const rows = await db.select().from(settings).where(eq(settings.group, "media"));
+    const config: Record<string, any> = {};
+    for (const r of rows) {
+      if (r.key) config[r.key] = r.value;
+    }
+    return c.json({
+      data: {
+        uploadMode: config.media_upload_mode || "both",
+        maxSizeMb: Number(config.media_max_size_mb) || 2,
+        allowedFormats: config.media_allowed_formats || "jpg,jpeg,png,webp"
+      }
+    }, HttpStatusCodes.OK);
+  } catch (err) {
+    return c.json({
+      data: {
+        uploadMode: "both",
+        maxSizeMb: 2,
+        allowedFormats: "jpg,jpeg,png,webp"
+      }
+    }, HttpStatusCodes.OK);
+  }
+};
+
+/**
+ * Upload Image (Direct file upload)
+ * Checks Superadmin media settings before proceeding
+ */
+export const uploadMediaImage: Handler = async (c: any) => {
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  // Check superadmin media settings
+  const mediaSettingsRows = await db.select().from(settings).where(eq(settings.group, "media"));
+  const mediaConfig: Record<string, string> = {};
+  for (const row of mediaSettingsRows) {
+    if (row.key && row.value) mediaConfig[row.key] = row.value;
+  }
+
+  const uploadMode = mediaConfig.media_upload_mode || "both";
+  if (uploadMode === "google_drive") {
+    return c.json(
+      { message: "সুপারএডমিন সরাসরি ফাইল আপলোড বন্ধ রেখেছেন। শুধুমাত্র গুগল ড্রাইভ বা ওয়েব লিংক ব্যবহার করুন।" },
+      HttpStatusCodes.FORBIDDEN
+    );
+  }
+
+  const maxMb = Number(mediaConfig.media_max_size_mb || 2);
+  const allowedFormats = (mediaConfig.media_allowed_formats || "jpg,jpeg,png,webp").split(",").map((s) => s.trim().toLowerCase());
+
+  try {
+    const body = await c.req.parseBody();
+    const file = body["file"] as File | undefined;
+    if (!file || typeof file === "string") {
+      return c.json({ message: "কোনো ফাইল সিলেক্ট করা হয়নি" }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    if (file.size > maxMb * 1024 * 1024) {
+      return c.json({ message: `ফাইলের সাইজ সর্বোচ্চ ${maxMb}MB হতে পারবে` }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    const origName = file.name || "image.jpg";
+    const ext = path.extname(origName).replace(".", "").toLowerCase() || "jpg";
+    if (!allowedFormats.includes(ext)) {
+      return c.json({ message: `অনুমোদিত ফরম্যাট: ${allowedFormats.join(", ")}` }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    const uniqueName = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const uploadDir = path.resolve(process.cwd(), "src/storage/app/public/uploads");
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    await fs.writeFile(path.join(uploadDir, uniqueName), buffer);
+
+    const publicUrl = `/storage/uploads/${uniqueName}`;
+    return c.json({
+      message: "ছবি সফলভাবে আপলোড হয়েছে",
+      data: { url: publicUrl, filename: uniqueName }
+    }, HttpStatusCodes.OK);
+  } catch (err: any) {
+    console.error("Upload image error:", err);
+    return c.json({ message: "ছবি আপলোড করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+/**
+ * Update Purchase Attachments (Document URL & Product Image URLs)
+ */
+export const updatePurchaseAttachments: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const purchaseId = Number(c.req.param("id"));
+  if (isNaN(purchaseId)) return c.json({ message: "ভুল চালান আইডি" }, HttpStatusCodes.BAD_REQUEST);
+
+  try {
+    const [purchase] = await db
+      .select()
+      .from(purchases)
+      .where(and(eq(purchases.id, purchaseId), eq(purchases.userId, userId)));
+
+    if (!purchase) {
+      return c.json({ message: "ক্রয় চালান পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    const body = await c.req.json();
+    const documentUrl = body.documentUrl !== undefined ? (body.documentUrl ? String(body.documentUrl).trim() : null) : undefined;
+    const itemImages = Array.isArray(body.itemImages) ? body.itemImages : [];
+
+    // 1. Update purchase document_url if provided
+    if (documentUrl !== undefined) {
+      await db
+        .update(purchases)
+        .set({ documentUrl, updatedAt: new Date() })
+        .where(eq(purchases.id, purchaseId));
+    }
+
+    // 2. Update each item's image_url
+    for (const it of itemImages) {
+      if (it.itemId) {
+        const img = it.imageUrl ? String(it.imageUrl).trim() : null;
+        await db
+          .update(items)
+          .set({ imageUrl: img, updatedAt: new Date() })
+          .where(and(eq(items.id, Number(it.itemId)), eq(items.userId, userId)));
+      }
+    }
+
+    return c.json({ message: "ছবি ও ডকুমেন্টস সফলভাবে সংরক্ষিত হয়েছে" }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("Update purchase attachments error:", error);
+    return c.json({ message: "সংযুক্তি সংরক্ষণ করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+/* -------------------------------------------------------------
+ * 7. Item Pricing Controllers (মূল্য নির্ধারণ ব্যবস্থাপনা)
+ * ----------------------------------------------------------- */
+export const listItemPricings: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  try {
+    const list = await db.query.itemPricings.findMany({
+      where: eq(itemPricings.userId, userId),
+      orderBy: desc(itemPricings.id),
+      with: {
+        item: {
+          with: {
+            category: true,
+            subCategory: true,
+            brand: true,
+            size: true,
+            color: true,
+            unit: true
+          }
+        }
+      }
+    });
+
+    return c.json({ message: "Success", data: list }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("List item pricings error:", error);
+    return c.json({ message: "মূল্য নির্ধারণ তালিকা লোড করা যায়নি" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const saveItemPricing: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  try {
+    const body = await c.req.json();
+    const itemId = Number(body.itemId);
+    const sellingPrice = Number(body.sellingPrice);
+    const effectiveDate = (body.effectiveDate || "").trim();
+    const notes = (body.notes || "").trim();
+    const pricingId = body.id ? Number(body.id) : null;
+
+    if (!itemId || isNaN(itemId)) {
+      return c.json({ message: "অনুগ্রহ করে পণ্য নির্বাচন করুন" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+    }
+    if (isNaN(sellingPrice) || sellingPrice <= 0) {
+      return c.json({ message: "সঠিক বিক্রয়মূল্য লিখুন (০ এর বেশি হতে হবে)" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+    }
+    if (!effectiveDate) {
+      return c.json({ message: "কার্যকর করার তারিখ উল্লেখ করুন" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+    }
+
+    // Verify item belongs to user
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, itemId), eq(items.userId, userId)));
+
+    if (!item) {
+      return c.json({ message: "পণ্যটি পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    // Find latest purchase information (challan date & landed unit cost)
+    const [latestPurchase] = await db
+      .select({
+        challanDate: purchases.challanDate,
+        unitCost: purchaseItems.unitCost
+      })
+      .from(purchaseItems)
+      .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
+      .where(and(eq(purchaseItems.itemId, itemId), eq(purchases.userId, userId)))
+      .orderBy(desc(purchases.id), desc(purchaseItems.id))
+      .limit(1);
+
+    const challanDate = body.challanDate || latestPurchase?.challanDate || null;
+    const purchasePrice = latestPurchase?.unitCost ? String(Number(latestPurchase.unitCost).toFixed(2)) : (item.purchasePrice || "0");
+
+    // VALIDATION: কার্যকর তারিখ ক্রয়ের চালানের তারিখের আগের হতে পারবে না
+    if (challanDate) {
+      const effD = new Date(effectiveDate).getTime();
+      const challanD = new Date(challanDate).getTime();
+      if (!isNaN(effD) && !isNaN(challanD) && effD < challanD) {
+        return c.json(
+          {
+            message: `রেট কার্যকর করার তারিখ (${effectiveDate}) ক্রয়ের চালানের তারিখ (${challanDate}) এর আগের হতে পারবে না।`
+          },
+          HttpStatusCodes.UNPROCESSABLE_ENTITY
+        );
+      }
+    }
+
+    const vatRate = body.vatRate !== undefined && body.vatRate !== null ? String(Number(body.vatRate).toFixed(2)) : "0";
+    const vatType = body.vatType || "inclusive";
+    const discount = body.discount !== undefined && body.discount !== null ? String(Number(body.discount).toFixed(2)) : "0";
+    const discountType = body.discountType === "fixed" ? "fixed" : "percent";
+
+    let record: any = null;
+    if (pricingId) {
+      const [updated] = await db
+        .update(itemPricings)
+        .set({
+          itemId,
+          purchasePrice,
+          sellingPrice: String(sellingPrice.toFixed(2)),
+          effectiveDate,
+          challanDate,
+          vatRate,
+          vatType,
+          discount,
+          discountType,
+          notes,
+          updatedAt: new Date()
+        })
+        .where(and(eq(itemPricings.id, pricingId), eq(itemPricings.userId, userId)))
+        .returning();
+      record = updated;
+    } else {
+      const [existing] = await db
+        .select()
+        .from(itemPricings)
+        .where(and(eq(itemPricings.itemId, itemId), eq(itemPricings.userId, userId)))
+        .limit(1);
+
+      if (existing) {
+        const [updated] = await db
+          .update(itemPricings)
+          .set({
+            purchasePrice,
+            sellingPrice: String(sellingPrice.toFixed(2)),
+            effectiveDate,
+            challanDate,
+            vatRate,
+            vatType,
+            discount,
+            discountType,
+            notes,
+            updatedAt: new Date()
+          })
+          .where(eq(itemPricings.id, existing.id))
+          .returning();
+        record = updated;
+      } else {
+        const [created] = await db
+          .insert(itemPricings)
+          .values({
+            userId,
+            itemId,
+            purchasePrice,
+            sellingPrice: String(sellingPrice.toFixed(2)),
+            effectiveDate,
+            challanDate,
+            vatRate,
+            vatType,
+            discount,
+            discountType,
+            notes
+          })
+          .returning();
+        record = created;
+      }
+    }
+
+    // Sync items table
+    await db
+      .update(items)
+      .set({
+        sellingPrice: String(sellingPrice.toFixed(2)),
+        purchasePrice,
+        priceEffectiveDate: effectiveDate,
+        discount,
+        discountType,
+        updatedAt: new Date()
+      })
+      .where(eq(items.id, itemId));
+
+    return c.json(
+      {
+        message: "পণ্যের মূল্য নির্ধারণ সফলভাবে সংরক্ষিত হয়েছে",
+        data: record
+      },
+      HttpStatusCodes.OK
+    );
+  } catch (error) {
+    console.error("Save item pricing error:", error);
+    return c.json({ message: "মূল্য নির্ধারণ সংরক্ষণ করা যায়নি" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const deleteItemPricing: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const id = Number(c.req.param("id"));
+  if (!id) return c.json({ message: "আইডি পাওয়া যায়নি" }, HttpStatusCodes.BAD_REQUEST);
+
+  try {
+    const [record] = await db
+      .select()
+      .from(itemPricings)
+      .where(and(eq(itemPricings.id, id), eq(itemPricings.userId, userId)));
+
+    if (!record) {
+      return c.json({ message: "রেকর্ড পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    // Delete record from item_pricings
+    await db.delete(itemPricings).where(eq(itemPricings.id, id));
+
+    // Reset items sellingPrice & priceEffectiveDate
+    if (record.itemId) {
+      await db
+        .update(items)
+        .set({
+          sellingPrice: "0",
+          priceEffectiveDate: null,
+          updatedAt: new Date()
+        })
+        .where(eq(items.id, record.itemId));
+    }
+
+    return c.json({ message: "মূল্য নির্ধারণ রেকর্ড সফলভাবে মুছে ফেলা হয়েছে", data: { id } }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("Delete item pricing error:", error);
+    return c.json({ message: "রেকর্ড মুছতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+/**
+ * 8. Sales (পণ্য বিক্রয় ও পিওএস) CRUD
+ */
+
+export const listSales: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  try {
+    const list = await db.query.sales.findMany({
+      where: eq(sales.userId, userId),
+      orderBy: [desc(sales.id)],
+      with: {
+        items: true,
+        customer: true
+      }
+    });
+
+    return c.json({ message: "Success", data: list }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("List sales error:", error);
+    return c.json({ message: "বিক্রয় তালিকা লোড করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const getSaleById: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const id = Number(c.req.param("id"));
+  if (!id) return c.json({ message: "আইডি পাওয়া যায়নি" }, HttpStatusCodes.BAD_REQUEST);
+
+  try {
+    const sale = await db.query.sales.findFirst({
+      where: and(eq(sales.id, id), eq(sales.userId, userId)),
+      with: {
+        items: true,
+        customer: true
+      }
+    });
+
+    if (!sale) {
+      return c.json({ message: "বিক্রয় রেকর্ড পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    return c.json({ message: "Success", data: sale }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("Get sale error:", error);
+    return c.json({ message: "বিক্রয় বিবরণ লোড করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+function formatInvoiceNumber(pattern: string, prefix: string, count: number): string {
+  const now = new Date();
+  const yyyy = String(now.getFullYear());
+  const yy = yyyy.slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+
+  let result = (pattern || "{PREFIX}-{YYYY}-{0001}").trim();
+  result = result
+    .replace(/\{PREFIX\}/gi, (prefix || "INV").trim().toUpperCase())
+    .replace(/\{YYYY\}/gi, yyyy)
+    .replace(/\{YY\}/gi, yy)
+    .replace(/\{MM\}/gi, mm)
+    .replace(/\{DD\}/gi, dd);
+
+  const seqMatch = result.match(/\{(0+1|1)\}/);
+  if (seqMatch) {
+    const token = seqMatch[1];
+    const width = token.length;
+    const seqStr = String(count).padStart(width, "0");
+    result = result.replace(seqMatch[0], seqStr);
+  } else {
+    result += `-${String(count).padStart(4, "0")}`;
+  }
+
+  return result;
+}
+
+export const createSale: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const body = await c.req.json();
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+
+  if (rawItems.length === 0) {
+    return c.json({ message: "কমপক্ষে একটি পণ্য যোগ করুন" }, HttpStatusCodes.BAD_REQUEST);
+  }
+
+  try {
+    // 1. Get Logged-in User's name for Cashier / Salesperson
+    // Requirement: "বিক্রেতা/ক্যাশিয়ার (Salesperson / Cashier): যে ডাটা এন্ট্রি করছে তার নাম বসবে।"
+    const uRes = await db.execute(sql`SELECT name FROM "users" WHERE id = ${userId}`);
+    const uRows: any[] = (uRes.rows || uRes) as any[];
+    const cashierName = uRows[0]?.name || body.cashierName || "ক্যাশিয়ার";
+
+    // 2. Generate Invoice Number according to company settings (invoicePattern, invoicePrefix, invoiceResetCycle)
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+
+    const settingsRow = await db.query.companySettings.findFirst({
+      where: eq(companySettings.userId, userId)
+    });
+    const prefix = (settingsRow?.invoicePrefix || "INV").trim().toUpperCase();
+    const pattern = (settingsRow?.invoicePattern || "{PREFIX}-{YYYY}-{0001}").trim();
+    const resetCycle = settingsRow?.invoiceResetCycle || "yearly";
+
+    let countQuery;
+    if (resetCycle === "yearly") {
+      const currentYear = now.getFullYear();
+      countQuery = await db.execute(sql`
+        SELECT count(*)::int as count 
+        FROM "sales" 
+        WHERE "user_id" = ${userId} 
+          AND (
+            "sale_date" LIKE ${`${currentYear}-%`} 
+            OR EXTRACT(YEAR FROM "created_at") = ${currentYear}
+          )
+      `);
+    } else {
+      countQuery = await db.execute(sql`
+        SELECT count(*)::int as count 
+        FROM "sales" 
+        WHERE "user_id" = ${userId}
+      `);
+    }
+    const currentSeq = Number((countQuery.rows || countQuery)[0]?.count || 0) + 1;
+    const autoInvoiceNumber = formatInvoiceNumber(pattern, prefix, currentSeq);
+
+    let invoiceNumber = (body.invoiceNumber || "").trim();
+    if (!invoiceNumber || invoiceNumber.startsWith("INV-261025-")) {
+      invoiceNumber = autoInvoiceNumber;
+    }
+
+    const customerId = body.customerId ? Number(body.customerId) : null;
+    const customerName = (body.customerName || "ওয়াকিং কাস্টমার").trim();
+    const customerMobile = (body.customerMobile || "").trim();
+    const saleDate = body.saleDate || `${now.getFullYear()}-${mm}-${dd}`;
+    const subtotal = Math.max(0, Number(body.subtotal) || 0);
+    const discountAmount = Math.max(0, Number(body.discountAmount) || 0);
+    const vatAmount = Math.max(0, Number(body.vatAmount) || 0);
+    const totalAmount = Math.max(0, Number(body.totalAmount) || Math.max(0, subtotal - discountAmount + vatAmount));
+    const paidAmount = Math.max(0, Number(body.paidAmount) || 0);
+    const changeAmount = Math.max(0, Number(body.changeAmount) || (paidAmount > totalAmount ? paidAmount - totalAmount : 0));
+    const dueAmount = Math.max(0, Number(body.dueAmount) || (totalAmount > paidAmount ? totalAmount - paidAmount : 0));
+    const paymentMethod = body.paymentMethod || "cash";
+    const transactionId = (body.transactionId || "").trim();
+    const vatMode = (body.vatMode === "exclusive" ? "exclusive" : "inclusive");
+    const isDraft = body.isDraft === true || body.status === "draft";
+    const status = isDraft ? "draft" : (dueAmount > 0 ? (paidAmount > 0 ? "partial" : "due") : "completed");
+    const notes = body.notes || "";
+
+    // 3. Insert Sale Header
+    const [createdSale] = await db
+      .insert(sales)
+      .values({
+        userId,
+        customerId,
+        customerName,
+        customerMobile,
+        cashierName,
+        invoiceNumber,
+        saleDate,
+        subtotal: String(subtotal.toFixed(2)),
+        discountAmount: String(discountAmount.toFixed(2)),
+        vatAmount: String(vatAmount.toFixed(2)),
+        totalAmount: String(totalAmount.toFixed(2)),
+        paidAmount: String(paidAmount.toFixed(2)),
+        changeAmount: String(changeAmount.toFixed(2)),
+        dueAmount: String(dueAmount.toFixed(2)),
+        paymentMethod,
+        transactionId: transactionId || null,
+        vatMode,
+        status,
+        notes
+      })
+      .returning();
+
+    // 4. Insert Sale Items and Deduct Stock Quantity
+    const createdSaleItems = [];
+    for (const item of rawItems) {
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
+      const unitCost = Math.max(0, Number(item.unitCost) || 0);
+      const lineDiscount = Math.max(0, Number(item.discountAmount) || 0);
+
+      // Fetch latest vatRate from item_pricings if not supplied
+      let vatRate = Number(item.vatRate || 0);
+      if (item.itemId && (item.vatRate === undefined || item.vatRate === null)) {
+        const [latestPricing] = await db
+          .select({ vatRate: itemPricings.vatRate })
+          .from(itemPricings)
+          .where(and(eq(itemPricings.userId, userId), eq(itemPricings.itemId, Number(item.itemId))))
+          .orderBy(desc(itemPricings.id))
+          .limit(1);
+        if (latestPricing && latestPricing.vatRate !== null) {
+          vatRate = Number(latestPricing.vatRate);
+        }
+      }
+
+      // Calculate VAT according to vatMode (inclusive vs exclusive)
+      const base = Math.max(0, unitPrice * qty - lineDiscount);
+      let lineVatAmount = 0;
+      let lineTotalPrice = 0;
+
+      if (vatMode === "inclusive") {
+        // Price includes VAT: VAT is already inside base amount
+        lineVatAmount = vatRate > 0 ? Number((base - (base / (1 + vatRate / 100))).toFixed(2)) : 0;
+        lineTotalPrice = Number(base.toFixed(2));
+      } else {
+        // Price excludes VAT: VAT is added on top of base amount
+        lineVatAmount = vatRate > 0 ? Number((base * (vatRate / 100)).toFixed(2)) : 0;
+        lineTotalPrice = Number((base + lineVatAmount).toFixed(2));
+      }
+
+      const [sItem] = await db
+        .insert(saleItems)
+        .values({
+          saleId: createdSale.id,
+          itemId: item.itemId ? Number(item.itemId) : null,
+          barcode: item.barcode || null,
+          name: item.name || "নামহীন পণ্য",
+          categoryName: item.categoryName || item.category?.name || null,
+          brandName: item.brandName || item.brand?.name || null,
+          sizeName: item.sizeName || item.size?.name || null,
+          colorName: item.colorName || item.color?.name || null,
+          quantity: qty,
+          unitCost: String(unitCost.toFixed(2)),
+          unitPrice: String(unitPrice.toFixed(2)),
+          vatRate: String(vatRate),
+          vatAmount: String(lineVatAmount.toFixed(2)),
+          discountAmount: String(lineDiscount.toFixed(2)),
+          totalPrice: String(lineTotalPrice.toFixed(2))
+        })
+        .returning();
+
+      createdSaleItems.push(sItem);
+
+      // Deduct stock quantity in items table only if not draft
+      if (!isDraft && item.itemId) {
+        await db.execute(sql`
+          UPDATE "items"
+          SET "stock_quantity" = GREATEST(0, "stock_quantity" - ${qty}),
+              "updated_at" = now()
+          WHERE "id" = ${Number(item.itemId)} AND "user_id" = ${userId}
+        `);
+      }
+    }
+
+    return c.json(
+      {
+        message: isDraft ? "বিক্রয় চালান ড্রাফট হিসেবে সংরক্ষিত হয়েছে" : "পণ্য বিক্রয় সফলভাবে সম্পন্ন হয়েছে",
+        data: {
+          ...createdSale,
+          items: createdSaleItems
+        }
+      },
+      HttpStatusCodes.CREATED
+    );
+  } catch (error) {
+    console.error("Create sale error:", error);
+    return c.json({ message: "বিক্রয় সম্পন্ন করতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const deleteSale: Handler = async (c: any) => {
+  await ensureInventoryTables();
+  const userId = getUserId(c);
+  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+
+  const id = Number(c.req.param("id"));
+  if (!id) return c.json({ message: "আইডি পাওয়া যায়নি" }, HttpStatusCodes.BAD_REQUEST);
+
+  try {
+    const sale = await db.query.sales.findFirst({
+      where: and(eq(sales.id, id), eq(sales.userId, userId)),
+      with: { items: true }
+    });
+
+    if (!sale) {
+      return c.json({ message: "বিক্রয় রেকর্ড পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    // Restore stock quantities only if not draft
+    if (sale.status !== "draft" && Array.isArray(sale.items)) {
+      for (const item of sale.items) {
+        if (item.itemId) {
+          await db.execute(sql`
+            UPDATE "items"
+            SET "stock_quantity" = "stock_quantity" + ${item.quantity},
+                "updated_at" = now()
+            WHERE "id" = ${item.itemId} AND "user_id" = ${userId}
+          `);
+        }
+      }
+    }
+
+    await db.delete(sales).where(eq(sales.id, id));
+
+    return c.json({ message: "বিক্রয় চালান সফলভাবে মুছে ফেলা হয়েছে", data: { id } }, HttpStatusCodes.OK);
+  } catch (error) {
+    console.error("Delete sale error:", error);
+    return c.json({ message: "বিক্রয় রেকর্ড মুছতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
   }
 };
 

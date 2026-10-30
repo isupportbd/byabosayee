@@ -10,7 +10,7 @@ import { redisConfig } from "./redis.js";
  */
 export const sessionConfig = {
   cookieName: `${cookieConfig.name}_session`,
-  ttlSeconds: 7200,
+  ttlSeconds: 86400, // ২৪ ঘন্টা (86,400 সেকেন্ড)
   keyPrefix: `${redisConfig.prefix}:session`
 };
 

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { integer, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { users } from "@/modules/auth/database/models/user.js";
 
 export const companys = pgTable("companys", {
@@ -26,6 +26,8 @@ export const companySettings = pgTable("company_settings", {
   invoiceTerms: text("invoice_terms"),
   paymentInfo: text("payment_info"),
   logo: text("logo"),
+  businessType: varchar("business_type", { length: 50 }).default("proprietorship"),
+  shareholders: jsonb("shareholders"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });

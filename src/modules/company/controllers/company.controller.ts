@@ -42,6 +42,12 @@ export async function ensureCompanySettingsTable() {
     await db.execute(sql`
       ALTER TABLE "company_settings" ADD COLUMN IF NOT EXISTS "product_prefix" varchar(20) DEFAULT 'PRD-';
     `);
+    await db.execute(sql`
+      ALTER TABLE "company_settings" ADD COLUMN IF NOT EXISTS "business_type" varchar(50) DEFAULT 'proprietorship';
+    `);
+    await db.execute(sql`
+      ALTER TABLE "company_settings" ADD COLUMN IF NOT EXISTS "shareholders" jsonb;
+    `);
     companySettingsTableEnsured = true;
   } catch (e) {
     console.error("Failed to ensure company_settings table:", e);
@@ -274,6 +280,8 @@ export const getProfile: Handler = async (c: any) => {
       invoiceTerms: settingsRow.invoiceTerms || "",
       paymentInfo: settingsRow.paymentInfo || "",
       logo: settingsRow.logo || "",
+      businessType: (settingsRow as any).businessType || "proprietorship",
+      shareholders: (settingsRow as any).shareholders || [],
       isActive: user.isActive
     }
   }, HttpStatusCodes.OK);
@@ -326,6 +334,8 @@ export const updateProfile: Handler = async (c: any) => {
       invoiceTerms: body.invoiceTerms?.trim() || null,
       paymentInfo: body.paymentInfo?.trim() || null,
       logo: body.logo || null,
+      businessType: body.businessType?.trim() || "proprietorship",
+      shareholders: body.shareholders || [],
       updatedAt: new Date()
     }).where(eq(companySettings.userId, userId)).returning();
     saved = updated;
@@ -345,7 +355,9 @@ export const updateProfile: Handler = async (c: any) => {
       printFormat: safePrintFormat,
       invoiceTerms: body.invoiceTerms?.trim() || null,
       paymentInfo: body.paymentInfo?.trim() || null,
-      logo: body.logo || null
+      logo: body.logo || null,
+      businessType: body.businessType?.trim() || "proprietorship",
+      shareholders: body.shareholders || []
     }).returning();
     saved = inserted;
   }

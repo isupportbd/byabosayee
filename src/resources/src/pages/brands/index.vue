@@ -3,8 +3,42 @@
     <!-- Toast Notification -->
     <Toast ref="toastRef" />
 
-    <!-- Brand Entry / Edit Form (Always directly open on page) -->
+    <!-- Top Action / Navigation Bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-bookmark-star-fill text-secondary fs-4"></i>
+        <div>
+          <h5 class="m-0 fw-bold">ব্র্যান্ড ব্যবস্থাপনা</h5>
+          <span class="text-muted small">
+            {{ activeView === 'form' ? (isEditing ? 'ব্র্যান্ড তথ্য সম্পাদন ফরম' : 'নতুন ব্র্যান্ড তৈরি ফরম') : 'সকল নিবন্ধিত ব্র্যান্ডের তালিকা' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button
+          v-if="activeView === 'list'"
+          type="button"
+          class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 shadow-sm"
+          @click="openNewBrandForm">
+          <i class="bi bi-plus-circle"></i>
+          <span>নতুন ব্র্যান্ড যোগ করুন</span>
+        </button>
+
+        <button
+          v-if="activeView === 'form'"
+          type="button"
+          class="btn btn-sm btn-primary text-white d-inline-flex align-items-center gap-1.5 shadow-sm px-3"
+          @click="switchView('list')">
+          <i class="bi bi-card-list"></i>
+          <span>ব্র্যান্ড তালিকা</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Brand Entry / Edit Form -->
     <div
+      v-show="activeView === 'form'"
       class="card border shadow-sm mb-4 brand-form-card"
       :class="{ 'brand-form-edit-mode': isEditing }">
       <div class="card-header bg-transparent border-bottom py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -14,11 +48,20 @@
           <i :class="isEditing ? 'bi bi-pencil-square' : 'bi bi-bookmark-plus-fill'"></i>
           <span>{{ isEditing ? 'ব্রান্ডের তথ্য সম্পাদন' : 'নতুন ব্রান্ড' }}</span>
         </h6>
-        <span
-          v-if="isEditing"
-          class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2 small">
-          <i class="bi bi-pencil-fill me-1"></i>সম্পাদন মোড
-        </span>
+        <div class="d-flex align-items-center gap-2">
+          <span
+            v-if="isEditing"
+            class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2 small">
+            <i class="bi bi-pencil-fill me-1"></i>সম্পাদন মোড
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-3 shadow-sm fw-medium"
+            @click="switchView('list')">
+            <i class="bi bi-card-list"></i>
+            <span>ব্র্যান্ড তালিকা</span>
+          </button>
+        </div>
       </div>
 
       <div class="card-body">
@@ -109,7 +152,7 @@
     </div>
 
     <!-- Brand List Section -->
-    <div class="card border shadow-sm">
+    <div v-show="activeView === 'list'" class="card border shadow-sm">
       <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
         <div class="d-flex align-items-center gap-2">
           <h6 class="m-0 fw-bold">সকল ব্রান্ডের তালিকা</h6>
@@ -279,8 +322,39 @@
 
 <script setup lang="ts">
 import axios from "axios";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import Toast from "@/components/Toast.vue";
+
+const route = useRoute();
+const router = useRouter();
+
+// View State: 'list' (default) vs 'form'
+const activeView = ref<"list" | "form">(route.query.view === "form" ? "form" : "list");
+
+watch(
+  () => route.query.view,
+  (view) => {
+    if (view === "form") {
+      activeView.value = "form";
+    } else {
+      activeView.value = "list";
+    }
+  },
+  { immediate: true }
+);
+
+function switchView(view: "list" | "form") {
+  activeView.value = view;
+  if (router) {
+    router.replace({ query: { ...route.query, view } });
+  }
+}
+
+function openNewBrandForm() {
+  resetForm();
+  switchView("form");
+}
 
 const toastRef = ref<any>(null);
 
@@ -393,6 +467,7 @@ function startEdit(b: any) {
   form.subCategoryId = b.subCategoryId || (b.subCategory ? b.subCategory.id : "");
   form.name = b.name;
 
+  switchView("form");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -400,6 +475,7 @@ function cancelEdit() {
   isEditing.value = false;
   editingBrand.value = null;
   resetForm();
+  switchView("list");
 }
 
 // Fetch Categories & Subcategories
@@ -527,6 +603,7 @@ async function submitBrandForm() {
       showToast(res.data?.message || "ব্রান্ড সফলভাবে তৈরি করা হয়েছে", "success");
       resetForm();
       await fetchBrands();
+      switchView("list");
     }
   } catch (err: any) {
     showToast(err.response?.data?.message || "সংরক্ষণ করতে সমস্যা হয়েছে", "danger");

@@ -3,8 +3,42 @@
     <!-- Toast Notification -->
     <Toast ref="toastRef" />
 
-    <!-- Vendor Entry / Edit Form (Always directly open on page) -->
+    <!-- Top Action / Navigation Bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-truck text-danger fs-4"></i>
+        <div>
+          <h5 class="m-0 fw-bold">বিক্রেতা ও পার্টনার ব্যবস্থাপনা</h5>
+          <span class="text-muted small">
+            {{ activeView === 'form' ? (isEditing ? 'বিক্রেতার তথ্য সম্পাদন ফরম' : 'নতুন বিক্রেতা / সাপ্লায়ার এন্ট্রি ফরম') : 'সকল বিক্রেতা ও সাপ্লায়ার তালিকা' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button
+          v-if="activeView === 'list'"
+          type="button"
+          class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 shadow-sm"
+          @click="openNewVendorForm">
+          <i class="bi bi-plus-circle"></i>
+          <span>নতুন বিক্রেতা যোগ করুন</span>
+        </button>
+
+        <button
+          v-if="activeView === 'form'"
+          type="button"
+          class="btn btn-sm btn-primary text-white d-inline-flex align-items-center gap-1.5 shadow-sm px-3"
+          @click="switchView('list')">
+          <i class="bi bi-card-list"></i>
+          <span>বিক্রেতা তালিকা</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Vendor Entry / Edit Form -->
     <div
+      v-show="activeView === 'form'"
       class="card border shadow-sm mb-4 vendor-form-card"
       :class="{ 'vendor-form-edit-mode': isEditing }">
       <div class="card-header bg-transparent border-bottom py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -14,11 +48,20 @@
           <i :class="isEditing ? 'bi bi-pencil-square' : 'bi bi-person-plus-fill'"></i>
           <span>{{ isEditing ? 'বিক্রেতার তথ্য সম্পাদন' : 'নতুন বিক্রেতা' }}</span>
         </h6>
-        <span
-          v-if="isEditing"
-          class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2 small">
-          <i class="bi bi-lock-fill me-1"></i>প্রতিষ্ঠানের নাম অপরিবর্তনীয়
-        </span>
+        <div class="d-flex align-items-center gap-2">
+          <span
+            v-if="isEditing"
+            class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2 small">
+            <i class="bi bi-lock-fill me-1"></i>প্রতিষ্ঠানের নাম অপরিবর্তনীয়
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-3 shadow-sm fw-medium"
+            @click="switchView('list')">
+            <i class="bi bi-card-list"></i>
+            <span>বিক্রেতা তালিকা</span>
+          </button>
+        </div>
       </div>
 
       <div class="card-body">
@@ -249,7 +292,7 @@
     </div>
 
     <!-- Vendor List Section -->
-    <div class="card border shadow-sm">
+    <div v-show="activeView === 'list'" class="card border shadow-sm">
       <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
         <div class="d-flex align-items-center gap-2">
           <h6 class="m-0 fw-bold">সকল বিক্রেতার তালিকা</h6>
@@ -518,8 +561,39 @@
 
 <script setup lang="ts">
 import axios from "axios";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import Toast from "@/components/Toast.vue";
+
+const route = useRoute();
+const router = useRouter();
+
+// View State: 'list' (default) vs 'form'
+const activeView = ref<"list" | "form">(route.query.view === "form" ? "form" : "list");
+
+watch(
+  () => route.query.view,
+  (view) => {
+    if (view === "form") {
+      activeView.value = "form";
+    } else {
+      activeView.value = "list";
+    }
+  },
+  { immediate: true }
+);
+
+function switchView(view: "list" | "form") {
+  activeView.value = view;
+  if (router) {
+    router.replace({ query: { ...route.query, view } });
+  }
+}
+
+function openNewVendorForm() {
+  resetForm();
+  switchView("form");
+}
 
 const toastRef = ref<any>(null);
 
@@ -706,6 +780,7 @@ function startEdit(v: any) {
   ownerMobileTouched.value = false;
   managerMobileTouched.value = false;
 
+  switchView("form");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -713,6 +788,7 @@ function cancelEdit() {
   isEditing.value = false;
   editingVendor.value = null;
   resetForm();
+  switchView("list");
 }
 
 async function fetchSuppliers() {
@@ -916,6 +992,7 @@ async function submitVendorForm() {
         await fetchManufacturers();
       }
       resetForm();
+      switchView("list");
     }
   } catch (err: any) {
     showToast(err.response?.data?.message || "কার্যক্রম সম্পন্ন করতে ব্যর্থ হয়েছে", "danger");

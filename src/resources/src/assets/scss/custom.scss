@@ -298,36 +298,154 @@ $sidebar-width: 16.25rem;
     --bs-table-active-color: #{map.get($theme, text-color)};
   }
 
-  // Dark mode table headers & badges override
+  // Dark mode comprehensive framework rules
   @if $theme-name == dark {
-    .table-light,
-    .table .table-light,
-    .table thead,
-    .table thead th,
-    .table thead.table-light th,
-    .table thead.table-light tr {
-      --bs-table-bg: #{map.get($theme, bg-white)} !important;
-      --bs-table-color: #{map.get($theme, text-color)} !important;
-      background-color: #{map.get($theme, bg-white)} !important;
-      color: #{map.get($theme, text-color)} !important;
-      border-color: #{map.get($theme, border-custom)} !important;
+    // 1. Text overrides
+    .text-dark {
+      color: map.get($theme, text-color) !important;
     }
 
-    .table thead.table-light .text-muted,
-    .table thead .text-muted {
+    .text-muted {
+      color: map.get($theme, gray-500) !important;
+    }
+
+    .text-secondary {
       color: map.get($theme, secondary) !important;
     }
 
+    // 2. Background overrides
+    .bg-light,
+    .bg-body-tertiary,
+    .bg-body-secondary {
+      background-color: map.get($theme, gray-200) !important;
+      color: map.get($theme, text-color) !important;
+    }
+
+    .bg-white {
+      background-color: map.get($theme, bg-white) !important;
+      color: map.get($theme, text-color) !important;
+    }
+
+    // 3. Borders
+    .border,
+    .border-top,
+    .border-bottom,
+    .border-start,
+    .border-end {
+      border-color: map.get($theme, border-custom) !important;
+    }
+
+    // 4. Cards
+    .card {
+      background-color: map.get($theme, bg-white) !important;
+      border-color: map.get($theme, border-custom) !important;
+      color: map.get($theme, text-color) !important;
+
+      .card-header,
+      .card-footer {
+        background-color: transparent !important;
+        border-color: map.get($theme, border-custom) !important;
+        color: map.get($theme, text-color) !important;
+      }
+    }
+
+    // 5. Modals
+    .modal-content {
+      background-color: map.get($theme, bg-white) !important;
+      border-color: map.get($theme, border-custom) !important;
+      color: map.get($theme, text-color) !important;
+
+      .modal-header,
+      .modal-footer {
+        border-color: map.get($theme, border-custom) !important;
+      }
+    }
+
+    // 6. Form inputs & selects
+    .form-control,
+    .form-select {
+      background-color: map.get($theme, input-bg) !important;
+      border-color: map.get($theme, border-custom) !important;
+      color: map.get($theme, text-color) !important;
+
+      &:focus {
+        background-color: map.get($theme, input-bg) !important;
+        border-color: map.get($theme, primary) !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 0 0.15rem rgba(59, 142, 237, 0.25) !important;
+      }
+
+      &::placeholder {
+        color: map.get($theme, gray-500) !important;
+        opacity: 0.8 !important;
+      }
+
+      option {
+        background-color: map.get($theme, bg-white) !important;
+        color: map.get($theme, text-color) !important;
+      }
+
+      &:disabled,
+      &[readonly],
+      &.frozen-input {
+        background-color: map.get($theme, gray-200) !important;
+        color: map.get($theme, gray-500) !important;
+        border-color: map.get($theme, border-custom) !important;
+        cursor: not-allowed !important;
+      }
+    }
+
+    .input-group-text {
+      background-color: map.get($theme, input-bg) !important;
+      border-color: map.get($theme, border-custom) !important;
+      color: map.get($theme, text-color) !important;
+    }
+
+    // 7. Table styles
+    .table {
+      --bs-table-bg: transparent;
+      --bs-table-color: #{map.get($theme, text-color)};
+      --bs-table-border-color: #{map.get($theme, border-custom)};
+      color: map.get($theme, text-color) !important;
+
+      > :not(caption) > * > * {
+        background-color: transparent !important;
+        border-bottom-color: map.get($theme, border-custom) !important;
+        color: map.get($theme, text-color) !important;
+      }
+
+      thead,
+      thead th,
+      &.table thead th,
+      .table-light,
+      thead.table-light th,
+      thead.table-light tr {
+        background-color: #161618 !important;
+        color: #a6a6a6 !important;
+        border-bottom-color: map.get($theme, border-custom) !important;
+      }
+
+      thead .text-muted,
+      thead.table-light .text-muted {
+        color: map.get($theme, secondary) !important;
+      }
+
+      &.table-hover > tbody > tr:hover > * {
+        background-color: rgba(255, 255, 255, 0.035) !important;
+      }
+    }
+
+    // 8. Badges
     .badge.bg-light {
       background-color: map.get($theme, gray-200) !important;
       color: map.get($theme, text-color) !important;
       border-color: map.get($theme, border-custom) !important;
     }
 
-    .bg-body-tertiary,
-    .bg-body-secondary {
-      background-color: map.get($theme, bg-white) !important;
-      color: map.get($theme, text-color) !important;
+    .badge.bg-secondary-subtle {
+      background-color: map.get($theme, gray-200) !important;
+      color: map.get($theme, secondary) !important;
+      border-color: map.get($theme, border-custom) !important;
     }
 
     .bg-primary-subtle {
@@ -348,6 +466,73 @@ $sidebar-width: 16.25rem;
     .bg-info-subtle {
       background-color: rgba(13, 202, 240, 0.18) !important;
       color: #6edff6 !important;
+    }
+
+    // 9. Dropdowns & Menus
+    .dropdown-menu {
+      background-color: map.get($theme, bg-white) !important;
+      border-color: map.get($theme, border-custom) !important;
+      color: map.get($theme, text-color) !important;
+
+      .dropdown-item {
+        color: map.get($theme, text-color) !important;
+
+        &:hover,
+        &:focus {
+          background-color: map.get($theme, gray-200) !important;
+          color: #ffffff !important;
+        }
+      }
+
+      .dropdown-divider {
+        border-color: map.get($theme, border-custom) !important;
+      }
+    }
+
+    // 10. List groups
+    .list-group-item {
+      background-color: map.get($theme, bg-white) !important;
+      border-color: map.get($theme, border-custom) !important;
+      color: map.get($theme, text-color) !important;
+    }
+
+    // 11. Nav tabs
+    .nav-tabs {
+      border-color: map.get($theme, border-custom) !important;
+
+      .nav-link {
+        color: map.get($theme, gray-500) !important;
+
+        &:hover {
+          border-color: map.get($theme, border-custom) !important;
+        }
+
+        &.active {
+          background-color: map.get($theme, bg-white) !important;
+          color: map.get($theme, primary) !important;
+          border-color: map.get($theme, border-custom) map.get($theme, border-custom) transparent !important;
+        }
+      }
+    }
+
+    // 12. Pagination
+    .pagination {
+      .page-link {
+        background-color: map.get($theme, bg-white) !important;
+        border-color: map.get($theme, border-custom) !important;
+        color: map.get($theme, text-color) !important;
+      }
+
+      .page-item.disabled .page-link {
+        background-color: map.get($theme, gray-200) !important;
+        color: map.get($theme, gray-500) !important;
+      }
+
+      .page-item.active .page-link {
+        background-color: map.get($theme, primary) !important;
+        border-color: map.get($theme, primary) !important;
+        color: #ffffff !important;
+      }
     }
   }
 
@@ -1242,6 +1427,34 @@ $sidebar-width: 16.25rem;
   75% {
     background-color: var(--app-skeleton-hi);
   }
+}
+
+/*************************************************
+  REMOVE ARROW BUTTONS INSIDE INPUT/SELECT FIELDS
+*************************************************/
+select,
+select.form-select,
+.form-select {
+  background-image: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  padding-right: 0.5rem !important;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+.vs__open-indicator {
+  display: none !important;
 }
 
 // this is section for print media

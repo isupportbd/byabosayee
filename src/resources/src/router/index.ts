@@ -45,10 +45,40 @@ export const routes = [
         meta: { requiresAuth: true, title: "পণ্য" }
       },
       {
+        path: "/stock",
+        name: "stock",
+        component: () => import("@/pages/stock/index.vue"),
+        meta: { requiresAuth: true, title: "স্টক বিবরণ" }
+      },
+      {
         path: "/purchases",
         name: "purchases",
         component: () => import("@/pages/purchases/index.vue"),
         meta: { requiresAuth: true, title: "ক্রয় চালান" }
+      },
+      {
+        path: "/pricing",
+        name: "pricing",
+        component: () => import("@/pages/pricing/index.vue"),
+        meta: { requiresAuth: true, title: "পণ্যের মূল্য নির্ধারণ" }
+      },
+      {
+        path: "/barcodes",
+        name: "barcodes",
+        component: () => import("@/pages/barcodes/index.vue"),
+        meta: { requiresAuth: true, title: "বারকোড জেনারেশন ও প্রিন্ট" }
+      },
+      {
+        path: "/sales",
+        name: "sales",
+        component: () => import("@/pages/sales/index.vue"),
+        meta: { requiresAuth: true, title: "পণ্য বিক্রয় ও পিওএস" }
+      },
+      {
+        path: "/sales-list",
+        name: "sales-list",
+        component: () => import("@/pages/sales/index.vue"),
+        meta: { requiresAuth: true, title: "বিক্রয় চালানের তালিকা" }
       },
       {
         path: "/settings",

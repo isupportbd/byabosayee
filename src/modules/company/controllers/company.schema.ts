@@ -53,7 +53,9 @@ export const UpdateCompanyProfileSchema = z.object({
   printFormat: z.string().max(20).optional().nullable(),
   invoiceTerms: z.string().optional().nullable(),
   paymentInfo: z.string().optional().nullable(),
-  logo: z.string().optional().nullable()
+  logo: z.string().optional().nullable(),
+  businessType: z.string().max(50).optional().nullable(),
+  shareholders: z.any().optional().nullable()
 });
 
 export const ChangeCompanyPasswordSchema = z.object({
@@ -83,6 +85,8 @@ export const CompanyProfileItemSchema = z.object({
   invoiceTerms: z.string().nullable().optional(),
   paymentInfo: z.string().nullable().optional(),
   logo: z.string().nullable().optional(),
+  businessType: z.string().nullable().optional(),
+  shareholders: z.any().optional().nullable(),
   isActive: z.boolean().optional()
 });
 

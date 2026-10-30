@@ -148,7 +148,7 @@
                     </div>
                   </div>
                   <router-link
-                    to="/purchases"
+                    to="/purchases?view=form"
                     class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +নতুন ক্রয়
                   </router-link>
@@ -164,7 +164,7 @@
                     </p>
                   </div>
                   <router-link
-                    to="/purchases"
+                    to="/purchases?view=list"
                     class="view-icon-btn text-primary flex-shrink-0 text-decoration-none"
                     title="ক্রয় তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
@@ -187,12 +187,11 @@
                       <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">মূল্য নির্ধারণ</h5>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-purple rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0"
-                    @click="openPricingModal">
+                  <router-link
+                    to="/pricing"
+                    class="btn btn-sm btn-outline-purple rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +মূল্য নির্ধারণ
-                  </button>
+                  </router-link>
                 </div>
                 <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
                   <div class="min-w-0">
@@ -204,13 +203,12 @@
                       <i class="bi bi-cash-stack text-purple me-1"></i>ক্রয়মূল্যের ওপর মার্জিন সেট
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    class="view-icon-btn text-purple flex-shrink-0"
-                    title="মূল্য নির্ধারণ তালিকা দেখুন"
-                    @click="openPricingModal">
+                  <router-link
+                    to="/pricing"
+                    class="view-icon-btn text-purple flex-shrink-0 text-decoration-none"
+                    title="মূল্য নির্ধারণ তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
-                  </button>
+                  </router-link>
                 </div>
               </div>
             </div>
@@ -229,12 +227,11 @@
                       <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">বিক্রয়</h5>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-success rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0"
-                    @click="showToast('বিক্রয় ও পিওএস মডিউল শীঘ্রই আসছে', 'success')">
+                  <router-link
+                    to="/sales"
+                    class="btn btn-sm btn-outline-success rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +নতুন বিক্রয়
-                  </button>
+                  </router-link>
                 </div>
                 <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
                   <div class="min-w-0">
@@ -246,13 +243,12 @@
                       <i class="bi bi-receipt-cutoff text-success me-1"></i>{{ toBengaliNumber(inventoryStats.sales.count) }} টি বিক্রয় চালান
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    class="view-icon-btn text-success flex-shrink-0"
-                    title="বিক্রয় তালিকা দেখুন"
-                    @click="showToast('বিক্রয় মেমো তালিকা শীঘ্রই আসছে', 'success')">
+                  <router-link
+                    to="/sales-list"
+                    class="view-icon-btn text-success flex-shrink-0 text-decoration-none"
+                    title="বিক্রয় তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
-                  </button>
+                  </router-link>
                 </div>
               </div>
             </div>
@@ -271,12 +267,11 @@
                       <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">মজুদ / স্টক</h5>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-info rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0"
-                    @click="openItemModal">
-                    +স্টক সমন্বয়
-                  </button>
+                  <router-link
+                    to="/stock"
+                    class="btn btn-sm btn-outline-info rounded-pill px-2.5 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
+                    বিস্তারিত
+                  </router-link>
                 </div>
                 <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
                   <div class="min-w-0">
@@ -288,13 +283,7 @@
                       <i class="bi bi-currency-dollar text-info me-1"></i>মূল্য: {{ toBengaliNumber(inventoryStats.items.stockValue) }} ৳
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    class="view-icon-btn text-info flex-shrink-0"
-                    title="স্টক বিবরণ দেখুন"
-                    @click="openItemListModal">
-                    <i class="bi bi-eye"></i>
-                  </button>
+                  <router-link to="/stock" class="view-icon-btn text-info flex-shrink-0 text-decoration-none" title="স্টক বিবরণ দেখুন"><i class="bi bi-eye"></i></router-link>
                 </div>
               </div>
             </div>
@@ -317,7 +306,7 @@
                     </div>
                   </div>
                   <router-link
-                    to="/items"
+                    to="/items?view=form"
                     class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +নতুন পণ্য
                   </router-link>
@@ -333,7 +322,7 @@
                     </p>
                   </div>
                   <router-link
-                    to="/items"
+                    to="/items?view=list"
                     class="view-icon-btn text-warning flex-shrink-0 text-decoration-none"
                     title="পণ্য তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
@@ -357,7 +346,7 @@
                     </div>
                   </div>
                   <router-link
-                    to="/brands"
+                    to="/brands?view=form"
                     class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +নতুন ব্রান্ড
                   </router-link>
@@ -373,7 +362,7 @@
                     </p>
                   </div>
                   <router-link
-                    to="/brands"
+                    to="/brands?view=list"
                     class="view-icon-btn text-secondary flex-shrink-0 text-decoration-none d-inline-flex align-items-center justify-content-center"
                     title="ব্রান্ড তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
@@ -439,7 +428,7 @@
                     </div>
                   </div>
                   <router-link
-                    to="/customers"
+                    to="/customers?view=form"
                     class="btn btn-sm btn-outline-teal rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +কাস্টমার
                   </router-link>
@@ -455,7 +444,7 @@
                     </p>
                   </div>
                   <router-link
-                    to="/customers"
+                    to="/customers?view=list"
                     class="view-icon-btn text-teal flex-shrink-0 text-decoration-none d-inline-flex align-items-center justify-content-center"
                     title="কাস্টমার তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
@@ -482,7 +471,7 @@
                     </div>
                   </div>
                   <router-link
-                    to="/vendors"
+                    to="/vendors?view=form"
                     class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +বিক্রেতা
                   </router-link>
@@ -498,7 +487,7 @@
                     </p>
                   </div>
                   <router-link
-                    to="/vendors"
+                    to="/vendors?view=list"
                     class="view-icon-btn text-danger flex-shrink-0 text-decoration-none d-inline-flex align-items-center justify-content-center"
                     title="বিক্রেতা তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
@@ -746,199 +735,6 @@
                 <span v-if="submitting" class="spinner-border spinner-border-sm" role="status"></span>
                 <i v-else class="bi bi-check-circle"></i>
                 <span>সংরক্ষণ করুন</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- ৩. নতুন আইটেম / পণ্য তৈরির মডাল (ক্যাটাগরি, সাব-ক্যাটাগরি, ধরন, ব্রান্ড, সাপ্লায়ার, প্রস্তুতকারক, সাইজ, রং সহ) -->
-    <div
-      v-if="showItemModal"
-      class="modal fade show d-block modal-backdrop-custom"
-      tabindex="-1"
-      style="z-index: 1060;"
-      @click.self="showItemModal = false">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content shadow border-0">
-          <div class="modal-header border-bottom py-2.5">
-            <h6 class="modal-title fw-bold m-0 d-flex align-items-center gap-2">
-              <i class="bi bi-tag-fill text-warning"></i>
-              <span>নতুন পণ্য / আইটেম তৈরি করুন</span>
-            </h6>
-            <button type="button" class="btn-close" aria-label="Close" @click="showItemModal = false"></button>
-          </div>
-          <form @submit.prevent="submitItemForm">
-            <div class="modal-body p-3">
-              <div class="row g-2.5">
-                <!-- আইটেমের নাম -->
-                <div class="col-12 col-md-8">
-                  <label class="form-label fw-semibold small mb-1">পণ্যের নাম <span class="text-danger">*</span></label>
-                  <input
-                    v-model.trim="itemForm.name"
-                    type="text"
-                    class="form-control form-control-sm"
-                    placeholder="যেমন: মেনস ক্যাজুয়াল কটন শার্ট"
-                    required />
-                </div>
-
-                <!-- আইটেম কোড / বারকোড -->
-                <div class="col-12 col-md-4">
-                  <label class="form-label fw-semibold small mb-1">বারকোড / আইটেম কোড</label>
-                  <input
-                    v-model.trim="itemForm.code"
-                    type="text"
-                    class="form-control form-control-sm font-monospace"
-                    placeholder="অটো তৈরি হবে (বা লিখুন)" />
-                </div>
-
-                <!-- ক্যাটাগরি -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">ক্যাটাগরি</label>
-                  <select
-                    v-model="itemForm.categoryId"
-                    class="form-select form-select-sm"
-                    @change="onCategoryChange">
-                    <option :value="null">-- ক্যাটাগরি নির্বাচন করুন --</option>
-                    <option v-for="cat in masterCatalog.categories" :key="cat.id" :value="cat.id">
-                      {{ cat.name }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- সাব-ক্যাটাগরি -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">সাব-ক্যাটাগরি</label>
-                  <select
-                    v-model="itemForm.subCategoryId"
-                    class="form-select form-select-sm"
-                    :disabled="!availableSubCategories.length"
-                    @change="onSubCategoryChange">
-                    <option :value="null">-- সাব-ক্যাটাগরি --</option>
-                    <option v-for="sub in availableSubCategories" :key="sub.id" :value="sub.id">
-                      {{ sub.name }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- ধরন (Product Type) -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">পণ্যের ধরন (Style/Type)</label>
-                  <select
-                    v-model="itemForm.productTypeId"
-                    class="form-select form-select-sm"
-                    :disabled="!availableProductTypes.length">
-                    <option :value="null">-- ধরন নির্বাচন --</option>
-                    <option v-for="pt in availableProductTypes" :key="pt.id" :value="pt.id">
-                      {{ pt.name }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- ব্রান্ড ড্রপডাউন -->
-                <div class="col-12 col-sm-4">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label fw-semibold small mb-0">ব্রান্ড নেম</label>
-                    <button type="button" class="btn btn-link p-0 text-primary small text-decoration-none" style="font-size: 11px;" @click="openBrandModal">+নতুন ব্রান্ড</button>
-                  </div>
-                  <select v-model="itemForm.brandId" class="form-select form-select-sm">
-                    <option :value="null">-- ব্রান্ড বাছুন --</option>
-                    <option v-for="b in brandsList" :key="b.id" :value="b.id">{{ b.name }}</option>
-                  </select>
-                </div>
-
-                <!-- সাপ্লায়ার ড্রপডাউন -->
-                <div class="col-12 col-sm-4">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label fw-semibold small mb-0">সাপ্লায়ার</label>
-                    <button type="button" class="btn btn-link p-0 text-danger small text-decoration-none" style="font-size: 11px;" @click="openSupplierModal">+নতুন সাপ্লায়ার</button>
-                  </div>
-                  <select v-model="itemForm.supplierId" class="form-select form-select-sm">
-                    <option :value="null">-- সাপ্লায়ার বাছুন --</option>
-                    <option v-for="s in suppliersList" :key="s.id" :value="s.id">{{ s.name }}</option>
-                  </select>
-                </div>
-
-                <!-- প্রস্তুতকারক ড্রপডাউন -->
-                <div class="col-12 col-sm-4">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label fw-semibold small mb-0">প্রস্তুতকারক</label>
-                    <button type="button" class="btn btn-link p-0 text-primary small text-decoration-none" style="font-size: 11px;" @click="openManufacturerModal">+নতুন প্রস্তুতকারক</button>
-                  </div>
-                  <select v-model="itemForm.manufacturerId" class="form-select form-select-sm">
-                    <option :value="null">-- প্রস্তুতকারক বাছুন --</option>
-                    <option v-for="m in manufacturersList" :key="m.id" :value="m.id">{{ m.name }}</option>
-                  </select>
-                </div>
-
-                <!-- রং -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">রং (Color)</label>
-                  <select v-model="itemForm.colorId" class="form-select form-select-sm">
-                    <option :value="null">-- রং নির্বাচন --</option>
-                    <option v-for="col in masterCatalog.colors" :key="col.id" :value="col.id">{{ col.name }}</option>
-                  </select>
-                </div>
-
-                <!-- সাইজ -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">সাইজ (Size)</label>
-                  <select v-model="itemForm.sizeId" class="form-select form-select-sm">
-                    <option :value="null">-- সাইজ নির্বাচন --</option>
-                    <option v-for="sz in masterCatalog.sizes" :key="sz.id" :value="sz.id">{{ sz.name }}</option>
-                  </select>
-                </div>
-
-                <!-- পরিমাপের একক -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">একক (Unit)</label>
-                  <select v-model="itemForm.unitId" class="form-select form-select-sm">
-                    <option :value="null">-- একক নির্বাচন --</option>
-                    <option v-for="u in masterCatalog.units" :key="u.id" :value="u.id">{{ u.name }} ({{ u.shortName }})</option>
-                  </select>
-                </div>
-
-                <!-- ক্রয়মূল্য -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">ক্রয়মূল্য (Purchase Price)</label>
-                  <div class="input-group input-group-sm">
-                    <input v-model.number="itemForm.purchasePrice" type="number" min="0" step="any" class="form-control" placeholder="0" />
-                    <span class="input-group-text">৳</span>
-                  </div>
-                </div>
-
-                <!-- বিক্রয়মূল্য -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">বিক্রয়মূল্য (Selling Price)</label>
-                  <div class="input-group input-group-sm">
-                    <input v-model.number="itemForm.sellingPrice" type="number" min="0" step="any" class="form-control" placeholder="0" />
-                    <span class="input-group-text">৳</span>
-                  </div>
-                </div>
-
-                <!-- প্রারম্ভিক স্টক -->
-                <div class="col-12 col-sm-4">
-                  <label class="form-label fw-semibold small mb-1">প্রারম্ভিক স্টক (Stock Qty)</label>
-                  <input v-model.number="itemForm.stockQuantity" type="number" min="0" class="form-control form-control-sm" placeholder="0" />
-                </div>
-
-                <!-- ছবি ও বিবরণ -->
-                <div class="col-12">
-                  <label class="form-label fw-semibold small mb-1">পণ্যের ছবি (URL বা পাথ)</label>
-                  <input v-model.trim="itemForm.imageUrl" type="text" class="form-control form-control-sm" placeholder="ছবির লিংক বা পাথ দিন" />
-                </div>
-              </div>
-            </div>
-
-            <div class="modal-footer border-top py-2">
-              <button type="button" class="btn btn-sm btn-secondary" :disabled="itemSubmitting" @click="showItemModal = false">
-                বাতিল
-              </button>
-              <button type="submit" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5" :disabled="itemSubmitting">
-                <span v-if="itemSubmitting" class="spinner-border spinner-border-sm" role="status"></span>
-                <i v-else class="bi bi-check-circle"></i>
-                <span>পণ্য সংরক্ষণ করুন</span>
               </button>
             </div>
           </form>
@@ -1322,141 +1118,6 @@
       </div>
     </div>
 
-    <!-- Modal: মূল্য নির্ধারণ (Selling Price & Profit Margin) -->
-    <div
-      v-if="showPricingModal"
-      class="modal fade show d-block modal-backdrop-custom"
-      tabindex="-1"
-      style="z-index: 1060;"
-      @click.self="showPricingModal = false">
-      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow border-0">
-          <div class="modal-header border-bottom py-2 bg-light">
-            <h6 class="modal-title fw-bold m-0 text-purple d-flex align-items-center gap-2">
-              <i class="bi bi-tags-fill fs-5"></i>
-              পণ্যের মূল্য নির্ধারণ (ক্রয়মূল্যের ওপর বিক্রয়মূল্য ও লাভ মার্জিন)
-            </h6>
-            <button type="button" class="btn-close" aria-label="Close" @click="showPricingModal = false"></button>
-          </div>
-          <div class="modal-body p-3">
-            <!-- Filter & Bulk Margin Bar -->
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-light p-2.5 rounded border">
-              <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 320px;">
-                <span class="input-group-text bg-white border-end-0 py-1">
-                  <i class="bi bi-search text-muted"></i>
-                </span>
-                <input
-                  v-model="pricingSearch"
-                  type="text"
-                  class="form-control form-control-sm border-start-0"
-                  placeholder="পণ্য বা কোড খুঁজুন..." />
-              </div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="small fw-semibold text-muted text-nowrap">বাল্ক লাভ মার্জিন:</span>
-                <div class="input-group input-group-sm" style="width: 140px;">
-                  <input
-                    v-model.number="pricingMarginPercent"
-                    type="number"
-                    min="1"
-                    placeholder="মার্জিন %"
-                    class="form-control" />
-                  <span class="input-group-text">%</span>
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-purple text-nowrap"
-                  @click="applyBulkMargin">
-                  <i class="bi bi-magic me-1"></i>সকল পণ্যে প্রয়োগ
-                </button>
-              </div>
-            </div>
-
-            <!-- Pricing Table -->
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered align-middle text-center mb-0">
-                <thead class="table-light small">
-                  <tr>
-                    <th style="width: 40px;">#</th>
-                    <th>১৪-ডিজিট বারকোড</th>
-                    <th class="text-start">পণ্যের নাম ও বিবরণ</th>
-                    <th>সাইজ</th>
-                    <th>রং</th>
-                    <th class="text-end">ক্রয়মূল্য (৳)</th>
-                    <th class="text-end" style="width: 150px;">বিক্রয়মূল্য (৳)</th>
-                    <th>লাভ / মার্জিন</th>
-                    <th style="width: 90px;">একশন</th>
-                  </tr>
-                </thead>
-                <tbody class="small">
-                  <tr v-if="!filteredPricingItems.length">
-                    <td colspan="9" class="text-muted py-4">কোনো পণ্য পাওয়া যায়নি।</td>
-                  </tr>
-                  <tr v-for="(it, idx) in filteredPricingItems" :key="it.id">
-                    <td class="text-muted">{{ toBengaliNumber(idx + 1) }}</td>
-                    <td>
-                      <span class="font-monospace fw-bold text-dark bg-light px-2 py-0.5 rounded border small">
-                        {{ it.code || '-' }}
-                      </span>
-                    </td>
-                    <td class="text-start">
-                      <div class="fw-semibold">{{ it.name }}</div>
-                      <small class="text-muted">{{ it.category?.name || '' }} {{ it.subCategory?.name ? `/ ${it.subCategory.name}` : '' }}</small>
-                    </td>
-                    <td><span class="badge bg-light text-dark border">{{ it.size?.name || '-' }}</span></td>
-                    <td>{{ it.color?.name || '-' }}</td>
-                    <td class="text-end text-muted">
-                      ৳ {{ toBengaliNumber(Number(it.purchasePrice || 0).toFixed(2)) }}
-                    </td>
-                    <td>
-                      <div class="input-group input-group-sm">
-                        <span class="input-group-text">৳</span>
-                        <input
-                          v-model.number="it.sellingPrice"
-                          type="number"
-                          min="0"
-                          step="1"
-                          class="form-control text-end fw-bold"
-                          placeholder="0.00" />
-                      </div>
-                    </td>
-                    <td>
-                      <div
-                        v-if="Number(it.sellingPrice || 0) > Number(it.purchasePrice || 0)"
-                        class="text-success fw-semibold small">
-                        +৳ {{ toBengaliNumber((Number(it.sellingPrice || 0) - Number(it.purchasePrice || 0)).toFixed(2)) }}
-                        <span class="badge bg-success-subtle text-success ms-1">
-                          {{ toBengaliNumber(calcMarginPercent(it.purchasePrice, it.sellingPrice)) }}%
-                        </span>
-                      </div>
-                      <div
-                        v-else-if="Number(it.sellingPrice || 0) < Number(it.purchasePrice || 0)"
-                        class="text-danger fw-semibold small">
-                        -৳ {{ toBengaliNumber((Number(it.purchasePrice || 0) - Number(it.sellingPrice || 0)).toFixed(2)) }} (ঘাটতি)
-                      </div>
-                      <span v-else class="text-muted small">সমান</span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-purple py-0.5 px-2 small"
-                        :disabled="pricingSavingId === it.id"
-                        @click="saveItemPrice(it)">
-                        <span v-if="pricingSavingId === it.id" class="spinner-border spinner-border-sm me-1"></span>
-                        <i v-else class="bi bi-check2 me-1"></i>সেভ
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="modal-footer border-top py-2 bg-light">
-            <button type="button" class="btn btn-sm btn-secondary" @click="showPricingModal = false">বন্ধ করুন</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal: বার কোড প্রিন্ট ও জেনারেশন -->
     <div
       v-if="showBarcodeModal"
@@ -1716,10 +1377,13 @@
 import { useHead } from "@vueuse/head";
 import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import Toast from "@/components/Toast.vue";
 import { authUser, hasRole } from "@/composables/useAuth";
 
 useHead({ title: "Dashboard" });
+
+const router = useRouter();
 
 const isSuperAdmin = computed(() => hasRole("super_admin"));
 const isCompanyAdmin = computed(() => hasRole("company_admin"));
@@ -1887,14 +1551,13 @@ function generateBarcodePattern(code: string | null | undefined): number[] {
   return pattern;
 }
 
-async function openPricingModal() {
-  await fetchItems();
-  showPricingModal.value = true;
+function openPricingModal() {
+  router.push("/pricing");
 }
 
 async function openBarcodeModal() {
   await fetchItems();
-  showBarcodeModal.value = true;
+  router.push("/barcodes");
 }
 
 async function saveItemPrice(item: any) {
@@ -2194,29 +1857,7 @@ async function fetchItems() {
 }
 
 // Modal Openers
-function openItemModal() {
-  itemForm.name = "";
-  itemForm.code = "";
-  itemForm.categoryId = null;
-  itemForm.subCategoryId = null;
-  itemForm.productTypeId = null;
-  itemForm.brandId = null;
-  itemForm.supplierId = null;
-  itemForm.manufacturerId = null;
-  itemForm.colorId = null;
-  itemForm.sizeId = null;
-  itemForm.unitId = null;
-  itemForm.purchasePrice = 0;
-  itemForm.sellingPrice = 0;
-  itemForm.stockQuantity = 0;
-  itemForm.imageUrl = "";
 
-  fetchMasterCatalog();
-  fetchBrands();
-  fetchSuppliers();
-  fetchManufacturers();
-  showItemModal.value = true;
-}
 
 function openBrandModal() {
   brandForm.name = "";

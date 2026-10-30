@@ -116,12 +116,16 @@ export const items = pgTable("items", {
   // Pricing & Stock
   purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }).default("0").notNull(),
   sellingPrice: numeric("selling_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  priceEffectiveDate: varchar("price_effective_date", { length: 50 }),
   stockQuantity: integer("stock_quantity").default(0).notNull(),
   alertQuantity: integer("alert_quantity").default(5).notNull(),
   
   // Media & Info
   imageUrl: text("image_url"),
   description: text("description"),
+
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0"),
+  discountType: varchar("discount_type", { length: 20 }).default("percent"),
   
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -139,7 +143,9 @@ export const purchases = pgTable("purchases", {
   challanTypeId: integer("challan_type_id").references(() => challanTypes.id, { onDelete: "set null" }),
   challanNumber: varchar("challan_number", { length: 100 }),
   challanDate: varchar("challan_date", { length: 50 }),
+  vatMode: varchar("vat_mode", { length: 20 }).default("excl").notNull(),
   itemsAmount: numeric("items_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalVatAmount: numeric("total_vat_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   otherExpenses: numeric("other_expenses", { precision: 12, scale: 2 }).default("0").notNull(),
   discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).default("0").notNull(),
@@ -147,6 +153,7 @@ export const purchases = pgTable("purchases", {
   dueAmount: numeric("due_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   paymentMethod: varchar("payment_method", { length: 50 }).default("cash").notNull(),
   status: varchar("status", { length: 50 }).default("completed").notNull(),
+  documentUrl: text("document_url"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
@@ -167,8 +174,14 @@ export const purchaseItems = pgTable("purchase_items", {
   colorId: integer("color_id").references(() => colors.id, { onDelete: "set null" }),
   unitId: integer("unit_id").references(() => units.id, { onDelete: "set null" }),
   quantity: integer("quantity").default(1).notNull(),
+  unitPriceExclVat: numeric("unit_price_excl_vat", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatRate: numeric("vat_rate", { precision: 5, scale: 2 }).default("0").notNull(),
+  vatAmount: numeric("vat_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  unitPriceWithVat: numeric("unit_price_with_vat", { precision: 12, scale: 2 }).default("0").notNull(),
   totalPrice: numeric("total_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  allocatedExpense: numeric("allocated_expense", { precision: 12, scale: 2 }).default("0").notNull(),
   unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).default("0").notNull(),
+  sellingPrice: numeric("selling_price", { precision: 12, scale: 2 }).default("0").notNull(),
   code: varchar("code", { length: 50 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
@@ -181,16 +194,75 @@ export const sales = pgTable("sales", {
   userId: integer("user_id")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   customerName: varchar("customer_name", { length: 255 }),
   customerMobile: varchar("customer_mobile", { length: 50 }),
+  cashierName: varchar("cashier_name", { length: 255 }),
   invoiceNumber: varchar("invoice_number", { length: 100 }).notNull(),
+  saleDate: varchar("sale_date", { length: 50 }),
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }).default("0").notNull(),
+  discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatAmount: numeric("vat_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   paidAmount: numeric("paid_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  changeAmount: numeric("change_amount", { precision: 12, scale: 2 }).default("0").notNull(),
   dueAmount: numeric("due_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }).default("cash").notNull(),
+  transactionId: varchar("transaction_id", { length: 100 }),
+  vatMode: varchar("vat_mode", { length: 20 }).default("inclusive").notNull(),
   status: varchar("status", { length: 50 }).default("completed").notNull(),
+  documentUrl: text("document_url"),
+  notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
+
+// 6.1 Sale Items (বিক্রিত পণ্যের বিবরণ)
+export const saleItems = pgTable("sale_items", {
+  id: serial("id").primaryKey(),
+  saleId: integer("sale_id")
+    .references(() => sales.id, { onDelete: "cascade" })
+    .notNull(),
+  itemId: integer("item_id").references(() => items.id, { onDelete: "set null" }),
+  barcode: varchar("barcode", { length: 50 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  categoryName: varchar("category_name", { length: 100 }),
+  brandName: varchar("brand_name", { length: 100 }),
+  sizeName: varchar("size_name", { length: 50 }),
+  colorName: varchar("color_name", { length: 50 }),
+  quantity: integer("quantity").default(1).notNull(),
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).default("0").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  vatRate: numeric("vat_rate", { precision: 5, scale: 2 }).default("0").notNull(),
+  vatAmount: numeric("vat_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalPrice: numeric("total_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+// 7. Item Pricings (মূল্য নির্ধারণ তালিকা ও ইতিহাস)
+export const itemPricings = pgTable("item_pricings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  itemId: integer("item_id")
+    .references(() => items.id, { onDelete: "cascade" })
+    .notNull(),
+  purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }).default("0").notNull(),
+  sellingPrice: numeric("selling_price", { precision: 12, scale: 2 }).notNull(),
+  effectiveDate: varchar("effective_date", { length: 50 }).notNull(),
+  challanDate: varchar("challan_date", { length: 50 }),
+  vatRate: numeric("vat_rate", { precision: 5, scale: 2 }).default("0"),
+  vatType: varchar("vat_type", { length: 20 }).default("inclusive"),
+  discount: numeric("discount", { precision: 12, scale: 2 }).default("0"),
+  discountType: varchar("discount_type", { length: 20 }).default("percent"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 
 // Relations
 export const brandsRelations = relations(brands, ({ one, many }) => ({
@@ -241,5 +313,21 @@ export const purchaseItemsRelations = relations(purchaseItems, ({ one }) => ({
   size: one(sizes, { fields: [purchaseItems.sizeId], references: [sizes.id] }),
   color: one(colors, { fields: [purchaseItems.colorId], references: [colors.id] }),
   unit: one(units, { fields: [purchaseItems.unitId], references: [units.id] })
+}));
+
+export const itemPricingsRelations = relations(itemPricings, ({ one }) => ({
+  user: one(users, { fields: [itemPricings.userId], references: [users.id] }),
+  item: one(items, { fields: [itemPricings.itemId], references: [items.id] })
+}));
+
+export const salesRelations = relations(sales, ({ one, many }) => ({
+  user: one(users, { fields: [sales.userId], references: [users.id] }),
+  customer: one(customers, { fields: [sales.customerId], references: [customers.id] }),
+  items: many(saleItems)
+}));
+
+export const saleItemsRelations = relations(saleItems, ({ one }) => ({
+  sale: one(sales, { fields: [saleItems.saleId], references: [sales.id] }),
+  item: one(items, { fields: [saleItems.itemId], references: [items.id] })
 }));
 

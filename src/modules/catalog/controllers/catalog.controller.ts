@@ -40,6 +40,14 @@ export async function ensurePaymentMethodsTable() {
         { name: "রকেট (Rocket)", code: "rocket", description: "রকেট মোবাইল ব্যাংকিং লেনদেন", isActive: true },
         { name: "ব্যাংক ট্রান্সফার (Bank)", code: "bank", description: "ব্যাংক অ্যাকাউন্ট ও অনলাইন ট্রান্সফার", isActive: true }
       ]);
+    } else {
+      await db.execute(sql`
+        UPDATE "payment_methods" SET "name" = 'নগদ / ক্যাশ (Cash)' WHERE "code" = 'cash';
+        UPDATE "payment_methods" SET "name" = 'বিকাশ (bKash)' WHERE "code" = 'bkash';
+        UPDATE "payment_methods" SET "name" = 'নগদ (Nagad)' WHERE "code" = 'nagad';
+        UPDATE "payment_methods" SET "name" = 'রকেট (Rocket)' WHERE "code" = 'rocket';
+        UPDATE "payment_methods" SET "name" = 'ব্যাংক ট্রান্সফার (Bank)' WHERE "code" = 'bank';
+      `);
     }
     paymentMethodsTableEnsured = true;
   } catch (e) {

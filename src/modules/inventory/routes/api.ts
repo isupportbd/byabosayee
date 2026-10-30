@@ -23,7 +23,19 @@ import {
   listItems,
   getStats,
   listPurchases,
-  createPurchase
+  createPurchase,
+  updatePurchase,
+  deletePurchase,
+  getMediaConfig,
+  uploadMediaImage,
+  updatePurchaseAttachments,
+  listItemPricings,
+  saveItemPricing,
+  deleteItemPricing,
+  listSales,
+  getSaleById,
+  createSale,
+  deleteSale
 } from "@/modules/inventory/controllers/inventory.controller.js";
 
 const router = createRouter();
@@ -66,5 +78,24 @@ router.delete("/items/:id", deleteItem);
 // Purchases
 router.get("/purchases", listPurchases);
 router.post("/purchases", createPurchase);
+router.put("/purchases/:id", updatePurchase);
+router.delete("/purchases/:id", deletePurchase);
+router.put("/purchases/:id/attachments", updatePurchaseAttachments);
+
+// Media Upload & Config
+router.get("/media-config", getMediaConfig);
+router.post("/upload-image", uploadMediaImage);
+
+// Pricings (মূল্য নির্ধারণ)
+router.get("/pricings", listItemPricings);
+router.post("/pricings", saveItemPricing);
+router.put("/pricings/:id", saveItemPricing);
+router.delete("/pricings/:id", deleteItemPricing);
+
+// Sales (পণ্য বিক্রয় ও পিওএস)
+router.get("/sales", listSales);
+router.get("/sales/:id", getSaleById);
+router.post("/sales", createSale);
+router.delete("/sales/:id", deleteSale);
 
 export default router;

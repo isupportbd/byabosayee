@@ -105,6 +105,16 @@
           <i class="bi bi-fonts"></i>
           <span>বাংলা ফন্ট</span>
         </button>
+
+        <!-- 11. Media / Image Settings Tab -->
+        <button
+          type="button"
+          class="tab-pill-btn d-inline-flex align-items-center gap-2"
+          :class="{ active: activeTab === 'media' }"
+          @click="activeTab = 'media'">
+          <i class="bi bi-images"></i>
+          <span>ছবি ও স্টোরেজ</span>
+        </button>
       </div>
     </div>
 
@@ -953,6 +963,160 @@
             </div>
           </div>
         </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 11: MEDIA & IMAGE SETTINGS (ছবি ও স্টোরেজ) -->
+        <!-- ========================================== -->
+        <div v-if="activeTab === 'media'">
+          <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <span class="fw-bold settings-card-title d-flex align-items-center gap-2">
+                <i class="bi bi-images text-primary fs-5"></i>
+                পণ্য ও চালানের ছবি আপলোড এবং স্টোরেজ নিয়ন্ত্রণ
+              </span>
+              <div class="text-muted small">
+                সুপারএডমিন হিসেবে আপনি নির্ধারণ করতে পারবেন ব্যবহারকারীরা পণ্য ও চালানের ছবি কীভাবে যুক্ত করবেন (সরাসরি ফাইল আপলোড নাকি গুগল ড্রাইভ লিংক)।
+              </div>
+            </div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5">
+              <i class="bi bi-shield-lock-fill me-1"></i>সুপারএডমিন পলিসি
+            </span>
+          </div>
+
+          <div class="p-3 p-md-4">
+            <!-- 1. Upload Method Choice -->
+            <div class="mb-4">
+              <label class="form-label fw-bold mb-2">
+                ১. ছবি আপলোড ও সংযুক্তি পদ্ধতি নির্বাচন করুন <span class="text-danger">*</span>
+              </label>
+              <div class="row g-3">
+                <!-- Option A: Both (Hybrid) -->
+                <div class="col-12 col-md-4">
+                  <div
+                    class="card h-100 p-3 border cursor-pointer media-option-card"
+                    :class="{ 'border-primary shadow-sm bg-primary-subtle bg-opacity-10': mediaForm.uploadMode === 'both' }"
+                    @click="mediaForm.uploadMode = 'both'">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <input
+                          type="radio"
+                          id="modeBoth"
+                          value="both"
+                          v-model="mediaForm.uploadMode"
+                          class="form-check-input mt-0" />
+                        <label for="modeBoth" class="fw-bold mb-0 cursor-pointer">উভয় পদ্ধতি (হাইব্রিড)</label>
+                      </div>
+                      <span class="badge bg-success text-white small" style="font-size: 0.7rem;">সুপারিশকৃত</span>
+                    </div>
+                    <p class="text-muted small mb-0">
+                      ব্যবহারকারী সরাসরি পিসি/মোবাইল থেকে ফাইল আপলোড করতে পারবেন <strong>অথবা</strong> গুগল ড্রাইভ বা ওয়েব লিংক পেস্ট করতে পারবেন।
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Option B: Direct Upload Only -->
+                <div class="col-12 col-md-4">
+                  <div
+                    class="card h-100 p-3 border cursor-pointer media-option-card"
+                    :class="{ 'border-primary shadow-sm bg-primary-subtle bg-opacity-10': mediaForm.uploadMode === 'direct_upload' }"
+                    @click="mediaForm.uploadMode = 'direct_upload'">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <input
+                          type="radio"
+                          id="modeDirect"
+                          value="direct_upload"
+                          v-model="mediaForm.uploadMode"
+                          class="form-check-input mt-0" />
+                        <label for="modeDirect" class="fw-bold mb-0 cursor-pointer">সরাসরি ফাইল আপলোড</label>
+                      </div>
+                      <span class="badge bg-info-subtle text-info border small" style="font-size: 0.7rem;">লোকাল সার্ভার</span>
+                    </div>
+                    <p class="text-muted small mb-0">
+                      ব্যবহারকারী শুধুমাত্র নিজের ডিভাইস থেকে ফাইল সিলেক্ট বা ড্র্যাগ-ড্রপ করতে পারবেন। গুগল ড্রাইভ লিংক ইনপুট বন্ধ থাকবে।
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Option C: Google Drive Only -->
+                <div class="col-12 col-md-4">
+                  <div
+                    class="card h-100 p-3 border cursor-pointer media-option-card"
+                    :class="{ 'border-primary shadow-sm bg-primary-subtle bg-opacity-10': mediaForm.uploadMode === 'google_drive' }"
+                    @click="mediaForm.uploadMode = 'google_drive'">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <input
+                          type="radio"
+                          id="modeDrive"
+                          value="google_drive"
+                          v-model="mediaForm.uploadMode"
+                          class="form-check-input mt-0" />
+                        <label for="modeDrive" class="fw-bold mb-0 cursor-pointer">শুধুমাত্র গুগল ড্রাইভ লিংক</label>
+                      </div>
+                      <span class="badge bg-warning-subtle text-warning-emphasis border small" style="font-size: 0.7rem;">হোস্টিং সেভার</span>
+                    </div>
+                    <p class="text-muted small mb-0">
+                      লোকাল সার্ভারে ফাইল আপলোড সম্পূর্ণ নিষ্ক্রিয় থাকবে। ব্যবহারকারীকে গুগল ড্রাইভ বা ওয়েব লিংক পেস্ট করতে হবে।
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. File Size & Formats (shown if direct upload or both is active) -->
+            <div class="row g-3 mb-4" v-if="mediaForm.uploadMode !== 'google_drive'">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold small">২. সর্বোচ্চ ফাইল সাইজ সীমা (Max Upload Size)</label>
+                <select v-model="mediaForm.maxSizeMb" class="form-select">
+                  <option value="1">১ মেগাবাইট (1 MB) - সর্বোচ্চ কম্প্যাক্ট</option>
+                  <option value="2">২ মেগাবাইট (2 MB) - আদর্শ ও দ্রুত</option>
+                  <option value="5">৫ মেগাবাইট (5 MB) - উচ্চ রেজোলিউশন</option>
+                  <option value="10">১০ মেগাবাইট (10 MB) - আনলিমিটেড বড় ফাইল</option>
+                </select>
+                <small class="text-muted">অপ্রয়োজনীয় বড় ফাইলের কারণে সার্ভার ডিস্ক পূর্ণ হওয়া রোধ করতে সাইজ লিমিট নির্ধারণ করুন।</small>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold small">৩. অনুমোদিত ফাইল ফরম্যাট (Allowed Extensions)</label>
+                <input
+                  v-model.trim="mediaForm.allowedFormats"
+                  type="text"
+                  class="form-control font-monospace"
+                  placeholder="jpg, jpeg, png, webp" />
+                <small class="text-muted">কমা (,) দিয়ে আলাদা করুন। যেমন: jpg, jpeg, png, webp</small>
+              </div>
+            </div>
+
+            <!-- 3. Google Drive Guidelines Banner -->
+            <div class="alert alert-light border d-flex gap-3 align-items-start mb-4">
+              <i class="bi bi-google text-danger fs-3 flex-shrink-0"></i>
+              <div>
+                <h6 class="fw-bold mb-1">গুগল ড্রাইভ লিংক ব্যবহারের নিয়মাবলী (সিস্টেমের অটো-কনভার্টার):</h6>
+                <p class="small text-muted mb-1">
+                  ইউজাররা গুগল ড্রাইভে ছবি আপলোড করে শেয়ার লিংকটি কপি করবেন। সফটওয়্যার স্বয়ংক্রিয়ভাবে লিংকটিকে চিহ্নিত করে রিয়েল-টাইম ইমেজ হিসেবে প্রিভিউ দেখাবে।
+                </p>
+                <ul class="small text-muted mb-0 ps-3">
+                  <li>গুগল ড্রাইভের লিংকে <strong>"General Access: Anyone with the link"</strong> নির্বাচন থাকতে হবে।</li>
+                  <li>ড্রাইভের লিংক ফরম্যাট <code>https://drive.google.com/file/d/FILE_ID/view</code> পেস্ট করলেই সিস্টেম নিজে থেকেই প্রিভিউ লিঙ্ক তৈরি করে নিবে।</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 4. Save Button -->
+            <div class="d-flex justify-content-end align-items-center gap-2 pt-2 border-top">
+              <button
+                type="button"
+                class="btn btn-primary px-4 d-inline-flex align-items-center gap-2 shadow-sm"
+                :disabled="savingMedia"
+                @click="saveMediaSettings">
+                <span v-if="savingMedia" class="spinner-border spinner-border-sm" role="status"></span>
+                <i v-else class="bi bi-check2-circle"></i>
+                <span>ছবি ও স্টোরেজ সেটিংস সংরক্ষণ করুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1374,7 +1538,7 @@ if (setPageTitle) {
   setPageTitle("গ্লোবাল সেটিংস");
 }
 
-type TabType = "category" | "subCategory" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "paymentMethod" | "font";
+type TabType = "category" | "subCategory" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "paymentMethod" | "font" | "media";
 type ModalType = "category" | "subCategory" | "sizeGroup" | "size" | "color" | "productType" | "unit" | "challanType" | "vendorType" | "paymentMethod" | null;
 
 const ui = useAdminUiStore();
@@ -1417,6 +1581,59 @@ async function saveSystemFont() {
     showToast(err?.response?.data?.message || "ফন্ট সেভ করতে সমস্যা হয়েছে", "danger");
   } finally {
     savingFont.value = false;
+  }
+}
+
+// Media & Storage Settings State
+const mediaForm = reactive({
+  uploadMode: "both" as "both" | "direct_upload" | "google_drive",
+  maxSizeMb: "2",
+  allowedFormats: "jpg, jpeg, png, webp"
+});
+const savingMedia = ref(false);
+
+async function loadMediaSettings() {
+  try {
+    const res = await axios.get("/api/settings");
+    const list: any[] = res.data?.data || [];
+    for (const item of list) {
+      if (item.key === "media_upload_mode" && item.value) mediaForm.uploadMode = item.value;
+      if (item.key === "media_max_size_mb" && item.value) mediaForm.maxSizeMb = String(item.value);
+      if (item.key === "media_allowed_formats" && item.value) mediaForm.allowedFormats = item.value;
+    }
+  } catch (err) {
+    // ignore
+  }
+}
+
+async function saveMediaSettings() {
+  savingMedia.value = true;
+  try {
+    await Promise.all([
+      axios.post("/api/settings", {
+        key: "media_upload_mode",
+        value: mediaForm.uploadMode,
+        group: "media",
+        description: "ছবি আপলোড মোড (both / direct_upload / google_drive)"
+      }),
+      axios.post("/api/settings", {
+        key: "media_max_size_mb",
+        value: mediaForm.maxSizeMb,
+        group: "media",
+        description: "সর্বোচ্চ ফাইল সাইজ (MB)"
+      }),
+      axios.post("/api/settings", {
+        key: "media_allowed_formats",
+        value: mediaForm.allowedFormats,
+        group: "media",
+        description: "অনুমোদিত ফাইল ফরম্যাট"
+      })
+    ]);
+    showToast("ছবি ও স্টোরেজ সেটিংস সফলভাবে সংরক্ষিত হয়েছে", "success");
+  } catch (err: any) {
+    showToast(err?.response?.data?.message || "সেটিংস সংরক্ষণ করতে ব্যর্থ হয়েছে", "danger");
+  } finally {
+    savingMedia.value = false;
   }
 }
 
@@ -2119,6 +2336,7 @@ async function toggleStatus(
 onMounted(() => {
   fetchMasterData();
   loadSystemFont();
+  loadMediaSettings();
 });
 </script>
 

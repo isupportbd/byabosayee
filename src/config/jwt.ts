@@ -10,8 +10,8 @@ import { env } from "@/env.js";
 export const jwtConfig = {
   accessSecret: env.JWT_ACCESS_SECRET,
   refreshSecret: env.JWT_REFRESH_SECRET,
-  accessExpirySeconds: 900,
-  refreshExpirySeconds: 3600,
+  accessExpirySeconds: 86400, // ২৪ ঘন্টা (86,400 সেকেন্ড)
+  refreshExpirySeconds: 86400, // ২৪ ঘন্টা (86,400 সেকেন্ড)
   refreshRememberExpirySeconds: 2592000,
   algorithm: "HS256" as const
 };

@@ -44,6 +44,15 @@
           <button
             type="button"
             class="nav-tab-btn btn btn-sm px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-2"
+            :class="{ active: activeTab === 'ownership' }"
+            @click="activeTab = 'ownership'">
+            <i class="bi bi-people-fill"></i>
+            <span>মালিকানা ও শেয়ারহোল্ডার</span>
+          </button>
+
+          <button
+            type="button"
+            class="nav-tab-btn btn btn-sm px-3 py-1.5 rounded-3 d-inline-flex align-items-center gap-2"
             :class="{ active: activeTab === 'security' }"
             @click="activeTab = 'security'">
             <i class="bi bi-shield-lock"></i>
@@ -723,7 +732,174 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- TAB 3: PASSWORD & SECURITY -->
+        <!-- TAB 3: OWNERSHIP & SHAREHOLDERS -->
+        <!-- ========================================== -->
+        <div v-if="activeTab === 'ownership'">
+          <div class="ownership-section">
+            <!-- Input Form in One Single Row on Page -->
+            <div class="card border rounded-3 p-3 mb-4 shadow-sm">
+              <form @submit.prevent="saveShareholder">
+                <div class="row g-2.5 align-items-end">
+                  <!-- ১. মালিকানার ধরণ -->
+                  <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label small fw-semibold text-body mb-1">
+                      মালিকানার ধরণ <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select form-select-sm" v-model="shareholderForm.ownershipType" required>
+                      <option value="মালিক">মালিক</option>
+                      <option value="অংশীদার">অংশীদার</option>
+                      <option value="শেয়ারহোল্ডার">শেয়ারহোল্ডার</option>
+                      <option value="পরিচালক">পরিচালক</option>
+                    </select>
+                  </div>
+
+                  <!-- ২. নাম -->
+                  <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label small fw-semibold text-body mb-1">
+                      নাম <span class="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model.trim="shareholderForm.name"
+                      placeholder="নাম লিখুন"
+                      required />
+                  </div>
+
+                  <!-- ৩. ঠিকানা -->
+                  <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label small fw-semibold text-body mb-1">
+                      ঠিকানা
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model.trim="shareholderForm.address"
+                      placeholder="ঠিকানা লিখুন" />
+                  </div>
+
+                  <!-- ৪. মোবাইল -->
+                  <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label small fw-semibold text-body mb-1">
+                      মোবাইল
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model.trim="shareholderForm.mobile"
+                      placeholder="01XXXXXXXXX" />
+                  </div>
+
+                  <!-- ৫. বিকল্প মোবাইল -->
+                  <div class="col-12 col-sm-6 col-lg-2">
+                    <label class="form-label small fw-semibold text-body mb-1">
+                      বিকল্প মোবাইল
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model.trim="shareholderForm.altMobile"
+                      placeholder="বিকল্প মোবাইল" />
+                  </div>
+
+                  <!-- ৬. বাটন -->
+                  <div class="col-12 col-sm-6 col-lg-2">
+                    <div class="d-flex gap-1.5">
+                      <button
+                        type="submit"
+                        class="btn btn-sm btn-primary w-100 py-1.5 d-inline-flex align-items-center justify-content-center gap-1.5 text-nowrap shadow-sm">
+                        <i :class="editingShareholderIndex !== null ? 'bi bi-check-lg' : 'bi bi-plus-lg'"></i>
+                        <span>{{ editingShareholderIndex !== null ? 'আপডেট করুন' : 'যুক্ত করুন' }}</span>
+                      </button>
+                      <button
+                        v-if="editingShareholderIndex !== null"
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary px-2"
+                        @click="cancelEdit"
+                        title="বাতিল">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Title: শেয়ার হোল্ডারদের তালিকা -->
+            <div class="d-flex align-items-center justify-content-between mb-2.5">
+              <h6 class="fw-bold mb-0">শেয়ার হোল্ডারদের তালিকা</h6>
+              <span class="badge bg-secondary-subtle text-secondary small">মোট: {{ shareholdersList.length }} জন</span>
+            </div>
+
+            <!-- Full-width Box / Table -->
+            <div class="card border rounded-3 overflow-hidden mb-3">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 50px;" class="text-center">#</th>
+                      <th style="min-width: 140px;">মালিকানার ধরণ</th>
+                      <th style="min-width: 160px;">নাম</th>
+                      <th>ঠিকানা</th>
+                      <th style="min-width: 130px;">মোবাইল</th>
+                      <th style="min-width: 130px;">বিকল্প মোবাইল</th>
+                      <th class="text-end" style="width: 100px;">অ্যাকশন</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="shareholdersList.length === 0">
+                      <td colspan="7" class="text-center py-5 text-muted">
+                        <span>কোনো তথ্য যোগ করা হয়নি। উপরের ফর্মে তথ্য লিখে <strong>'যুক্ত করুন'</strong> বাটনে চাপ দিন।</span>
+                      </td>
+                    </tr>
+                    <tr v-for="(sh, sIdx) in shareholdersList" :key="sh.id || sIdx">
+                      <td class="text-center text-muted fw-bold">{{ sIdx + 1 }}</td>
+                      <td>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                          {{ sh.ownershipType || 'মালিক' }}
+                        </span>
+                      </td>
+                      <td class="fw-semibold">{{ sh.name }}</td>
+                      <td>
+                        <span v-if="sh.address">{{ sh.address }}</span>
+                        <span v-else class="text-muted small">-</span>
+                      </td>
+                      <td>
+                        <span v-if="sh.mobile" class="font-monospace fw-medium">{{ sh.mobile }}</span>
+                        <span v-else class="text-muted small">-</span>
+                      </td>
+                      <td>
+                        <span v-if="sh.altMobile" class="font-monospace text-muted">{{ sh.altMobile }}</span>
+                        <span v-else class="text-muted small">-</span>
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <button
+                            type="button"
+                            class="btn btn-outline-secondary"
+                            @click="editShareholder(sIdx)"
+                            title="সম্পাদনা">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-outline-danger"
+                            @click="deleteShareholder(sIdx)"
+                            title="মুছুন">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: PASSWORD & SECURITY -->
         <!-- ========================================== -->
         <div v-if="activeTab === 'security'">
           <div class="col-12 col-md-8 col-lg-6 mx-auto py-2">
@@ -806,9 +982,10 @@ if (setPageTitle) {
 const auth = useAuthStore();
 const toastRef = ref<InstanceType<typeof Toast> | null>(null);
 
-const activeTab = ref<"profile" | "invoice" | "security">("profile");
+const activeTab = ref<"profile" | "invoice" | "ownership" | "security">("profile");
 const loading = ref(true);
 const savingProfile = ref(false);
+const savingOwnership = ref(false);
 const changingPassword = ref(false);
 
 const profileData = ref({
@@ -830,6 +1007,8 @@ const profileData = ref({
   invoiceTerms: "",
   paymentInfo: "",
   logo: "",
+  businessType: "proprietorship",
+  shareholders: [] as any[],
   isActive: true
 });
 
@@ -848,8 +1027,107 @@ const profileForm = reactive({
   printFormat: "a4",
   invoiceTerms: "",
   paymentInfo: "",
-  logo: ""
+  logo: "",
+  businessType: "proprietorship",
+  shareholders: [] as any[]
 });
+
+// Shareholders & Ownership State
+interface ShareholderItem {
+  id: string;
+  ownershipType: string;
+  name: string;
+  address: string;
+  mobile: string;
+  altMobile: string;
+}
+
+const shareholdersList = ref<ShareholderItem[]>([]);
+
+const editingShareholderIndex = ref<number | null>(null);
+
+const shareholderForm = reactive({
+  id: "",
+  ownershipType: "মালিক",
+  name: "",
+  address: "",
+  mobile: "",
+  altMobile: ""
+});
+
+function cancelEdit() {
+  editingShareholderIndex.value = null;
+  Object.assign(shareholderForm, {
+    id: "",
+    ownershipType: "মালিক",
+    name: "",
+    address: "",
+    mobile: "",
+    altMobile: ""
+  });
+}
+
+function editShareholder(index: number) {
+  editingShareholderIndex.value = index;
+  const target = shareholdersList.value[index];
+  Object.assign(shareholderForm, {
+    id: target.id || String(Date.now()),
+    ownershipType: target.ownershipType || "মালিক",
+    name: target.name || "",
+    address: target.address || "",
+    mobile: target.mobile || "",
+    altMobile: target.altMobile || ""
+  });
+}
+
+async function deleteShareholder(index: number) {
+  if (confirm("আপনি কি নিশ্চিত এটি মুছে ফেলতে চান?")) {
+    if (editingShareholderIndex.value === index) {
+      cancelEdit();
+    }
+    shareholdersList.value.splice(index, 1);
+    await saveOwnershipData();
+    showToast("তথ্য মুছে ফেলা হয়েছে", "success");
+  }
+}
+
+async function saveShareholder() {
+  if (!shareholderForm.name.trim()) {
+    showToast("নাম আবশ্যক", "danger");
+    return;
+  }
+
+  const record: ShareholderItem = {
+    id: shareholderForm.id || String(Date.now()),
+    ownershipType: shareholderForm.ownershipType || "মালিক",
+    name: shareholderForm.name.trim(),
+    address: shareholderForm.address.trim(),
+    mobile: shareholderForm.mobile.trim(),
+    altMobile: shareholderForm.altMobile.trim()
+  };
+
+  if (editingShareholderIndex.value !== null) {
+    shareholdersList.value[editingShareholderIndex.value] = record;
+  } else {
+    shareholdersList.value.push(record);
+  }
+
+  cancelEdit();
+  await saveOwnershipData();
+  showToast("তথ্য সফলভাবে সংরক্ষিত হয়েছে", "success");
+}
+
+async function saveOwnershipData() {
+  savingOwnership.value = true;
+  try {
+    profileForm.shareholders = shareholdersList.value;
+    await saveProfile();
+  } catch (err: any) {
+    showToast(err?.message || "সংরক্ষণ ব্যর্থ হয়েছে", "danger");
+  } finally {
+    savingOwnership.value = false;
+  }
+}
 
 const sampleInvoiceNumber = computed(() => {
   const prefix = (profileForm.invoicePrefix || "INV").trim().toUpperCase();
@@ -1053,6 +1331,18 @@ async function fetchProfile() {
     profileForm.invoiceTerms = data.invoiceTerms || "";
     profileForm.paymentInfo = data.paymentInfo || "";
     profileForm.logo = data.logo || "";
+    profileForm.businessType = data.businessType || "proprietorship";
+    profileForm.shareholders = Array.isArray(data.shareholders) ? data.shareholders : [];
+
+    // Initialize shareholdersList state
+    shareholdersList.value = profileForm.shareholders.map((s: any, idx: number) => ({
+      id: s.id || String(Date.now() + idx),
+      ownershipType: s.ownershipType || "মালিক",
+      name: s.name || "",
+      address: s.address || (Array.isArray(s.addresses) && s.addresses[0]?.address ? s.addresses[0].address : ""),
+      mobile: s.mobile || (Array.isArray(s.phones) && s.phones[0] ? s.phones[0] : ""),
+      altMobile: s.altMobile || (Array.isArray(s.phones) && s.phones[1] ? s.phones[1] : "")
+    }));
   } catch (err: any) {
     showToast(err.response?.data?.message || "কোম্পানীর তথ্য লোড করতে ব্যর্থ হয়েছে", "danger");
   } finally {
@@ -1078,7 +1368,9 @@ async function saveProfile() {
       printFormat: profileForm.printFormat,
       invoiceTerms: profileForm.invoiceTerms,
       paymentInfo: profileForm.paymentInfo,
-      logo: profileForm.logo
+      logo: profileForm.logo,
+      businessType: profileForm.businessType,
+      shareholders: profileForm.shareholders
     });
 
     showToast(res.data?.message || "কোম্পানীর তথ্য সফলভাবে সংরক্ষিত হয়েছে", "success");
