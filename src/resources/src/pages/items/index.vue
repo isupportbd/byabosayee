@@ -51,10 +51,10 @@
       <div class="card-body p-3">
         <form @submit.prevent="submitForm">
           <!-- ৭ কলামে মূল ফিল্ডগুলো: ক্যাটাগরি, সাব-ক্যাটাগরি, পণ্যের নাম, পণ্য কোড (অটো), সাইজ, একক, প্রারম্ভিক স্টক -->
-          <div class="row g-2 mb-3 align-items-start">
+          <div class="row g-2 mb-3 align-items-start item-create-row">
             <!-- ১. ক্যাটাগরি -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+            <div class="col-12 col-sm-6 col-md-4 col-item-cat">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ক্যাটাগরি">
                 ক্যাটাগরি <span class="text-danger">*</span>
               </label>
               <select
@@ -70,8 +70,8 @@
             </div>
 
             <!-- ২. সাব-ক্যাটাগরি -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+            <div class="col-12 col-sm-6 col-md-4 col-item-subcat">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাব-ক্যাটাগরি">
                 সাব-ক্যাটাগরি <span class="text-danger">*</span>
               </label>
               <select
@@ -90,8 +90,8 @@
               </select>
             </div>
 
-            <!-- ৩. পণ্যের নাম -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
+            <!-- ৩. পণ্যের নাম (প্রয়োজনীয় বড়) -->
+            <div class="col-12 col-sm-12 col-md-8 col-item-name">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
                 পণ্যের নাম <span class="text-danger">*</span>
               </label>
@@ -105,7 +105,7 @@
             </div>
 
             <!-- ৪. পণ্য কোড (অটো) -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
+            <div class="col-6 col-sm-6 col-md-4 col-item-code">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কোম্পানীর অভ্যন্তরীণ পণ্য কোড (অটো)">
                 পণ্য কোড (অটো) <span class="text-danger">*</span>
               </label>
@@ -119,9 +119,9 @@
                 required />
             </div>
 
-            <!-- ৫. সাইজ -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+            <!-- ৫. সাইজ (প্রয়োজনীয় ছোট) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-size">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
                 সাইজ <span class="text-danger">*</span>
               </label>
               <select
@@ -132,7 +132,7 @@
                 required
                 @change="onSizeChange">
                 <option value="" disabled>
-                  {{ form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন' }}
+                  {{ form.subCategoryId ? 'সাইজ বাছুন' : 'আগে সাব-ক্যাটাগরি' }}
                 </option>
                 <option v-for="s in filteredSizesList" :key="s.id" :value="s.id">
                   {{ s.name }}
@@ -140,9 +140,9 @@
               </select>
             </div>
 
-            <!-- ৬. পরিমাপের একক -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block">
+            <!-- ৬. পরিমাপের একক (প্রয়োজনীয় ছোট) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-unit">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="একক (Unit)">
                 একক (Unit) <span class="text-danger">*</span>
               </label>
               <select
@@ -152,7 +152,7 @@
                 :disabled="!form.categoryId || !form.subCategoryId"
                 required>
                 <option value="" disabled>
-                  {{ !form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : filteredUnitsList.length === 0 ? 'এই সাব-ক্যাটাগরির কোনো একক নেই' : 'একক নির্বাচন করুন' }}
+                  {{ !form.categoryId ? 'আগে ক্যাটাগরি' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি' : filteredUnitsList.length === 0 ? 'একক নেই' : 'একক বাছুন' }}
                 </option>
                 <option v-for="u in filteredUnitsList" :key="u.id" :value="u.id">
                   {{ u.name }} {{ u.shortName ? `(${u.shortName})` : '' }}
@@ -160,8 +160,8 @@
               </select>
             </div>
 
-            <!-- ৭. প্রারম্ভিক স্টক -->
-            <div class="col-12 col-sm-6 col-md-4 col-lg">
+            <!-- ৭. প্রারম্ভিক স্টক (প্রয়োজনীয় ছোট) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-stock">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="প্রারম্ভিক স্টক">
                 প্রারম্ভিক স্টক
               </label>
@@ -856,6 +856,64 @@ onMounted(async () => {
 .single-row-input {
   height: 31px;
   line-height: 1.2;
+}
+
+/* Responsive layout for 7-column item creation row */
+@media (min-width: 992px) {
+  .item-create-row {
+    display: flex;
+    flex-wrap: nowrap;
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+  }
+  .item-create-row > [class*="col-"] {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+  /* ক্যাটাগরি ও সাব-ক্যাটাগরি */
+  .item-create-row .col-item-cat {
+    flex: 0 0 14%;
+    max-width: 14%;
+  }
+  .item-create-row .col-item-subcat {
+    flex: 0 0 14%;
+    max-width: 14%;
+  }
+  /* পণ্যের নাম - সর্বোচ্চ প্রশস্ততা (বড়) */
+  .item-create-row .col-item-name {
+    flex: 1 1 auto;
+    min-width: 180px;
+  }
+  /* কোড */
+  .item-create-row .col-item-code {
+    flex: 0 0 9.5%;
+    max-width: 9.5%;
+  }
+  /* সাইজ, একক ও প্রারম্ভিক স্টক - প্রয়োজনীয় ছোট */
+  .item-create-row .col-item-size {
+    flex: 0 0 9%;
+    max-width: 9%;
+  }
+  .item-create-row .col-item-unit {
+    flex: 0 0 9.5%;
+    max-width: 9.5%;
+  }
+  .item-create-row .col-item-stock {
+    flex: 0 0 8.5%;
+    max-width: 8.5%;
+  }
+
+  .item-create-row .col-item-size .form-select-sm,
+  .item-create-row .col-item-unit .form-select-sm {
+    padding-left: 0.35rem;
+    padding-right: 1.4rem;
+    font-size: 0.8rem;
+  }
+  .item-create-row .col-item-stock .form-control-sm {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+    font-size: 0.82rem;
+  }
 }
 
 .frozen-input,
