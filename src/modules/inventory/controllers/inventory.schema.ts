@@ -28,7 +28,7 @@ export const CreateItemSchema = z.object({
   categoryId: z.number().int().positive().optional().nullable(),
   subCategoryId: z.number().int().positive().optional().nullable(),
   productTypeId: z.number().int().positive().optional().nullable(),
-  brandId: z.number().int().positive("ব্র্যান্ড নির্বাচন করা আবশ্যক"),
+  brandId: z.number().int().positive().optional().nullable(),
   supplierId: z.number().int().positive().optional().nullable(),
   manufacturerId: z.number().int().positive().optional().nullable(),
   colorId: z.number().int().positive().optional().nullable(),

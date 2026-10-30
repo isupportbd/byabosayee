@@ -50,7 +50,7 @@
 
       <div class="card-body p-3">
         <form @submit.prevent="submitForm">
-          <!-- ৭ কলামে মূল ফিল্ডগুলো: ক্যাটাগরি, সাব-ক্যাটাগরি, পণ্যের নাম, পণ্য কোড (অটো), সাইজ, একক, প্রারম্ভিক স্টক -->
+          <!-- ৭ কলামে মূল ফিল্ডগুলো: ১. ক্যাটাগরি, ২. সাব-ক্যাটাগরি, ৩. সাইজ, ৪. পণ্যের নাম, ৫. পণ্য কোড, ৬. একক, ৭. প্রারম্ভিক স্টক -->
           <div class="row g-2 mb-3 align-items-start item-create-row">
             <!-- ১. ক্যাটাগরি -->
             <div class="col-12 col-sm-6 col-md-4 col-item-cat">
@@ -90,36 +90,7 @@
               </select>
             </div>
 
-            <!-- ৩. পণ্যের নাম (প্রয়োজনীয় বড়) -->
-            <div class="col-12 col-sm-12 col-md-8 col-item-name">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
-                পণ্যের নাম <span class="text-danger">*</span>
-              </label>
-              <input
-                v-model.trim="form.name"
-                type="text"
-                class="form-control form-control-sm single-row-input"
-                :class="{ 'frozen-input': !form.categoryId }"
-                :placeholder="!form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : 'পণ্যের নাম দিন'"
-                required />
-            </div>
-
-            <!-- ৪. পণ্য কোড (অটো) -->
-            <div class="col-6 col-sm-6 col-md-4 col-item-code">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কোম্পানীর অভ্যন্তরীণ পণ্য কোড (অটো)">
-                পণ্য কোড (অটো) <span class="text-danger">*</span>
-              </label>
-              <input
-                v-model.trim="form.code"
-                type="text"
-                class="form-control form-control-sm single-row-input font-monospace frozen-input"
-                readonly
-                tabindex="-1"
-                placeholder="অটো কোড"
-                required />
-            </div>
-
-            <!-- ৫. সাইজ -->
+            <!-- ৩. সাইজ (সাব-ক্যাটাগরির পরে) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-size">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
                 সাইজ <span class="text-danger">*</span>
@@ -138,6 +109,35 @@
                   {{ s.name }}
                 </option>
               </select>
+            </div>
+
+            <!-- ৪. পণ্যের নাম (লাল দাগ পর্যন্ত ২৪%) -->
+            <div class="col-12 col-sm-12 col-md-8 col-item-name">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
+                পণ্যের নাম <span class="text-danger">*</span>
+              </label>
+              <input
+                v-model.trim="form.name"
+                type="text"
+                class="form-control form-control-sm single-row-input"
+                :class="{ 'frozen-input': !form.categoryId }"
+                :placeholder="!form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : 'পণ্যের নাম দিন'"
+                required />
+            </div>
+
+            <!-- ৫. পণ্য কোড -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-code">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কোম্পানীর অভ্যন্তরীণ পণ্য কোড">
+                পণ্য কোড <span class="text-danger">*</span>
+              </label>
+              <input
+                v-model.trim="form.code"
+                type="text"
+                class="form-control form-control-sm single-row-input font-monospace frozen-input"
+                readonly
+                tabindex="-1"
+                placeholder="পণ্য কোড"
+                required />
             </div>
 
             <!-- ৬. পরিমাপের একক -->
@@ -160,7 +160,7 @@
               </select>
             </div>
 
-            <!-- ৭. প্রারম্ভিক স্টক (প্রয়োজনীয় ছোট) -->
+            <!-- ৭. প্রারম্ভিক স্টক -->
             <div class="col-6 col-sm-6 col-md-4 col-item-stock">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="প্রারম্ভিক স্টক">
                 প্রারম্ভিক স্টক
