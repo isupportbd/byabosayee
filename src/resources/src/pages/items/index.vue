@@ -119,7 +119,7 @@
                 required />
             </div>
 
-            <!-- ৫. সাইজ (প্রয়োজনীয় ছোট) -->
+            <!-- ৫. সাইজ -->
             <div class="col-6 col-sm-6 col-md-4 col-item-size">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
                 সাইজ <span class="text-danger">*</span>
@@ -132,7 +132,7 @@
                 required
                 @change="onSizeChange">
                 <option value="" disabled>
-                  {{ form.subCategoryId ? 'সাইজ বাছুন' : 'আগে সাব-ক্যাটাগরি' }}
+                  {{ form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন' }}
                 </option>
                 <option v-for="s in filteredSizesList" :key="s.id" :value="s.id">
                   {{ s.name }}
@@ -140,7 +140,7 @@
               </select>
             </div>
 
-            <!-- ৬. পরিমাপের একক (প্রয়োজনীয় ছোট) -->
+            <!-- ৬. পরিমাপের একক -->
             <div class="col-6 col-sm-6 col-md-4 col-item-unit">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="একক (Unit)">
                 একক (Unit) <span class="text-danger">*</span>
@@ -152,7 +152,7 @@
                 :disabled="!form.categoryId || !form.subCategoryId"
                 required>
                 <option value="" disabled>
-                  {{ !form.categoryId ? 'আগে ক্যাটাগরি' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি' : filteredUnitsList.length === 0 ? 'একক নেই' : 'একক বাছুন' }}
+                  {{ !form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : filteredUnitsList.length === 0 ? 'একক নেই' : 'একক নির্বাচন করুন' }}
                 </option>
                 <option v-for="u in filteredUnitsList" :key="u.id" :value="u.id">
                   {{ u.name }} {{ u.shortName ? `(${u.shortName})` : '' }}
@@ -879,39 +879,39 @@ onMounted(async () => {
     flex: 0 0 14%;
     max-width: 14%;
   }
-  /* পণ্যের নাম - সর্বোচ্চ প্রশস্ততা (বড়) */
+  /* পণ্যের নাম - লাল দাগ পর্যন্ত (২৪%) */
   .item-create-row .col-item-name {
-    flex: 1 1 auto;
-    min-width: 180px;
+    flex: 0 0 24%;
+    max-width: 24%;
   }
   /* কোড */
   .item-create-row .col-item-code {
-    flex: 0 0 9.5%;
-    max-width: 9.5%;
+    flex: 0 0 11.5%;
+    max-width: 11.5%;
   }
-  /* সাইজ, একক ও প্রারম্ভিক স্টক - প্রয়োজনীয় ছোট */
+  /* সাইজ, একক ও প্রারম্ভিক স্টক - অবশিষ্ট অংশ যুক্ত */
   .item-create-row .col-item-size {
-    flex: 0 0 9%;
-    max-width: 9%;
+    flex: 0 0 12%;
+    max-width: 12%;
   }
   .item-create-row .col-item-unit {
-    flex: 0 0 9.5%;
-    max-width: 9.5%;
+    flex: 0 0 12.5%;
+    max-width: 12.5%;
   }
   .item-create-row .col-item-stock {
-    flex: 0 0 8.5%;
-    max-width: 8.5%;
+    flex: 0 0 12%;
+    max-width: 12%;
   }
 
   .item-create-row .col-item-size .form-select-sm,
   .item-create-row .col-item-unit .form-select-sm {
-    padding-left: 0.35rem;
-    padding-right: 1.4rem;
-    font-size: 0.8rem;
+    padding-left: 0.45rem;
+    padding-right: 1.5rem;
+    font-size: 0.82rem;
   }
   .item-create-row .col-item-stock .form-control-sm {
-    padding-left: 0.35rem;
-    padding-right: 0.35rem;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
     font-size: 0.82rem;
   }
 }
