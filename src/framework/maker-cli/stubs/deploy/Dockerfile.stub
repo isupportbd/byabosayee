@@ -1,11 +1,6 @@
-ARG NODE_VERSION=24
-FROM node:${NODE_VERSION}-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 
 WORKDIR /app
-
-ENV APP_URL=http://localhost:3000
-ARG UI=true
-ENV UI=${UI}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -15,37 +10,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps || npm install --legacy-peer-deps; else npm install --legacy-peer-deps; fi
+RUN npm install --legacy-peer-deps
 
 COPY . .
-RUN node src/framework/maker-cli/index.mjs db:schema
+ENV NODE_ENV=production
 RUN npm run build
 
-FROM node:${NODE_VERSION}-bookworm-slim AS runner
+FROM node:24-bookworm-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV APP_URL=http://localhost:3000
+ENV APP_PORT=80
+ENV PORT=80
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    supervisor \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src ./src
-COPY --from=builder /app/deploy/scripts ./deploy/scripts
-COPY --from=builder /app/deploy/.env ./.env
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 
-COPY deploy/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+EXPOSE 80 3000
 
-EXPOSE 3000
-
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-
+CMD ["npm", "start"]
