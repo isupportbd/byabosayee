@@ -64,7 +64,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
       );
     `);
 
-    // 3. Auth tokens
+    // 3. Auth tokens and notifications
     await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "email_verification_tokens" (
         "id" serial PRIMARY KEY NOT NULL,
@@ -88,6 +88,18 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
         "jti" varchar(191) NOT NULL UNIQUE,
         "revoked" boolean DEFAULT false,
         "expires_at" timestamp with time zone NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "notifications" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+        "type" varchar(100) NOT NULL,
+        "title" varchar(255) NOT NULL,
+        "body" text,
+        "data" text,
+        "link" varchar(500),
+        "read_at" timestamp with time zone,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
       );
     `);
@@ -225,9 +237,14 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
         "id" serial PRIMARY KEY NOT NULL,
         "key" varchar(255) NOT NULL UNIQUE,
         "value" text,
+        "group" varchar(50) DEFAULT 'general' NOT NULL,
+        "description" text,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "group" varchar(50) DEFAULT 'general' NOT NULL;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "description" text;
 
       CREATE TABLE IF NOT EXISTS "companys" (
         "id" serial PRIMARY KEY NOT NULL,

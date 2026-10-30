@@ -1,13 +1,14 @@
 import { eq, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { broadcast, db, HttpStatusCodes } from "@/framework/facade.js";
+import { executeRawSql } from "@/framework/database/auto-init.js";
 import { settings } from "../database/models/settings.js";
 
 let tablesEnsured = false;
 export async function ensureSettingsTable() {
   if (tablesEnsured) return;
   try {
-    await db.execute(sql`
+    await executeRawSql(`
       CREATE TABLE IF NOT EXISTS "settings" (
         "id" serial PRIMARY KEY NOT NULL,
         "key" varchar(100) NOT NULL UNIQUE,
@@ -16,7 +17,9 @@ export async function ensureSettingsTable() {
         "description" text,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
+      );
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "group" varchar(50) DEFAULT 'general' NOT NULL;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "description" text;
     `);
     tablesEnsured = true;
   } catch (e) {
