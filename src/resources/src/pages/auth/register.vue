@@ -121,10 +121,11 @@ const onSubmit = async () => {
         message.value = "Registration successful. Please verify your email.";
         form.reset();
       },
-      onError: (_errors, error) => {
+      onError: (errors, error) => {
         isError.value = true;
-        const respMsg = (error as any)?.response?.data?.message;
-        message.value = respMsg || (error instanceof Error ? error.message : "Unable to register right now");
+        const respMsg = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error;
+        const firstErr = errors && Object.values(errors).length > 0 ? String(Object.values(errors)[0]) : null;
+        message.value = respMsg || firstErr || (error instanceof Error ? error.message : "Unable to register right now");
       }
     }
   );

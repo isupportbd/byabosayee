@@ -63,6 +63,7 @@ export const manufacturers = pgTable("manufacturers", {
   country: varchar("country", { length: 100 }),
   mobile: varchar("mobile", { length: 50 }),
   factoryAddress: text("factory_address"),
+  address: text("address"),
   vendorType: varchar("vendor_type", { length: 100 }),
   contacts: jsonb("contacts").$type<PartnerContact[]>(),
   notes: text("notes"),

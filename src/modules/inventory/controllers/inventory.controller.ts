@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { db, HttpStatusCodes } from "@/framework/facade.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
@@ -67,6 +67,7 @@ export async function ensureInventoryTables() {
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
 
+      ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "address" text;
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "mobile" varchar(50);
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "contact_person" varchar(150);
       ALTER TABLE "manufacturers" ADD COLUMN IF NOT EXISTS "contacts" jsonb;
@@ -520,7 +521,9 @@ export const updateSupplier: Handler = async (c: any) => {
     updateData.isActive = Boolean(body.isActive);
   }
 
-  // Name is strictly NOT modified on edit
+  if (body.name !== undefined && body.name.trim()) {
+    updateData.name = body.name.trim();
+  }
   if (body.mobile !== undefined) updateData.mobile = (body.mobile || "").trim() || null;
   if (body.address !== undefined) updateData.address = (body.address || "").trim() || null;
   if (body.ownerName !== undefined) updateData.ownerName = (body.ownerName || "").trim() || null;
@@ -588,6 +591,7 @@ export const createManufacturer: Handler = async (c: any) => {
       country: body.country?.trim() || "বাংলাদেশ",
       mobile: (body.mobile || body.ownerMobile || firstContact.mobile || "").trim() || null,
       factoryAddress: (body.factoryAddress || body.address || "").trim() || null,
+      address: (body.address || body.factoryAddress || "").trim() || null,
       vendorType: body.vendorType?.trim() || null,
       contacts: contacts.length > 0 ? contacts : null,
       notes: body.notes?.trim() || null
@@ -629,10 +633,14 @@ export const updateManufacturer: Handler = async (c: any) => {
     updateData.isActive = Boolean(body.isActive);
   }
 
-  // Name is strictly NOT modified on edit
+  if (body.name !== undefined && body.name.trim()) {
+    updateData.name = body.name.trim();
+  }
   if (body.mobile !== undefined) updateData.mobile = (body.mobile || "").trim() || null;
   if (body.address !== undefined || body.factoryAddress !== undefined) {
-    updateData.factoryAddress = (body.address || body.factoryAddress || "").trim() || null;
+    const cleanAddr = (body.address || body.factoryAddress || "").trim() || null;
+    updateData.factoryAddress = cleanAddr;
+    updateData.address = cleanAddr;
   }
   if (body.ownerName !== undefined) updateData.ownerName = (body.ownerName || "").trim() || null;
   if (body.ownerMobile !== undefined) updateData.ownerMobile = (body.ownerMobile || "").trim() || null;
@@ -870,6 +878,27 @@ export const listCustomers: Handler = async (c: any) => {
   const userId = getUserId(c);
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
+  // Ensure default Walk-in customer exists for this user
+  try {
+    const walkInExists = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.userId, userId), or(eq(customers.customerType, "walk_in"), eq(customers.name, "ওয়াক-ইন কাস্টমার"))))
+      .limit(1);
+
+    if (!walkInExists || walkInExists.length === 0) {
+      await db.insert(customers).values({
+        userId,
+        name: "ওয়াক-ইন কাস্টমার",
+        customerType: "walk_in",
+        mobile: null,
+        address: "কাউন্টার সেল",
+        notes: "সিস্টেম ডিফল্ট ওয়াক-ইন গ্রাহক",
+        isActive: true
+      });
+    }
+  } catch {}
+
   const list = await db
     .select()
     .from(customers)
@@ -949,7 +978,9 @@ export const updateCustomer: Handler = async (c: any) => {
   if (body.notes !== undefined) {
     updateData.notes = body.notes ? body.notes.trim() : null;
   }
-  // Note: Customer name is immutable on edit; intentionally ignored.
+  if (body.name !== undefined && body.name.trim()) {
+    updateData.name = body.name.trim();
+  }
 
   const [updated] = await db
     .update(customers)

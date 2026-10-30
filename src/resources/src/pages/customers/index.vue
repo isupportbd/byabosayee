@@ -49,11 +49,6 @@
           <span>{{ isEditing ? 'কাস্টমারের তথ্য সম্পাদন' : 'নতুন কাস্টমার' }}</span>
         </h6>
         <div class="d-flex align-items-center gap-2">
-          <span
-            v-if="isEditing"
-            class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2 small">
-            <i class="bi bi-lock-fill me-1"></i>কাস্টমারের নাম অপরিবর্তনীয়
-          </span>
           <button
             type="button"
             class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-3 shadow-sm fw-medium"
@@ -78,6 +73,7 @@
                 v-model="form.customerType"
                 class="form-select form-select-sm text-truncate"
                 required>
+                <option value="walk_in">ওয়াক-ইন কাস্টমার (Walk-in)</option>
                 <option value="retail">খুচরা কাস্টমার (Retail)</option>
                 <option value="wholesale">পাইকারি কাস্টমার (Wholesale)</option>
                 <option value="corporate">কর্পোরেট কাস্টমার (Corporate)</option>
@@ -85,7 +81,7 @@
               </select>
             </div>
 
-            <!-- 2. Customer Name (Immutable on Edit) -->
+            <!-- 2. Customer Name -->
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কাস্টমারের নাম">
                 কাস্টমারের নাম <span class="text-danger">*</span>
@@ -95,58 +91,36 @@
                   v-model.trim="form.name"
                   type="text"
                   class="form-control form-control-sm single-row-input"
-                  :class="{ 'locked-input pe-4': isEditing }"
-                  :disabled="isEditing"
-                  :readonly="isEditing"
                   placeholder="কাস্টমারের পূর্ণ নাম"
-                  :title="isEditing ? 'এডিটে কাস্টমারের নাম পরিবর্তন করা যাবে না' : (form.name || '')"
+                  :title="form.name || ''"
                   required />
-                <span
-                  v-if="isEditing"
-                  class="position-absolute end-0 top-50 translate-middle-y me-2 text-muted small pe-none"
-                  title="কাস্টমারের নাম অপরিবর্তনীয়">
-                  <i class="bi bi-lock-fill"></i>
-                </span>
-              </div>
-              <div
-                v-if="isEditing"
-                class="text-muted small mt-1"
-                style="font-size: 0.70rem;">
-                <i class="bi bi-info-circle me-1"></i>এডিটে কাস্টমারের নাম পরিবর্তন করা যাবে না
               </div>
             </div>
 
             <!-- 3. Primary Mobile -->
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="মোবাইল নম্বর">
-                মোবাইল নম্বর <span class="text-danger">*</span>
+                মোবাইল নম্বর <span v-if="form.customerType !== 'walk_in'" class="text-danger">*</span>
               </label>
               <div class="position-relative">
                 <input
                   v-model.trim="form.mobile"
                   type="tel"
-                  maxlength="11"
+                  maxlength="20"
                   class="form-control form-control-sm pe-4 single-row-input"
                   :class="{
-                    'mobile-valid': isPrimaryMobileValid,
-                    'mobile-invalid': (primaryMobileTouched || form.mobile.length === 11) && form.mobile && !isPrimaryMobileValid
+                    'mobile-valid': isPrimaryMobileValid && form.mobile
                   }"
                   placeholder="01XXXXXXXXX"
                   @input="onPrimaryMobileInput"
                   @blur="primaryMobileTouched = true"
-                  required />
+                  :required="form.customerType !== 'walk_in'" />
                 <span
-                  v-if="isPrimaryMobileValid"
+                  v-if="isPrimaryMobileValid && form.mobile"
                   class="mobile-check-icon"
                   title="সঠিক মোবাইল নম্বর">
                   <i class="bi bi-check-circle-fill"></i>
                 </span>
-              </div>
-              <div
-                v-if="(primaryMobileTouched || form.mobile.length === 11) && form.mobile && !isPrimaryMobileValid"
-                class="text-danger small mt-1"
-                style="font-size: 0.70rem;">
-                সঠিক ১১ ডিজিটের মোবাইল দিন
               </div>
             </div>
 
@@ -175,27 +149,20 @@
                 <input
                   v-model.trim="form.altMobile"
                   type="tel"
-                  maxlength="11"
+                  maxlength="20"
                   class="form-control form-control-sm pe-4 single-row-input"
                   :class="{
-                    'mobile-valid': isAltMobileValid,
-                    'mobile-invalid': (altMobileTouched || form.altMobile.length === 11) && form.altMobile && !isAltMobileValid
+                    'mobile-valid': isAltMobileValid && form.altMobile
                   }"
                   placeholder="01XXXXXXXXX"
                   @input="onAltMobileInput"
                   @blur="altMobileTouched = true" />
                 <span
-                  v-if="isAltMobileValid"
+                  v-if="isAltMobileValid && form.altMobile"
                   class="mobile-check-icon"
                   title="সঠিক বিকল্প মোবাইল নম্বর">
                   <i class="bi bi-check-circle-fill"></i>
                 </span>
-              </div>
-              <div
-                v-if="(altMobileTouched || form.altMobile.length === 11) && form.altMobile && !isAltMobileValid"
-                class="text-danger small mt-1"
-                style="font-size: 0.70rem;">
-                সঠিক ১১ ডিজিটের মোবাইল দিন
               </div>
             </div>
 
@@ -276,6 +243,13 @@
               :class="{ active: activeFilter === 'all' }"
               @click="activeFilter = 'all'">
               সকল ({{ toBengaliNumber(customersList.length) }})
+            </button>
+            <button
+              type="button"
+              class="filter-tab-btn"
+              :class="{ active: activeFilter === 'walk_in' }"
+              @click="activeFilter = 'walk_in'">
+              ওয়াক-ইন ({{ toBengaliNumber(walkInCount) }})
             </button>
             <button
               type="button"
@@ -598,7 +572,7 @@ function normalizeBengaliDigits(val: string): string {
 function isValidBdMobile(mobile: string): boolean {
   if (!mobile) return false;
   const digits = normalizeBengaliDigits(mobile);
-  return /^01[3-9]\d{8}$/.test(digits);
+  return digits.length >= 6 && digits.length <= 15;
 }
 
 // Mobile Validations
@@ -606,24 +580,25 @@ const primaryMobileTouched = ref(false);
 const altMobileTouched = ref(false);
 
 const isPrimaryMobileValid = computed(() => {
+  if (!form.mobile && form.customerType === "walk_in") return true;
   return isValidBdMobile(form.mobile);
 });
 
 const isAltMobileValid = computed(() => {
-  if (!form.altMobile) return false;
+  if (!form.altMobile) return true;
   return isValidBdMobile(form.altMobile);
 });
 
 function onPrimaryMobileInput(e: Event) {
   const target = e.target as HTMLInputElement;
-  const clean = normalizeBengaliDigits(target.value).slice(0, 11);
+  const clean = normalizeBengaliDigits(target.value).slice(0, 20);
   form.mobile = clean;
   target.value = clean;
 }
 
 function onAltMobileInput(e: Event) {
   const target = e.target as HTMLInputElement;
-  const clean = normalizeBengaliDigits(target.value).slice(0, 11);
+  const clean = normalizeBengaliDigits(target.value).slice(0, 20);
   form.altMobile = clean;
   target.value = clean;
 }
@@ -631,6 +606,8 @@ function onAltMobileInput(e: Event) {
 // Badge and label helper functions
 function getCustomerTypeLabel(type: string): string {
   switch (type) {
+    case "walk_in":
+      return "ওয়াক-ইন";
     case "retail":
       return "খুচরা";
     case "wholesale":
@@ -644,6 +621,8 @@ function getCustomerTypeLabel(type: string): string {
 
 function getCustomerTypeIcon(type: string): string {
   switch (type) {
+    case "walk_in":
+      return "bi-person-walking";
     case "retail":
       return "bi-person";
     case "wholesale":
@@ -657,6 +636,8 @@ function getCustomerTypeIcon(type: string): string {
 
 function getCustomerTypeBadgeClass(type: string): string {
   switch (type) {
+    case "walk_in":
+      return "customer-badge-walkin";
     case "retail":
       return "customer-badge-retail";
     case "wholesale":
@@ -672,7 +653,7 @@ function getCustomerTypeBadgeClass(type: string): string {
 const loading = ref(false);
 const submitting = ref(false);
 const togglingStatusId = ref<number | null>(null);
-const activeFilter = ref<"all" | "retail" | "wholesale" | "corporate">("all");
+const activeFilter = ref<"all" | "walk_in" | "retail" | "wholesale" | "corporate">("all");
 const searchQuery = ref("");
 
 // Edit Mode State
@@ -764,6 +745,7 @@ async function fetchCustomers() {
 }
 
 // Filter Counts
+const walkInCount = computed(() => customersList.value.filter((c) => c.customerType === "walk_in").length);
 const retailCount = computed(() => customersList.value.filter((c) => c.customerType === "retail").length);
 const wholesaleCount = computed(() => customersList.value.filter((c) => c.customerType === "wholesale").length);
 const corporateCount = computed(() => customersList.value.filter((c) => c.customerType === "corporate").length);
@@ -813,15 +795,21 @@ async function submitCustomerForm() {
     return;
   }
 
-  if (!isPrimaryMobileValid.value) {
+  if (form.mobile && !isPrimaryMobileValid.value) {
     primaryMobileTouched.value = true;
-    showToast("সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন", "danger");
+    showToast("সঠিক মোবাইল নম্বর দিন (কমপক্ষে ৬ ডিজিট)", "danger");
+    return;
+  }
+
+  if (!form.mobile && form.customerType !== "walk_in") {
+    primaryMobileTouched.value = true;
+    showToast("মোবাইল নম্বর আবশ্যক", "danger");
     return;
   }
 
   if (form.altMobile && !isAltMobileValid.value) {
     altMobileTouched.value = true;
-    showToast("সঠিক ১১ ডিজিটের বিকল্প মোবাইল নম্বর দিন", "danger");
+    showToast("সঠিক বিকল্প মোবাইল নম্বর দিন", "danger");
     return;
   }
 
@@ -938,6 +926,12 @@ onMounted(() => {
 }
 
 /* Badges for customer types */
+.customer-badge-walkin {
+  background-color: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceead6;
+}
+
 .customer-badge-retail {
   background-color: #e6f7ff;
   color: #0070ba;

@@ -49,11 +49,6 @@
           <span>{{ isEditing ? 'বিক্রেতার তথ্য সম্পাদন' : 'নতুন বিক্রেতা' }}</span>
         </h6>
         <div class="d-flex align-items-center gap-2">
-          <span
-            v-if="isEditing"
-            class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2 small">
-            <i class="bi bi-lock-fill me-1"></i>প্রতিষ্ঠানের নাম অপরিবর্তনীয়
-          </span>
           <button
             type="button"
             class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-3 shadow-sm fw-medium"
@@ -77,7 +72,6 @@
                 id="vendorTypeSelect"
                 v-model="form.type"
                 class="form-select form-select-sm text-truncate"
-                :disabled="isEditing"
                 required>
                 <option v-for="vt in activeVendorTypes" :key="vt.id" :value="vt.code || vt.name">
                   {{ vt.name }}
@@ -86,7 +80,7 @@
               </select>
             </div>
 
-            <!-- 2. Organization Name (Immutable on Edit) -->
+            <!-- 2. Organization Name -->
             <div class="col-12 col-sm-6 col-lg-3">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="প্রতিষ্ঠানের নাম">
                 প্রতিষ্ঠানের নাম <span class="text-danger">*</span>
@@ -96,24 +90,9 @@
                   v-model.trim="form.name"
                   type="text"
                   class="form-control form-control-sm single-row-input"
-                  :class="{ 'locked-input pe-4': isEditing }"
-                  :disabled="isEditing"
-                  :readonly="isEditing"
                   placeholder="প্রতিষ্ঠানের নাম"
-                  :title="isEditing ? 'এডিটে প্রতিষ্ঠানের নাম পরিবর্তন করা যাবে না' : (form.name || '')"
+                  :title="form.name || ''"
                   required />
-                <span
-                  v-if="isEditing"
-                  class="position-absolute end-0 top-50 translate-middle-y me-2 text-muted small pe-none"
-                  title="প্রতিষ্ঠানের নাম অপরিবর্তনীয়">
-                  <i class="bi bi-lock-fill"></i>
-                </span>
-              </div>
-              <div
-                v-if="isEditing"
-                class="text-muted small mt-1"
-                style="font-size: 0.70rem;">
-                <i class="bi bi-info-circle me-1"></i>এডিটে প্রতিষ্ঠানের নাম পরিবর্তন করা যাবে না
               </div>
             </div>
 
@@ -126,11 +105,10 @@
                 <input
                   v-model.trim="form.mobile"
                   type="tel"
-                  maxlength="11"
+                  maxlength="20"
                   class="form-control form-control-sm pe-4 single-row-input"
                   :class="{
-                    'mobile-valid': isOrgMobileValid,
-                    'mobile-invalid': (orgMobileTouched || form.mobile.length === 11) && form.mobile && !isOrgMobileValid
+                    'mobile-valid': isOrgMobileValid
                   }"
                   placeholder="01XXXXXXXXX"
                   @input="onOrgMobileInput"
@@ -142,12 +120,6 @@
                   title="সঠিক মোবাইল নম্বর">
                   <i class="bi bi-check-circle-fill"></i>
                 </span>
-              </div>
-              <div
-                v-if="(orgMobileTouched || form.mobile.length === 11) && form.mobile && !isOrgMobileValid"
-                class="text-danger small mt-1"
-                style="font-size: 0.70rem;">
-                সঠিক ১১ ডিজিটের মোবাইল দিন
               </div>
             </div>
 
@@ -189,11 +161,10 @@
                 <input
                   v-model.trim="form.ownerMobile"
                   type="tel"
-                  maxlength="11"
+                  maxlength="20"
                   class="form-control form-control-sm pe-4 single-row-input"
                   :class="{
-                    'mobile-valid': isOwnerMobileValid,
-                    'mobile-invalid': (ownerMobileTouched || form.ownerMobile.length === 11) && form.ownerMobile && !isOwnerMobileValid
+                    'mobile-valid': isOwnerMobileValid
                   }"
                   placeholder="01XXXXXXXXX"
                   @input="onOwnerMobileInput"
@@ -204,12 +175,6 @@
                   title="সঠিক মোবাইল নম্বর">
                   <i class="bi bi-check-circle-fill"></i>
                 </span>
-              </div>
-              <div
-                v-if="(ownerMobileTouched || form.ownerMobile.length === 11) && form.ownerMobile && !isOwnerMobileValid"
-                class="text-danger small mt-1"
-                style="font-size: 0.70rem;">
-                সঠিক ১১ ডিজিটের মোবাইল দিন
               </div>
             </div>
 
@@ -235,11 +200,10 @@
                 <input
                   v-model.trim="form.managerMobile"
                   type="tel"
-                  maxlength="11"
+                  maxlength="20"
                   class="form-control form-control-sm pe-4 single-row-input"
                   :class="{
-                    'mobile-valid': isManagerMobileValid,
-                    'mobile-invalid': (managerMobileTouched || form.managerMobile.length === 11) && form.managerMobile && !isManagerMobileValid
+                    'mobile-valid': isManagerMobileValid
                   }"
                   placeholder="01XXXXXXXXX"
                   @input="onManagerMobileInput"
@@ -250,12 +214,6 @@
                   title="সঠিক মোবাইল নম্বর">
                   <i class="bi bi-check-circle-fill"></i>
                 </span>
-              </div>
-              <div
-                v-if="(managerMobileTouched || form.managerMobile.length === 11) && form.managerMobile && !isManagerMobileValid"
-                class="text-danger small mt-1"
-                style="font-size: 0.70rem;">
-                সঠিক ১১ ডিজিটের মোবাইল দিন
               </div>
             </div>
           </div>
@@ -621,7 +579,7 @@ function normalizeBengaliDigits(val: string): string {
 function isValidBdMobile(mobile: string): boolean {
   if (!mobile) return false;
   const digits = normalizeBengaliDigits(mobile);
-  return /^01[3-9]\d{8}$/.test(digits);
+  return digits.length >= 6 && digits.length <= 15;
 }
 
 // Mobile Validations
@@ -634,32 +592,32 @@ const isOrgMobileValid = computed(() => {
 });
 
 const isOwnerMobileValid = computed(() => {
-  if (!form.ownerMobile) return false;
+  if (!form.ownerMobile) return true;
   return isValidBdMobile(form.ownerMobile);
 });
 
 const isManagerMobileValid = computed(() => {
-  if (!form.managerMobile) return false;
+  if (!form.managerMobile) return true;
   return isValidBdMobile(form.managerMobile);
 });
 
 function onOrgMobileInput(e: Event) {
   const target = e.target as HTMLInputElement;
-  const clean = normalizeBengaliDigits(target.value).slice(0, 11);
+  const clean = normalizeBengaliDigits(target.value).slice(0, 20);
   form.mobile = clean;
   target.value = clean;
 }
 
 function onOwnerMobileInput(e: Event) {
   const target = e.target as HTMLInputElement;
-  const clean = normalizeBengaliDigits(target.value).slice(0, 11);
+  const clean = normalizeBengaliDigits(target.value).slice(0, 20);
   form.ownerMobile = clean;
   target.value = clean;
 }
 
 function onManagerMobileInput(e: Event) {
   const target = e.target as HTMLInputElement;
-  const clean = normalizeBengaliDigits(target.value).slice(0, 11);
+  const clean = normalizeBengaliDigits(target.value).slice(0, 20);
   form.managerMobile = clean;
   target.value = clean;
 }
@@ -842,7 +800,7 @@ const unifiedVendors = computed(() => {
       vendorType: s.vendorType || "supplier",
       isActive: s.isActive !== false && s.is_active !== false,
       mobile: s.mobile || "",
-      address: s.address || "",
+      address: (s.address || "").replace(/^বাংলাদেশ$/, ""),
       ownerName: s.ownerName || s.owner_name || ownerFromContact?.name || s.contactPerson || s.contact_person || "",
       ownerMobile: s.ownerMobile || s.owner_mobile || ownerFromContact?.mobile || "",
       managerName: s.managerName || s.manager_name || managerFromContact?.name || (s.contacts && s.contacts[1]?.name) || "",
@@ -860,7 +818,7 @@ const unifiedVendors = computed(() => {
       vendorType: m.vendorType || "manufacturer",
       isActive: m.isActive !== false && m.is_active !== false,
       mobile: m.mobile || "",
-      address: m.factoryAddress || m.factory_address || m.country || "",
+      address: (m.factoryAddress || m.factory_address || m.address || "").replace(/^বাংলাদেশ$/, ""),
       ownerName: m.ownerName || m.owner_name || ownerFromContact?.name || m.contactPerson || m.contact_person || "",
       ownerMobile: m.ownerMobile || m.owner_mobile || ownerFromContact?.mobile || "",
       managerName: m.managerName || m.manager_name || managerFromContact?.name || (m.contacts && m.contacts[1]?.name) || "",
@@ -926,17 +884,17 @@ async function submitVendorForm() {
   }
   if (!isOrgMobileValid.value) {
     orgMobileTouched.value = true;
-    showToast("প্রতিষ্ঠানের সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন", "danger");
+    showToast("প্রতিষ্ঠানের সঠিক মোবাইল নম্বর দিন (কমপক্ষে ৬ ডিজিট)", "danger");
     return;
   }
   if (form.ownerMobile && !isOwnerMobileValid.value) {
     ownerMobileTouched.value = true;
-    showToast("মালিকের সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন", "danger");
+    showToast("মালিকের সঠিক মোবাইল নম্বর দিন", "danger");
     return;
   }
   if (form.managerMobile && !isManagerMobileValid.value) {
     managerMobileTouched.value = true;
-    showToast("ম্যানেজার/কর্মচারীর সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন", "danger");
+    showToast("ম্যানেজার/কর্মচারীর সঠিক মোবাইল নম্বর দিন", "danger");
     return;
   }
 
@@ -961,16 +919,19 @@ async function submitVendorForm() {
     };
 
     if (isEditing.value && editingVendor.value) {
-      // Edit Mode (Organization name is unchanged on server)
-      if (!isManufacturer(form.type)) {
+      const isCurrentlyManufacturer =
+        editingVendor.value.type === "manufacturer" ||
+        String(editingVendor.value.compositeId || "").startsWith("manufacturer_");
+
+      if (!isCurrentlyManufacturer) {
         const res = await axios.put(`/api/inventory/suppliers/${editingVendor.value.id}`, payload);
         showToast(res.data?.message || "তথ্য সফলভাবে আপডেট করা হয়েছে", "success");
         await fetchSuppliers();
       } else {
         const res = await axios.put(`/api/inventory/manufacturers/${editingVendor.value.id}`, {
           ...payload,
-          country: "বাংলাদেশ",
-          factoryAddress: form.address.trim()
+          factoryAddress: form.address.trim(),
+          address: form.address.trim()
         });
         showToast(res.data?.message || "তথ্য সফলভাবে আপডেট করা হয়েছে", "success");
         await fetchManufacturers();
@@ -985,8 +946,8 @@ async function submitVendorForm() {
       } else {
         const res = await axios.post("/api/inventory/manufacturers", {
           ...payload,
-          country: "বাংলাদেশ",
-          factoryAddress: form.address.trim()
+          factoryAddress: form.address.trim(),
+          address: form.address.trim()
         });
         showToast(res.data?.message || `${getVendorTypeName(form.type)} সফলভাবে যোগ করা হয়েছে`, "success");
         await fetchManufacturers();
