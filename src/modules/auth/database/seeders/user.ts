@@ -22,20 +22,6 @@ export default async function UserSeeder() {
       password: await password.hashPassword(superAdminPassword),
       roleId: superAdminRole?.id ?? null,
       emailVerifiedAt: new Date()
-    },
-    {
-      name: "Admin",
-      email: "admin@example.com",
-      password: await password.hashPassword("Password@123"),
-      roleId: adminRole?.id ?? null,
-      emailVerifiedAt: new Date()
-    },
-    {
-      name: "User One",
-      email: "user1@example.com",
-      password: await password.hashPassword("Password@123"),
-      roleId: userRole?.id ?? null,
-      emailVerifiedAt: new Date()
     }
   ];
 

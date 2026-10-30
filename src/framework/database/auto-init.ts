@@ -1,9 +1,9 @@
-import { sql } from "drizzle-orm";
-import { db } from "@/framework/facade.js";
+import { eq, sql } from "drizzle-orm";
+import { db, password } from "@/framework/facade.js";
+import { roles } from "@/modules/auth/database/models/role.js";
+import { users } from "@/modules/auth/database/models/user.js";
 import { ensureInventoryTables } from "@/modules/inventory/controllers/inventory.controller.js";
 import RoleSeeder from "@/modules/auth/database/seeders/role.js";
-import UserSeeder from "@/modules/auth/database/seeders/user.js";
-import CatalogSeeder from "@/modules/catalog/database/seeders/catalog.js";
 
 let autoInitDone = false;
 
@@ -191,17 +191,38 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
     // 6. Ensure Inventory Tables
     await ensureInventoryTables();
 
-    // 7. Auto-Seed (Idempotent: only creates if missing)
+    // 7. Auto-Seed ONLY Roles & Super Admin (No dummy users or sample catalog data)
     try {
       await RoleSeeder();
-      await UserSeeder();
-      await CatalogSeeder();
+
+      const superAdminRole =
+        (await db.query.roles.findFirst({ where: eq(roles.name, "super_admin") })) ||
+        (await db.query.roles.findFirst({ where: eq(roles.name, "admin") }));
+
+      const superAdminEmail = (process.env.SUPERADMIN_EMAIL || "isupportbd.info@gmail.com").trim().toLowerCase();
+      const superAdminPassword = process.env.SUPERADMIN_PASSWORD || "Expw.17@";
+
+      const existingSuperAdmin = await db.query.users.findFirst({
+        where: eq(users.email, superAdminEmail)
+      });
+
+      if (!existingSuperAdmin) {
+        await db.insert(users).values({
+          name: "Super Admin",
+          email: superAdminEmail,
+          password: await password.hashPassword(superAdminPassword),
+          roleId: superAdminRole?.id ?? null,
+          emailVerifiedAt: new Date(),
+          isActive: true
+        });
+        console.log(`[Auto-Init] Super admin (${superAdminEmail}) created.`);
+      }
     } catch (seedErr) {
-      console.warn("[Auto-Init] Seed step warning (non-fatal):", seedErr);
+      console.warn("[Auto-Init] Super admin check warning (non-fatal):", seedErr);
     }
 
     autoInitDone = true;
-    console.log("[Auto-Init] Database schema, tables, and seeders verified successfully.");
+    console.log("[Auto-Init] Database schema, tables, and Super Admin verified successfully.");
   } catch (err) {
     console.error("[Auto-Init] Error ensuring database tables and seeders:", err);
   }
