@@ -110,10 +110,14 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
 
+      ALTER TABLE "sizes" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "sizes" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "sizes" ALTER COLUMN "size_group_id" DROP NOT NULL;
+
       CREATE TABLE IF NOT EXISTS "colors" (
         "id" serial PRIMARY KEY NOT NULL,
         "name" varchar(100) NOT NULL UNIQUE,
-        "code" varchar(20),
+        "code" varchar(50),
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -121,25 +125,73 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
 
       CREATE TABLE IF NOT EXISTS "units" (
         "id" serial PRIMARY KEY NOT NULL,
-        "name" varchar(50) NOT NULL UNIQUE,
+        "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE,
+        "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE,
+        "name" varchar(100) NOT NULL,
+        "short_name" varchar(50) NOT NULL DEFAULT '',
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE "units" DROP CONSTRAINT IF EXISTS "units_name_key";
+      ALTER TABLE "units" DROP CONSTRAINT IF EXISTS "units_name_unique";
+      ALTER TABLE "units" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "units" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "units" ADD COLUMN IF NOT EXISTS "short_name" varchar(50) NOT NULL DEFAULT '';
+      ALTER TABLE "units" ALTER COLUMN "name" TYPE varchar(100);
 
       CREATE TABLE IF NOT EXISTS "fabric_types" (
         "id" serial PRIMARY KEY NOT NULL,
         "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE,
-        "name" varchar(100) NOT NULL,
+        "name" varchar(150) NOT NULL,
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
 
+      ALTER TABLE "fabric_types" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "fabric_types" ALTER COLUMN "name" TYPE varchar(150);
+
       CREATE TABLE IF NOT EXISTS "product_types" (
         "id" serial PRIMARY KEY NOT NULL,
-        "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE,
-        "name" varchar(100) NOT NULL,
+        "category_id" integer NOT NULL REFERENCES "categories"("id") ON DELETE CASCADE,
+        "sub_category_id" integer NOT NULL REFERENCES "sub_categories"("id") ON DELETE CASCADE,
+        "name" varchar(255) NOT NULL,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      ALTER TABLE "product_types" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "product_types" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "product_types" ALTER COLUMN "name" TYPE varchar(255);
+
+      CREATE TABLE IF NOT EXISTS "challan_types" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "name" varchar(255) NOT NULL UNIQUE,
+        "code" varchar(50),
+        "description" text,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "vendor_types" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "name" varchar(255) NOT NULL UNIQUE,
+        "code" varchar(50),
+        "description" text,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "payment_methods" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "name" varchar(255) NOT NULL UNIQUE,
+        "code" varchar(50),
+        "description" text,
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -158,7 +210,7 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
 
       CREATE TABLE IF NOT EXISTS "companys" (
         "id" serial PRIMARY KEY NOT NULL,
-        "name" varchar(255) NOT NULL,
+        "name" varchar(255),
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
@@ -166,10 +218,11 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
       CREATE TABLE IF NOT EXISTS "company_settings" (
         "id" serial PRIMARY KEY NOT NULL,
         "user_id" integer NOT NULL UNIQUE REFERENCES "users"("id") ON DELETE CASCADE,
-        "company_name" varchar(255) NOT NULL,
+        "company_name" varchar(255),
         "tagline" varchar(255),
         "phone" varchar(50),
         "mobile" varchar(50),
+        "email" varchar(255),
         "address" text,
         "trade_license" varchar(100),
         "vat_bin" varchar(100),
@@ -186,6 +239,9 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE "company_settings" ADD COLUMN IF NOT EXISTS "email" varchar(255);
+      ALTER TABLE "company_settings" ALTER COLUMN "company_name" DROP NOT NULL;
     `);
 
     // 6. Ensure Inventory Tables

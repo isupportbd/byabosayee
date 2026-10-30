@@ -68,7 +68,10 @@ export async function ensureProductTypesTable() {
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
-      )
+      );
+      ALTER TABLE "product_types" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "product_types" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "product_types" ALTER COLUMN "name" TYPE varchar(255);
     `);
     productTypesTableEnsured = true;
   } catch (e) {
@@ -1246,10 +1249,22 @@ export async function ensureUnitsTableColumns() {
   if (unitsTableColumnsEnsured) return;
   try {
     await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "units" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE,
+        "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE,
+        "name" varchar(100) NOT NULL,
+        "short_name" varchar(50) NOT NULL DEFAULT '',
+        "is_active" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
       ALTER TABLE "units" DROP CONSTRAINT IF EXISTS "units_name_key";
       ALTER TABLE "units" DROP CONSTRAINT IF EXISTS "units_name_unique";
       ALTER TABLE "units" ADD COLUMN IF NOT EXISTS "category_id" integer REFERENCES "categories"("id") ON DELETE CASCADE;
       ALTER TABLE "units" ADD COLUMN IF NOT EXISTS "sub_category_id" integer REFERENCES "sub_categories"("id") ON DELETE CASCADE;
+      ALTER TABLE "units" ADD COLUMN IF NOT EXISTS "short_name" varchar(50) NOT NULL DEFAULT '';
+      ALTER TABLE "units" ALTER COLUMN "name" TYPE varchar(100);
     `);
     unitsTableColumnsEnsured = true;
   } catch (err) {
