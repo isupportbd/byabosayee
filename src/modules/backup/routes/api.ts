@@ -34,7 +34,7 @@ const restoreBackupRoute = createRoute({
 });
 
 export default createRouter()
-  .use(authMiddleware)
+  .group(authMiddleware)
   .api(getStatsRoute, [requireRole("super_admin")], getDatabaseStats)
   .api(downloadBackupRoute, [requireRole("super_admin")], downloadBackup)
   .api(restoreBackupRoute, [requireRole("super_admin")], restoreBackup);

@@ -180,13 +180,13 @@ export const restoreBackup: Handler = async (c: any) => {
 
     // 1. Identify and protect current superadmin accounts in database
     const superAdminRoles = await db.select().from(roles).where(eq(roles.name, "super_admin"));
-    const superAdminRoleIds = new Set(superAdminRoles.map((r) => r.id));
+    const superAdminRoleIds = new Set<number>(superAdminRoles.map((r) => r.id));
 
     // Also identify any super_admin role from uploaded backup JSON
     if (Array.isArray(data.roles)) {
       data.roles.forEach((r: any) => {
         if (r && (r.name === "super_admin" || r.slug === "super_admin")) {
-          if (r.id) superAdminRoleIds.add(r.id);
+          if (r.id) superAdminRoleIds.add(Number(r.id));
         }
       });
     }
@@ -195,7 +195,7 @@ export const restoreBackup: Handler = async (c: any) => {
       ? await db.select().from(users).where(inArray(users.roleId, Array.from(superAdminRoleIds)))
       : [];
 
-    const protectedUserIds = new Set(currentSuperAdmins.map((u) => u.id));
+    const protectedUserIds = new Set<number>(currentSuperAdmins.map((u) => u.id));
     const protectedEmails = new Set(currentSuperAdmins.map((u) => u.email.toLowerCase()));
 
     // Fallback: If no superadmin was found by role, protect first user as safeguard
@@ -226,7 +226,7 @@ export const restoreBackup: Handler = async (c: any) => {
 
       // C. Clean users (STRICT: EXCLUDING existing superadmin users)
       if (protectedUserIds.size > 0) {
-        const idsArray = Array.from(protectedUserIds);
+        const idsArray: number[] = Array.from(protectedUserIds);
         await tx.delete(users).where(notInArray(users.id, idsArray));
       }
 

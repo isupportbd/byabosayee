@@ -52,6 +52,5 @@ const saveSettingRoute = createRoute({
 
 export default createRouter()
   .api(publicSettingsRoute, [], getPublicSettings)
-  .use(authMiddleware)
-  .api(listSettingsRoute, [requireRole("super_admin")], listSettings)
-  .api(saveSettingRoute, [requireRole("super_admin")], saveSetting);
+  .api(listSettingsRoute, [authMiddleware, requireRole("super_admin")], listSettings)
+  .api(saveSettingRoute, [authMiddleware, requireRole("super_admin")], saveSetting);

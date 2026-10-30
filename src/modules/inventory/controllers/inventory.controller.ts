@@ -1159,6 +1159,7 @@ export const createPurchase: Handler = async (c: any) => {
       const finalLineCost = Math.max(0, lineTotal + itemExtra);
       const unitCost = Number((finalLineCost / qty).toFixed(2));
 
+      const itemName = (item.name || "").trim();
       const categoryId = item.categoryId ? Number(item.categoryId) : null;
       const subCategoryId = item.subCategoryId ? Number(item.subCategoryId) : null;
       const brandId = item.brandId ? Number(item.brandId) : null;
@@ -1168,7 +1169,6 @@ export const createPurchase: Handler = async (c: any) => {
       const sizeId = item.sizeId ? Number(item.sizeId) : null;
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
-      const itemName = (item.name || "").trim();
 
       // Barcode: If user provided/customized a code from frontend, use it. Otherwise auto-generate 14-digit
       let code = (item.code || "").trim();
@@ -1442,6 +1442,7 @@ export const updatePurchase: Handler = async (c: any) => {
       const finalLineCost = Math.max(0, lineTotal + itemExtra);
       const unitCost = Number((finalLineCost / qty).toFixed(2));
 
+      const itemName = (item.name || "").trim();
       const categoryId = item.categoryId ? Number(item.categoryId) : null;
       const subCategoryId = item.subCategoryId ? Number(item.subCategoryId) : null;
       const brandId = item.brandId ? Number(item.brandId) : null;
@@ -1454,7 +1455,6 @@ export const updatePurchase: Handler = async (c: any) => {
       const sizeId = item.sizeId ? Number(item.sizeId) : null;
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
-      const itemName = (item.name || "").trim();
 
       let code = (item.code || "").trim();
       if (!code) {
