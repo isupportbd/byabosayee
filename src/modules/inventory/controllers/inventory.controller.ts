@@ -802,19 +802,12 @@ export const createItem: Handler = async (c: any) => {
       code,
       categoryId: body.categoryId ? Number(body.categoryId) : null,
       subCategoryId: body.subCategoryId ? Number(body.subCategoryId) : null,
-      productTypeId: body.productTypeId ? Number(body.productTypeId) : null,
-      brandId: body.brandId ? Number(body.brandId) : null,
-      supplierId: body.supplierId ? Number(body.supplierId) : null,
-      manufacturerId: body.manufacturerId ? Number(body.manufacturerId) : null,
-      colorId: body.colorId ? Number(body.colorId) : null,
       sizeId: body.sizeId ? Number(body.sizeId) : null,
       unitId: body.unitId ? Number(body.unitId) : null,
-      purchasePrice: String(body.purchasePrice || 0),
-      sellingPrice: String(body.sellingPrice || 0),
       stockQuantity: Number(body.stockQuantity || 0),
-      alertQuantity: Number(body.alertQuantity || 5),
-      imageUrl: body.imageUrl?.trim() || null,
-      description: body.description?.trim() || null
+      purchasePrice: "0",
+      sellingPrice: "0",
+      alertQuantity: 5
     })
     .returning();
 
@@ -845,19 +838,9 @@ export const updateItem: Handler = async (c: any) => {
       code: body.code !== undefined ? body.code?.trim() || null : undefined,
       categoryId: body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : undefined,
       subCategoryId: body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : undefined,
-      productTypeId: body.productTypeId !== undefined ? (body.productTypeId ? Number(body.productTypeId) : null) : undefined,
-      brandId: body.brandId !== undefined ? (body.brandId ? Number(body.brandId) : null) : undefined,
-      supplierId: body.supplierId !== undefined ? (body.supplierId ? Number(body.supplierId) : null) : undefined,
-      manufacturerId: body.manufacturerId !== undefined ? (body.manufacturerId ? Number(body.manufacturerId) : null) : undefined,
-      colorId: body.colorId !== undefined ? (body.colorId ? Number(body.colorId) : null) : undefined,
       sizeId: body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : undefined,
       unitId: body.unitId !== undefined ? (body.unitId ? Number(body.unitId) : null) : undefined,
-      purchasePrice: body.purchasePrice !== undefined ? String(body.purchasePrice) : undefined,
-      sellingPrice: body.sellingPrice !== undefined ? String(body.sellingPrice) : undefined,
       stockQuantity: body.stockQuantity !== undefined ? Number(body.stockQuantity) : undefined,
-      alertQuantity: body.alertQuantity !== undefined ? Number(body.alertQuantity) : undefined,
-      imageUrl: body.imageUrl !== undefined ? (body.imageUrl?.trim() || null) : undefined,
-      description: body.description !== undefined ? (body.description?.trim() || null) : undefined,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
       updatedAt: new Date()
     })
