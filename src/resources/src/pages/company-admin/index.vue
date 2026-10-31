@@ -43,6 +43,7 @@
                 <th scope="col">ইমেইল</th>
                 <th scope="col">মোবাইল</th>
                 <th scope="col" class="text-center" style="width: 100px;">স্ট্যাটাস</th>
+                <th scope="col" class="text-center" style="width: 90px;">অ্যাকশন</th>
               </tr>
             </thead>
             <tbody>
@@ -64,6 +65,16 @@
                       @change="toggleStatus(admin)"
                       style="cursor: pointer; width: 2.2rem; height: 1.15rem;" />
                   </div>
+                </td>
+                <td class="text-center">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger p-1 px-2 border-0"
+                    title="কোম্পানী ও এর সকল ডাটা মুছুন"
+                    :disabled="deletingId === admin.id"
+                    @click="openDeleteModal(admin)">
+                    <i class="bi bi-trash fs-6"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -166,6 +177,52 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal Backdrop & Dialog -->
+    <div
+      v-if="showDeleteModal && adminToDelete"
+      class="modal fade show d-block"
+      tabindex="-1"
+      style="background: rgba(0, 0, 0, 0.65);">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+          <div class="modal-header bg-danger text-white py-2">
+            <h5 class="modal-title fs-6 fw-bold">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+              কোম্পানী মুছে ফেলা
+            </h5>
+            <button type="button" class="btn-close btn-close-white" :disabled="deleting" @click="closeDeleteModal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-danger py-2 small mb-3">
+              <i class="bi bi-exclamation-octagon-fill me-1 fw-bold"></i>
+              <strong>চূড়ান্ত সতর্কতা:</strong> এই কোম্পানী মুছে ফেললে এর সাথে সম্পর্কিত সকল পণ্য, স্টক, কাস্টমার, ভেন্ডর, ক্রয়-বিক্রয় ও যাবতীয় সকল তথ্য ডাটাবেজ থেকে স্থায়ীভাবে মুছে যাবে এবং তা আর পুনরুদ্ধার করা সম্ভব হবে না!
+            </div>
+            <p class="mb-2">
+              আপনি কি নিশ্চিত যে <strong>"{{ adminToDelete.companyName }}"</strong> কোম্পানীটি মুছে ফেলতে চান?
+            </p>
+            <div class="bg-light p-3 rounded small text-muted border">
+              <div><strong>ইমেইল:</strong> {{ adminToDelete.email }}</div>
+              <div><strong>মোবাইল:</strong> {{ adminToDelete.mobile || '-' }}</div>
+            </div>
+          </div>
+          <div class="modal-footer py-2 bg-light d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-sm btn-secondary" :disabled="deleting" @click="closeDeleteModal">
+              বাতিল
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1 shadow-sm"
+              :disabled="deleting"
+              @click="confirmDelete">
+              <span v-if="deleting" class="spinner-border spinner-border-sm me-1" role="status"></span>
+              <i v-else class="bi bi-trash me-1"></i>
+              <span>{{ deleting ? 'মুছে ফেলা হচ্ছে...' : 'স্থায়ীভাবে মুছুন' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -198,6 +255,11 @@ const statusLoadingId = ref<number | null>(null);
 const showModal = ref(false);
 const formError = ref("");
 const toastRef = ref<InstanceType<typeof Toast> | null>(null);
+
+const showDeleteModal = ref(false);
+const adminToDelete = ref<CompanyAdmin | null>(null);
+const deletingId = ref<number | null>(null);
+const deleting = ref(false);
 
 const form = reactive({
   companyName: "",
@@ -274,6 +336,35 @@ async function toggleStatus(admin: CompanyAdmin) {
     showToast(error.response?.data?.message || "স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে", "danger");
   } finally {
     statusLoadingId.value = null;
+  }
+}
+
+function openDeleteModal(admin: CompanyAdmin) {
+  adminToDelete.value = admin;
+  showDeleteModal.value = true;
+}
+
+function closeDeleteModal() {
+  if (deleting.value) return;
+  showDeleteModal.value = false;
+  adminToDelete.value = null;
+}
+
+async function confirmDelete() {
+  if (!adminToDelete.value) return;
+  const target = adminToDelete.value;
+  deleting.value = true;
+  deletingId.value = target.id;
+  try {
+    const res = await axios.delete(`/api/company/${target.id}`);
+    showToast(res.data?.message || `"${target.companyName}" সফলভাবে মুছে ফেলা হয়েছে`, "success");
+    closeDeleteModal();
+    await fetchCompanyAdmins();
+  } catch (error: any) {
+    showToast(error.response?.data?.message || "কোম্পানী মুছে ফেলা সম্ভব হয়নি", "danger");
+  } finally {
+    deleting.value = false;
+    deletingId.value = null;
   }
 }
 

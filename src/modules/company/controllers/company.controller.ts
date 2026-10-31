@@ -253,6 +253,83 @@ export const toggleStatus: Handler = async (c: any) => {
 };
 
 /**
+ * Delete a Company Admin and cascade remove all associated company data.
+ * Accessible strictly by Super Admin.
+ */
+export const destroy: Handler = async (c: any) => {
+  try {
+    const id = Number(c.req.param("id"));
+    if (!id || Number.isNaN(id)) {
+      return c.json({ message: "Invalid ID" }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, id),
+      with: { role: true }
+    });
+
+    if (!user) {
+      return c.json({ message: "কোম্পানী পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
+
+    // Protection: Super Admin cannot be deleted
+    const superAdminRole =
+      (await db.query.roles.findFirst({ where: eq(roles.name, "super_admin") })) ||
+      (await db.query.roles.findFirst({ where: eq(roles.name, "admin") }));
+    if (user.roleId === superAdminRole?.id || user.role?.name === "super_admin" || user.role?.name === "admin") {
+      return c.json({ message: "সুপার এডমিন অ্যাকাউন্ট মুছে ফেলা যাবে না" }, HttpStatusCodes.BAD_REQUEST);
+    }
+
+    const companyName = user.companyName || user.name || user.email;
+
+    // Cascade delete all company data in PostgreSQL
+    // 1. Sale items & Sales
+    await db.execute(sql`
+      DELETE FROM "sale_items" WHERE "sale_id" IN (SELECT "id" FROM "sales" WHERE "user_id" = ${id});
+      DELETE FROM "sales" WHERE "user_id" = ${id};
+    `);
+
+    // 2. Purchase items & Purchases
+    await db.execute(sql`
+      DELETE FROM "purchase_items" WHERE "purchase_id" IN (SELECT "id" FROM "purchases" WHERE "user_id" = ${id});
+      DELETE FROM "purchases" WHERE "user_id" = ${id};
+    `);
+
+    // 3. Item pricings, Items, Brands, Suppliers, Manufacturers, Customers
+    await db.execute(sql`
+      DELETE FROM "item_pricings" WHERE "user_id" = ${id};
+      DELETE FROM "items" WHERE "user_id" = ${id};
+      DELETE FROM "brands" WHERE "user_id" = ${id};
+      DELETE FROM "suppliers" WHERE "user_id" = ${id};
+      DELETE FROM "manufacturers" WHERE "user_id" = ${id};
+      DELETE FROM "customers" WHERE "user_id" = ${id};
+    `);
+
+    // 4. Company settings, Refresh tokens, Notifications, Email/Password tokens
+    await db.execute(sql`
+      DELETE FROM "company_settings" WHERE "user_id" = ${id};
+      DELETE FROM "refresh_tokens" WHERE "user_id" = ${id};
+      DELETE FROM "notifications" WHERE "user_id" = ${id};
+      DELETE FROM "email_verification_tokens" WHERE "email" = ${user.email};
+      DELETE FROM "password_reset_tokens" WHERE "email" = ${user.email};
+    `);
+
+    // 5. Delete User record itself
+    await db.delete(users).where(eq(users.id, id));
+
+    return c.json(
+      {
+        message: `"${companyName}" কোম্পানী এবং এর সকল ডাটা সফলভাবে মুছে ফেলা হয়েছে`
+      },
+      HttpStatusCodes.OK
+    );
+  } catch (error) {
+    console.error("Delete company error:", error);
+    return c.json({ message: "কোম্পানী মুছে ফেলা সম্ভব হয়নি" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};
+
+/**
  * Get profile and settings of currently logged-in Company.
  */
 export const getProfile: Handler = async (c: any) => {

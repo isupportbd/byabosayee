@@ -3,6 +3,7 @@ import { authMiddleware } from "@/middlewares/auth-middleware.js";
 import { requireRole } from "@/middlewares/role-middleware.js";
 import {
   changePassword,
+  destroy,
   getProfile,
   index,
   store,
@@ -58,6 +59,19 @@ const toggleStatusRoute = createRoute({
   }
 });
 
+const deleteCompanyRoute = createRoute({
+  path: "/{id}",
+  method: "delete",
+  tags: ["Company"],
+  description: "Delete Company and all associated data (Super Admin only)",
+  request: {
+    params: CompanyIdParamsSchema
+  },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(CompanyMessageSchema, "Company deleted")
+  }
+});
+
 const getProfileRoute = createRoute({
   path: "/profile",
   method: "get",
@@ -99,6 +113,7 @@ export default createRouter()
   .api(listRoute, [requireRole("super_admin")], index)
   .api(createRouteConfig, [requireRole("super_admin")], store)
   .api(toggleStatusRoute, [requireRole("super_admin")], toggleStatus)
+  .api(deleteCompanyRoute, [requireRole("super_admin")], destroy)
   .api(getProfileRoute, [requireRole("company_admin", "super_admin")], getProfile)
   .api(updateProfileRoute, [requireRole("company_admin", "super_admin")], updateProfile)
   .api(changePasswordRoute, [requireRole("company_admin", "super_admin")], changePassword);
