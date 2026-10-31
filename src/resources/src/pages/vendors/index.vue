@@ -592,12 +592,12 @@ const isOrgMobileValid = computed(() => {
 });
 
 const isOwnerMobileValid = computed(() => {
-  if (!form.ownerMobile) return true;
+  if (!form.ownerMobile) return false;
   return isValidBdMobile(form.ownerMobile);
 });
 
 const isManagerMobileValid = computed(() => {
-  if (!form.managerMobile) return true;
+  if (!form.managerMobile) return false;
   return isValidBdMobile(form.managerMobile);
 });
 
