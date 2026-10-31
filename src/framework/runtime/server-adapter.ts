@@ -22,15 +22,66 @@ async function startNode(
   port: number,
   websocket?: RealtimeServeWebSocket
 ): Promise<HttpServerHandle> {
-  const [{ serve }, { createServer }] = await Promise.all([import("@hono/node-server"), import("node:http")]);
+  const [{ serve }, { createServer: createHttpServer }] = await Promise.all([
+    import("@hono/node-server"),
+    import("node:http")
+  ]);
 
+  const makeServer = (label: string, optional = false) => {
+    return (...args: any[]) => {
+      const server = (createHttpServer as any)(...args);
+      server.on("error", (err: any) => {
+        if (optional) {
+          // Gracefully suppress secondary port bind errors (e.g. EADDRINUSE, EACCES)
+          return;
+        }
+        console.error(`[HTTP Server] Error on ${label}:`, err?.message || err);
+      });
+      return server;
+    };
+  };
+
+  // Primary server binding explicitly to 0.0.0.0 for container / cloud compatibility
   const server = websocket?.node
-    ? serve({ fetch: app.fetch, port, createServer, websocket: { server: websocket.node } })
-    : serve({ fetch: app.fetch, port, createServer });
+    ? serve({
+        fetch: app.fetch,
+        port,
+        hostname: "0.0.0.0",
+        createServer: makeServer(`port ${port}`),
+        websocket: { server: websocket.node }
+      })
+    : serve({
+        fetch: app.fetch,
+        port,
+        hostname: "0.0.0.0",
+        createServer: makeServer(`port ${port}`)
+      });
+
+  // Secondary dual-listener for zero-downtime port alignment (80 vs 3000 in Coolify/Docker)
+  const secondaryPort = port === 80 ? 3000 : 80;
+  let secondaryServer: any = null;
+  try {
+    secondaryServer = serve({
+      fetch: app.fetch,
+      port: secondaryPort,
+      hostname: "0.0.0.0",
+      createServer: makeServer(`port ${secondaryPort}`, true)
+    });
+  } catch {
+    // Graceful fallback if secondary binding fails
+  }
+
   return {
     native: server,
     address: () => server.address(),
-    close: () => new Promise<void>((resolve) => server.close(() => resolve()))
+    close: async () => {
+      if (secondaryServer) {
+        try {
+          await new Promise<void>((resolve) => secondaryServer.close(() => resolve()));
+        } catch {}
+      }
+      return new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   };
 }
 
@@ -56,7 +107,8 @@ async function startBun(
       }
       return app.fetch(req);
     },
-    port
+    port,
+    hostname: "0.0.0.0"
   };
 
   if (websocket?.bun) {
