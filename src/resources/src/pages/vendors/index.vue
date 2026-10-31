@@ -664,11 +664,66 @@ function isManufacturer(typeVal: string): boolean {
   return false;
 }
 
+function isVendorTypeMatch(v: any, typeVal: string): boolean {
+  if (!typeVal || typeVal === "all") return true;
+
+  const rawVt = v.vendorType || v.type || "";
+  const vtNorm = String(rawVt).toLowerCase().trim();
+  const filterNorm = String(typeVal).toLowerCase().trim();
+
+  // Direct exact match
+  if (vtNorm === filterNorm) return true;
+
+  // Match via activeVendorTypes catalog definitions
+  const targetType = activeVendorTypes.value.find(
+    (t) => (t.code || "").toLowerCase() === filterNorm || (t.name || "").toLowerCase() === filterNorm
+  );
+
+  const vendorType = activeVendorTypes.value.find(
+    (t) => (t.code || "").toLowerCase() === vtNorm || (t.name || "").toLowerCase() === vtNorm
+  );
+
+  // If both resolve to the same catalog entry ID
+  if (targetType && vendorType && targetType.id === vendorType.id) {
+    return true;
+  }
+
+  // Check manufacturer category
+  const isTargetManu = isManufacturer(typeVal) || (targetType && isManufacturer(targetType.code || targetType.name));
+  const isVendorManu = isManufacturer(rawVt) || (vendorType && isManufacturer(vendorType.code || vendorType.name));
+
+  if (isTargetManu || isVendorManu) {
+    return isTargetManu === isVendorManu;
+  }
+
+  // Check default supplier category
+  const isTargetSupplier =
+    filterNorm === "supplier" ||
+    filterNorm === "সাপ্লায়ার" ||
+    (targetType && ((targetType.code || "").toLowerCase() === "supplier" || targetType.name === "সাপ্লায়ার"));
+
+  const isVendorSupplier =
+    vtNorm === "supplier" ||
+    vtNorm === "সাপ্লায়ার" ||
+    !rawVt ||
+    (vendorType && ((vendorType.code || "").toLowerCase() === "supplier" || vendorType.name === "সাপ্লায়ার"));
+
+  if (isTargetSupplier || isVendorSupplier) {
+    return isTargetSupplier === isVendorSupplier;
+  }
+
+  // Any other custom vendor type (e.g. "রপ্তানিকারক", "পাইকারি বিক্রেতা")
+  if (targetType) {
+    const targetCode = (targetType.code || "").toLowerCase();
+    const targetName = (targetType.name || "").toLowerCase();
+    return vtNorm === targetCode || vtNorm === targetName;
+  }
+
+  return false;
+}
+
 function getVendorCountByType(typeVal: string) {
-  return unifiedVendors.value.filter((v) => {
-    const vt = v.vendorType || v.type;
-    return vt === typeVal || (isManufacturer(typeVal) && isManufacturer(vt)) || (!isManufacturer(typeVal) && !isManufacturer(vt) && (typeVal === "supplier" || vt === "supplier"));
-  }).length;
+  return unifiedVendors.value.filter((v) => isVendorTypeMatch(v, typeVal)).length;
 }
 
 // Edit Mode State
@@ -836,10 +891,7 @@ const filteredVendors = computed(() => {
   let list = unifiedVendors.value;
 
   if (activeFilter.value !== "all") {
-    list = list.filter((v) => {
-      const vt = v.vendorType || v.type;
-      return vt === activeFilter.value || (isManufacturer(activeFilter.value) && isManufacturer(vt)) || (!isManufacturer(activeFilter.value) && !isManufacturer(vt) && (activeFilter.value === "supplier" || vt === "supplier"));
-    });
+    list = list.filter((v) => isVendorTypeMatch(v, activeFilter.value));
   }
 
   if (searchQuery.value.trim()) {
