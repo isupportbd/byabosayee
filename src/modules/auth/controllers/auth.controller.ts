@@ -1,9 +1,11 @@
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { authConfig, jwtConfig } from "@/config/index.js";
 import { cookie, db, dispatchEvent, HttpStatusCodes, jwt, password, urls } from "@/framework/facade.js";
 import { roles } from "@/modules/auth/database/models/role.js";
 import { emailVerificationTokens, passwordResetTokens, refreshTokens, users } from "@/modules/auth/database/models/user.js";
+import { companySettings } from "@/modules/company/database/models/company.js";
+import { ensureCompanySettingsTable } from "@/modules/company/controllers/company.controller.js";
 import {
   hashEmailVerificationToken,
   hashResetToken,
@@ -15,22 +17,32 @@ import {
 } from "./auth.helpers.js";
 
 /**
- * Why: Creates a new user, issues tokens, and triggers signup side effects.
+ * Why: Creates a new company account, issues tokens, and triggers signup side effects.
  * When: Used on first-time account creation.
  * Where: POST auth register route.
  */
 export const register: Handler = async (c: any) => {
   try {
     const body = c.req.valid("json");
-    const defaultRole = await db.query.roles.findFirst({
-      where: eq(roles.name, "user")
+    const email = String(body.email || "").toLowerCase().trim();
+    const rawName = String(body.name || body.companyName || "").trim();
+    const companyName = String(body.companyName || rawName).trim();
+
+    // Find or create company_admin role
+    let companyAdminRole = await db.query.roles.findFirst({
+      where: eq(roles.name, "company_admin")
     });
+    if (!companyAdminRole) {
+      const [insertedRole] = await db.insert(roles).values({ name: "company_admin" }).returning();
+      companyAdminRole = insertedRole;
+    }
+
     const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, body.email)
+      where: eq(sql`lower(${users.email})`, email)
     });
 
     if (existingUser) {
-      return c.json({ message: "Email already exists" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+      return c.json({ message: "এই ইমেইলটি ইতিমধ্যে ব্যবহৃত হয়েছে (Email already exists)" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
     }
 
     let insertedId: number | null = null;
@@ -38,10 +50,14 @@ export const register: Handler = async (c: any) => {
       const [inserted] = await db
         .insert(users)
         .values({
-          name: body.name,
-          email: body.email,
+          companyName: companyName || rawName,
+          name: rawName,
+          email: email,
+          mobile: body.mobile ? String(body.mobile).trim() : null,
           password: await password.hashPassword(body.password),
-          roleId: defaultRole?.id ?? null
+          isActive: true,
+          roleId: companyAdminRole?.id ?? null,
+          emailVerifiedAt: new Date()
         })
         .returning({ id: users.id });
       if (inserted?.id) {
@@ -49,16 +65,20 @@ export const register: Handler = async (c: any) => {
       }
     } catch {
       const insertResult = await db.insert(users).values({
-        name: body.name,
-        email: body.email,
+        companyName: companyName || rawName,
+        name: rawName,
+        email: email,
+        mobile: body.mobile ? String(body.mobile).trim() : null,
         password: await password.hashPassword(body.password),
-        roleId: defaultRole?.id ?? null
+        isActive: true,
+        roleId: companyAdminRole?.id ?? null,
+        emailVerifiedAt: new Date()
       });
       insertedId = Number((insertResult as any)[0]?.insertId ?? (insertResult as any).insertId);
     }
 
     if (!insertedId) {
-      const found = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+      const found = await db.query.users.findFirst({ where: eq(sql`lower(${users.email})`, email) });
       insertedId = found ? found.id : null;
     }
 
@@ -72,6 +92,27 @@ export const register: Handler = async (c: any) => {
     });
 
     if (!user) throw new Error("Inserted user not found");
+
+    // Auto-initialize company settings row
+    await ensureCompanySettingsTable();
+    try {
+      const existingSettings = await db.query.companySettings.findFirst({
+        where: eq(companySettings.userId, user.id)
+      });
+      if (!existingSettings) {
+        await db.insert(companySettings).values({
+          userId: user.id,
+          companyName: companyName || rawName,
+          email: user.email,
+          phone: user.mobile,
+          invoicePrefix: "INV",
+          invoicePattern: "{PREFIX}-{YYYY}-{0001}",
+          printFormat: "a4"
+        });
+      }
+    } catch (csErr) {
+      console.warn("Non-fatal company settings init warning:", csErr);
+    }
 
     if (authConfig.requireEmailVerification) {
       const plainToken = makeEmailVerificationToken();
@@ -93,20 +134,24 @@ export const register: Handler = async (c: any) => {
 
     await revokeCurrentRefreshToken(c);
     const tokens = await issueTokens(c, user, { remember: !!body.remember });
-    await dispatchEvent(
-      "user:signup",
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        password: body.password
-      },
-      { queue: "mail" }
-    );
+    try {
+      await dispatchEvent(
+        "user:signup",
+        {
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          password: body.password
+        },
+        { queue: "mail" }
+      );
+    } catch (evtErr) {
+      console.warn("Non-fatal signup event dispatch warning:", evtErr);
+    }
 
     return c.json(
       {
-        message: "User registered successfully",
+        message: "কোম্পানী সফলভাবে নিবন্ধিত হয়েছে",
         data: {
           user: sanitizeUser(user),
           access_token: tokens.accessToken,
@@ -130,14 +175,18 @@ export const register: Handler = async (c: any) => {
 export const login: Handler = async (c: any) => {
   try {
     const body = c.req.valid("json");
-    const user = await db.query.users.findFirst({ where: eq(users.email, body.email), with: { role: true } });
+    const email = String(body.email || "").toLowerCase().trim();
+    const user = await db.query.users.findFirst({
+      where: eq(sql`lower(${users.email})`, email),
+      with: { role: true }
+    });
 
     if (!user || !(await password.verifyPassword(body.password, user.password))) {
-      return c.json({ message: "Invalid credentials" }, HttpStatusCodes.UNAUTHORIZED);
+      return c.json({ message: "ইমেইল অথবা পাসওয়ার্ড সঠিক নয় (Invalid credentials)" }, HttpStatusCodes.UNAUTHORIZED);
     }
 
     if (user.isActive === false) {
-      return c.json({ message: "Your account is deactivated. Please contact administrator." }, HttpStatusCodes.FORBIDDEN);
+      return c.json({ message: "আপনার একাউন্টটি নিষ্ক্রিয় করা আছে। এডমিনের সাথে যোগাযোগ করুন।" }, HttpStatusCodes.FORBIDDEN);
     }
 
     if (authConfig.requireEmailVerification && !user.emailVerifiedAt) {
@@ -284,7 +333,7 @@ export const resetPassword: Handler = async (c: any) => {
     const user = await db.query.users.findFirst({
       where: eq(users.email, body.email)
     });
-    if (user) await db.update(refreshTokens).set({ revoked: 1 }).where(eq(refreshTokens.userId, user.id));
+    if (user) await db.update(refreshTokens).set({ revoked: true }).where(eq(refreshTokens.userId, user.id));
 
     return c.json({ message: "Password reset successfully" }, HttpStatusCodes.OK);
   } catch (error) {
@@ -344,7 +393,7 @@ export const refreshToken: Handler = async (c: any) => {
       where: eq(refreshTokens.jti, payload.jti as string)
     });
 
-    if (!storedToken || storedToken.revoked === 1) {
+    if (!storedToken || storedToken.revoked) {
       return c.json({ message: "Refresh token revoked" }, HttpStatusCodes.UNAUTHORIZED);
     }
 
@@ -388,7 +437,7 @@ export const refreshToken: Handler = async (c: any) => {
       .set({
         jti: newRefreshToken.jti as string,
         expiresAt: new Date(newRefreshToken.exp * 1000),
-        revoked: 0
+        revoked: false
       })
       .where(eq(refreshTokens.id, storedToken.id));
 

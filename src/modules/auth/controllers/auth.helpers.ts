@@ -119,7 +119,7 @@ export async function issueTokens(c: any, user: any, options?: { remember?: bool
     await db.insert(refreshTokens).values({
       userId: user.id,
       jti: refreshToken.jti,
-      revoked: 0,
+      revoked: false,
       expiresAt: new Date(refreshToken.exp * 1000)
     });
   }

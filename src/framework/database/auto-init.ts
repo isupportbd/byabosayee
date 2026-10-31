@@ -311,6 +311,26 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
         });
         console.log(`[Auto-Init] Super admin (${superAdminEmail}) created.`);
       }
+
+      // 8. Auto-heal: Ensure all non-superadmin users have company_admin role, companyName, and company_settings
+      const companyAdminRole = await db.query.roles.findFirst({ where: eq(roles.name, "company_admin") });
+      if (companyAdminRole && superAdminRole) {
+        await executeRawSql(`
+          UPDATE "users"
+          SET "role_id" = ${companyAdminRole.id},
+              "company_name" = COALESCE(NULLIF("company_name", ''), "name", 'কোম্পানী'),
+              "is_active" = COALESCE("is_active", true),
+              "email_verified_at" = COALESCE("email_verified_at", now())
+          WHERE "role_id" IS DISTINCT FROM ${superAdminRole.id}
+            AND ("role_id" IS DISTINCT FROM ${companyAdminRole.id} OR "company_name" IS NULL OR "company_name" = '');
+
+          INSERT INTO "company_settings" ("user_id", "company_name", "email", "phone", "invoice_prefix", "invoice_pattern", "print_format")
+          SELECT u."id", COALESCE(u."company_name", u."name", 'কোম্পানী'), u."email", u."mobile", 'INV', '{PREFIX}-{YYYY}-{0001}', 'a4'
+          FROM "users" u
+          LEFT JOIN "company_settings" cs ON cs."user_id" = u."id"
+          WHERE u."role_id" = ${companyAdminRole.id} AND cs."id" IS NULL;
+        `);
+      }
     } catch (seedErr) {
       console.warn("[Auto-Init] Super admin check warning (non-fatal):", seedErr);
     }

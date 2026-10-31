@@ -76,7 +76,7 @@ const onSubmit = async () => {
   await form.post(
     "/api/auth/login",
     {
-      email: String(form.data.email || "").trim(),
+      email: String(form.data.email || "").toLowerCase().trim(),
       password: form.data.password,
       remember: !!form.data.remember
     },

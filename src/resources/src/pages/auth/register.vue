@@ -104,7 +104,8 @@ const onSubmit = async () => {
     "/api/auth/register",
     {
       name: String(form.data.name || "").trim(),
-      email: String(form.data.email || "").trim(),
+      companyName: String(form.data.name || "").trim(),
+      email: String(form.data.email || "").toLowerCase().trim(),
       password: form.data.password,
       password_confirmation: form.data.password_confirmation
     },
@@ -118,8 +119,7 @@ const onSubmit = async () => {
           return;
         }
 
-        message.value = "Registration successful. Please verify your email.";
-        form.reset();
+        await router.push("/login");
       },
       onError: (errors, error) => {
         isError.value = true;

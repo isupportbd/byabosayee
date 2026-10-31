@@ -60,13 +60,41 @@ export async function ensureCompanySettingsTable() {
  */
 export const index: Handler = async (c: any) => {
   try {
-    const companyAdminRole = await db.query.roles.findFirst({
+    let companyAdminRole = await db.query.roles.findFirst({
       where: eq(roles.name, "company_admin")
     });
 
     if (!companyAdminRole) {
-      return c.json({ message: "Success", data: [] }, HttpStatusCodes.OK);
+      const [insertedRole] = await db.insert(roles).values({ name: "company_admin" }).returning();
+      companyAdminRole = insertedRole;
     }
+
+    const superAdminRole =
+      (await db.query.roles.findFirst({ where: eq(roles.name, "super_admin") })) ||
+      (await db.query.roles.findFirst({ where: eq(roles.name, "admin") }));
+
+    // Auto-heal: Ensure all non-superadmin users are assigned company_admin role and have companyName
+    if (superAdminRole && companyAdminRole) {
+      await db.execute(sql`
+        UPDATE "users"
+        SET "role_id" = ${companyAdminRole.id},
+            "company_name" = COALESCE(NULLIF("company_name", ''), "name", 'কোম্পানী'),
+            "is_active" = COALESCE("is_active", true),
+            "email_verified_at" = COALESCE("email_verified_at", now())
+        WHERE "role_id" IS DISTINCT FROM ${superAdminRole.id}
+          AND ("role_id" IS DISTINCT FROM ${companyAdminRole.id} OR "company_name" IS NULL OR "company_name" = '');
+      `);
+    }
+
+    // Ensure company_settings exists for all company admins
+    await ensureCompanySettingsTable();
+    await db.execute(sql`
+      INSERT INTO "company_settings" ("user_id", "company_name", "email", "phone", "invoice_prefix", "invoice_pattern", "print_format")
+      SELECT u."id", COALESCE(u."company_name", u."name", 'কোম্পানী'), u."email", u."mobile", 'INV', '{PREFIX}-{YYYY}-{0001}', 'a4'
+      FROM "users" u
+      LEFT JOIN "company_settings" cs ON cs."user_id" = u."id"
+      WHERE u."role_id" = ${companyAdminRole.id} AND cs."id" IS NULL;
+    `);
 
     const list = await db.query.users.findMany({
       where: eq(users.roleId, companyAdminRole.id),
@@ -83,7 +111,7 @@ export const index: Handler = async (c: any) => {
 
     const data = list.map((item) => ({
       id: item.id,
-      companyName: item.companyName,
+      companyName: item.companyName || item.email,
       email: item.email,
       mobile: item.mobile,
       isActive: item.isActive,
