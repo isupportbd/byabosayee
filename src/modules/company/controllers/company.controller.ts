@@ -303,6 +303,8 @@ export const destroy: Handler = async (c: any) => {
       DELETE FROM "suppliers" WHERE "user_id" = ${id};
       DELETE FROM "manufacturers" WHERE "user_id" = ${id};
       DELETE FROM "customers" WHERE "user_id" = ${id};
+      DELETE FROM "capital_investments" WHERE "user_id" = ${id};
+      DELETE FROM "capital_withdrawals" WHERE "user_id" = ${id};
     `);
 
     // 4. Company settings, Refresh tokens, Notifications, Email/Password tokens

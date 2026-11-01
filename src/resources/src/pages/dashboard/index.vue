@@ -510,12 +510,42 @@
                       <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">একাউন্টস</h5>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-emerald rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0"
-                    @click="openAccountsModal">
-                    +হিসাব খাতা
-                  </button>
+                  <div class="dropdown">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-emerald rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 dropdown-toggle"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      +হিসাব খাতা
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm small">
+                      <li>
+                        <router-link to="/accounts/capital/create" class="dropdown-item d-flex align-items-center gap-2">
+                          <i class="bi bi-plus-circle text-success"></i>
+                          <span>নতুন পুঁজি যোগ</span>
+                        </router-link>
+                      </li>
+                      <li>
+                        <router-link to="/accounts/withdrawals/create" class="dropdown-item d-flex align-items-center gap-2">
+                          <i class="bi bi-dash-circle text-warning"></i>
+                          <span>মূলধন/লাভ উত্তোলন</span>
+                        </router-link>
+                      </li>
+                      <li><hr class="dropdown-divider my-1"></li>
+                      <li>
+                        <router-link to="/accounts/capital" class="dropdown-item d-flex align-items-center gap-2">
+                          <i class="bi bi-wallet2 text-emerald"></i>
+                          <span>পুঁজি খতিয়ান ও তালিকা</span>
+                        </router-link>
+                      </li>
+                      <li>
+                        <router-link to="/accounts/withdrawals" class="dropdown-item d-flex align-items-center gap-2">
+                          <i class="bi bi-arrow-up-right-circle text-danger"></i>
+                          <span>উত্তোলন খতিয়ান ও তালিকা</span>
+                        </router-link>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
                   <div class="min-w-0">
@@ -526,16 +556,15 @@
                       <span class="text-muted small">৳ নিট ব্যালেন্স</span>
                     </div>
                     <p class="text-muted small mb-0 mt-1 text-truncate">
-                      <i class="bi bi-cash-stack text-emerald me-1"></i>আয়-ব্যয়, ক্যাশ ও লেজার
+                      <i class="bi bi-cash-stack text-emerald me-1"></i>পুঁজি, উত্তোলন ও ক্যাশ
                     </p>
                   </div>
-                  <button
-                    type="button"
+                  <router-link
+                    to="/accounts/capital"
                     class="view-icon-btn text-emerald flex-shrink-0"
-                    title="একাউন্টস বিবরণী দেখুন"
-                    @click="openAccountsModal">
+                    title="পুঁজি ও একাউন্টস বিবরণী দেখুন">
                     <i class="bi bi-eye"></i>
-                  </button>
+                  </router-link>
                 </div>
               </div>
             </div>

@@ -97,6 +97,30 @@ export const routes = [
         name: "company-settings",
         component: () => import("@/pages/company-settings/index.vue"),
         meta: { requiresAuth: true, title: "কোম্পানী সেটিংস" }
+      },
+      {
+        path: "/accounts/capital",
+        name: "accounts-capital",
+        component: () => import("@/pages/accounts/capital-list.vue"),
+        meta: { requiresAuth: true, title: "মূলধন / পুঁজি বিনিয়োগ তালিকা" }
+      },
+      {
+        path: "/accounts/capital/create",
+        name: "accounts-capital-create",
+        component: () => import("@/pages/accounts/capital-form.vue"),
+        meta: { requiresAuth: true, title: "নতুন মূলধন এন্ট্রি" }
+      },
+      {
+        path: "/accounts/withdrawals",
+        name: "accounts-withdrawals",
+        component: () => import("@/pages/accounts/withdrawal-list.vue"),
+        meta: { requiresAuth: true, title: "মূলধন / লাভ উত্তোলন তালিকা" }
+      },
+      {
+        path: "/accounts/withdrawals/create",
+        name: "accounts-withdrawals-create",
+        component: () => import("@/pages/accounts/withdrawal-form.vue"),
+        meta: { requiresAuth: true, title: "নতুন উত্তোলন এন্ট্রি" }
       }
     ]
   },

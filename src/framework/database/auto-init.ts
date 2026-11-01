@@ -3,6 +3,7 @@ import { db, password } from "@/framework/facade.js";
 import { roles } from "@/modules/auth/database/models/role.js";
 import { users } from "@/modules/auth/database/models/user.js";
 import { ensureInventoryTables } from "@/modules/inventory/controllers/inventory.controller.js";
+import { ensureAccountsTables } from "@/modules/accounts/controllers/accounts.controller.js";
 import RoleSeeder from "@/modules/auth/database/seeders/role.js";
 
 let autoInitDone = false;
@@ -282,8 +283,9 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
       ALTER TABLE "company_settings" ALTER COLUMN "company_name" DROP NOT NULL;
     `);
 
-    // 6. Ensure Inventory Tables
+    // 6. Ensure Inventory & Accounts Tables
     await ensureInventoryTables();
+    await ensureAccountsTables();
 
     // 7. Auto-Seed ONLY Roles & Super Admin (No dummy users or sample catalog data)
     try {
