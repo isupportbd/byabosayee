@@ -492,20 +492,37 @@ const filteredSizesList = computed(() => {
 
 // Filtered Units based on selected category & subcategory (or general units if none assigned)
 const filteredUnitsList = computed(() => {
+  let list: any[] = [];
+
   if (form.subCategoryId) {
     const matched = unitsList.value.filter(
-      (u: any) => String(u.subCategoryId) === String(form.subCategoryId)
+      (u: any) => String(u.subCategoryId) === String(form.subCategoryId) && (u.isActive ?? true)
     );
-    if (matched.length > 0) return matched;
+    if (matched.length > 0) list = matched;
   }
-  if (form.categoryId) {
+
+  if (list.length === 0 && form.categoryId) {
     const matched = unitsList.value.filter(
-      (u: any) => String(u.categoryId) === String(form.categoryId)
+      (u: any) => String(u.categoryId) === String(form.categoryId) && (u.isActive ?? true)
     );
-    if (matched.length > 0) return matched;
+    if (matched.length > 0) list = matched;
   }
-  const unassigned = unitsList.value.filter((u: any) => !u.categoryId && !u.subCategoryId);
-  return unassigned.length > 0 ? unassigned : unitsList.value;
+
+  if (list.length === 0) {
+    const unassigned = unitsList.value.filter(
+      (u: any) => !u.categoryId && !u.subCategoryId && (u.isActive ?? true)
+    );
+    list = unassigned.length > 0 ? unassigned : unitsList.value.filter((u: any) => u.isActive ?? true);
+  }
+
+  // Deduplicate by name & shortName to guarantee no duplicate unit options appear in dropdown
+  const seen = new Set<string>();
+  return list.filter((u: any) => {
+    const key = `${(u.name || "").trim().toLowerCase()}_${(u.shortName || "").trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 });
 
 /**

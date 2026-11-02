@@ -1917,34 +1917,42 @@ const filteredSizesList = computed(() => {
 const filteredUnitsList = computed(() => {
   const subCatId = currentItem.subCategoryId;
   const catId = currentItem.categoryId;
+  let list: any[] = [];
 
   if (subCatId) {
     const matched = unitsList.value.filter(
-      (u: any) => String(u.subCategoryId ?? u.sub_category_id ?? "") === String(subCatId)
+      (u: any) => String(u.subCategoryId ?? u.sub_category_id ?? "") === String(subCatId) && (u.isActive ?? true)
     );
-    if (matched.length > 0) {
-      if (currentItem.unitId && !matched.some((u: any) => Number(u.id) === Number(currentItem.unitId))) {
-        const sel = unitsList.value.find((u: any) => Number(u.id) === Number(currentItem.unitId));
-        if (sel) return [sel, ...matched];
-      }
-      return matched;
-    }
+    if (matched.length > 0) list = matched;
   }
 
-  if (catId) {
+  if (list.length === 0 && catId) {
     const matched = unitsList.value.filter(
-      (u: any) => String(u.categoryId ?? u.category_id ?? "") === String(catId)
+      (u: any) => String(u.categoryId ?? u.category_id ?? "") === String(catId) && (u.isActive ?? true)
     );
-    if (matched.length > 0) {
-      if (currentItem.unitId && !matched.some((u: any) => Number(u.id) === Number(currentItem.unitId))) {
-        const sel = unitsList.value.find((u: any) => Number(u.id) === Number(currentItem.unitId));
-        if (sel) return [sel, ...matched];
-      }
-      return matched;
-    }
+    if (matched.length > 0) list = matched;
   }
 
-  return unitsList.value;
+  if (list.length === 0) {
+    const unassigned = unitsList.value.filter(
+      (u: any) => !u.categoryId && !u.subCategoryId && (u.isActive ?? true)
+    );
+    list = unassigned.length > 0 ? unassigned : unitsList.value.filter((u: any) => u.isActive ?? true);
+  }
+
+  if (currentItem.unitId && !list.some((u: any) => Number(u.id) === Number(currentItem.unitId))) {
+    const sel = unitsList.value.find((u: any) => Number(u.id) === Number(currentItem.unitId));
+    if (sel) list = [sel, ...list];
+  }
+
+  // Deduplicate by name & shortName to guarantee no duplicate unit options appear in dropdown
+  const seen = new Set<string>();
+  return list.filter((u: any) => {
+    const key = `${(u.name || "").trim().toLowerCase()}_${(u.shortName || "").trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 });
 
 const form = reactive({

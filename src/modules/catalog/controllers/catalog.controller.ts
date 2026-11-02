@@ -1302,20 +1302,42 @@ export const createUnit: Handler = async (c: any) => {
     const categoryId = body.categoryId ? Number(body.categoryId) : null;
     const subCategoryId = body.subCategoryId ? Number(body.subCategoryId) : null;
 
+    const duplicateCond = or(
+      sql`LOWER(TRIM(${units.name})) = LOWER(TRIM(${name}))`,
+      sql`LOWER(TRIM(${units.shortName})) = LOWER(TRIM(${shortName}))`
+    );
+
     if (categoryId && subCategoryId) {
       const [existing] = await db.select().from(units).where(
         and(
           eq(units.categoryId, categoryId),
           eq(units.subCategoryId, subCategoryId),
-          or(
-            sql`LOWER(TRIM(${units.name})) = LOWER(TRIM(${name}))`,
-            sql`LOWER(TRIM(${units.shortName})) = LOWER(TRIM(${shortName}))`
-          )
+          duplicateCond
         )
       );
-
       if (existing) {
         return c.json({ message: "এই সাব-ক্যাটাগরিতে এই একক ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+      }
+    } else if (categoryId && !subCategoryId) {
+      const [existing] = await db.select().from(units).where(
+        and(
+          eq(units.categoryId, categoryId),
+          duplicateCond
+        )
+      );
+      if (existing) {
+        return c.json({ message: "এই ক্যাটাগরিতে এই একক ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+      }
+    } else {
+      const [existing] = await db.select().from(units).where(
+        and(
+          sql`${units.categoryId} IS NULL`,
+          sql`${units.subCategoryId} IS NULL`,
+          duplicateCond
+        )
+      );
+      if (existing) {
+        return c.json({ message: "সাধারণ একক তালিকায় এই একক ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
       }
     }
 
@@ -1362,20 +1384,45 @@ export const updateUnit: Handler = async (c: any) => {
     const categoryId = body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : item.categoryId;
     const subCategoryId = body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : item.subCategoryId;
 
+    const duplicateCond = or(
+      sql`LOWER(TRIM(${units.name})) = LOWER(TRIM(${name}))`,
+      sql`LOWER(TRIM(${units.shortName})) = LOWER(TRIM(${shortName}))`
+    );
+
     if (categoryId && subCategoryId) {
       const [duplicate] = await db.select().from(units).where(
         and(
           ne(units.id, id),
           eq(units.categoryId, categoryId),
           eq(units.subCategoryId, subCategoryId),
-          or(
-            sql`LOWER(TRIM(${units.name})) = LOWER(TRIM(${name}))`,
-            sql`LOWER(TRIM(${units.shortName})) = LOWER(TRIM(${shortName}))`
-          )
+          duplicateCond
         )
       );
       if (duplicate) {
         return c.json({ message: "এই সাব-ক্যাটাগরিতে এই একক ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+      }
+    } else if (categoryId && !subCategoryId) {
+      const [duplicate] = await db.select().from(units).where(
+        and(
+          ne(units.id, id),
+          eq(units.categoryId, categoryId),
+          duplicateCond
+        )
+      );
+      if (duplicate) {
+        return c.json({ message: "এই ক্যাটাগরিতে এই একক ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
+      }
+    } else {
+      const [duplicate] = await db.select().from(units).where(
+        and(
+          ne(units.id, id),
+          sql`${units.categoryId} IS NULL`,
+          sql`${units.subCategoryId} IS NULL`,
+          duplicateCond
+        )
+      );
+      if (duplicate) {
+        return c.json({ message: "সাধারণ একক তালিকায় এই একক ইতিমধ্যে বিদ্যমান রয়েছে" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
       }
     }
 
