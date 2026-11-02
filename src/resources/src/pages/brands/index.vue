@@ -325,6 +325,7 @@ import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Toast from "@/components/Toast.vue";
+import { notifyCatalogUpdated } from "@/helpers/catalog-sync";
 
 const route = useRoute();
 const router = useRouter();
@@ -598,11 +599,13 @@ async function submitBrandForm() {
       showToast(res.data?.message || "ব্রান্ড সফলভাবে আপডেট করা হয়েছে", "success");
       cancelEdit();
       await fetchBrands();
+      notifyCatalogUpdated("brand");
     } else {
       const res = await axios.post("/api/inventory/brands", payload);
       showToast(res.data?.message || "ব্রান্ড সফলভাবে তৈরি করা হয়েছে", "success");
       resetForm();
       await fetchBrands();
+      notifyCatalogUpdated("brand");
       switchView("list");
     }
   } catch (err: any) {

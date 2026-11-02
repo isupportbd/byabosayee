@@ -1565,6 +1565,7 @@
 import axios from "axios";
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { onCatalogUpdated } from "@/helpers/catalog-sync";
 
 const route = useRoute();
 const router = useRouter();
@@ -3068,14 +3069,25 @@ async function saveAttachments() {
   }
 }
 
+let cleanupCatalogSync: (() => void) | null = null;
+
 onMounted(async () => {
   window.addEventListener("click", handleGlobalClick);
   loadMediaConfig();
   await Promise.all([fetchCatalogData(), fetchPurchases()]);
+
+  // Realtime cross-tab and websocket auto-synchronization without page reload
+  cleanupCatalogSync = onCatalogUpdated(async (entity) => {
+    await fetchCatalogData();
+  });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("click", handleGlobalClick);
+  if (cleanupCatalogSync) {
+    cleanupCatalogSync();
+    cleanupCatalogSync = null;
+  }
 });
 </script>
 

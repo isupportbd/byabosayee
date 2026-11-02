@@ -1530,6 +1530,7 @@ import { computed, inject, onMounted, reactive, ref } from "vue";
 import Toast from "@/components/Toast.vue";
 import { useAdminUiStore } from "@/stores/admin-ui";
 import { hasRole } from "@/composables/useAuth";
+import { notifyCatalogUpdated } from "@/helpers/catalog-sync";
 
 useHead({ title: "গ্লোবাল সেটিংস - Fashion" });
 
@@ -2287,6 +2288,7 @@ async function submitModalForm() {
         closeModal();
       }
     }
+    notifyCatalogUpdated("catalog");
   } catch (error: any) {
     modalError.value = error.response?.data?.message || "সংরক্ষণ করতে ব্যর্থ হয়েছে";
   } finally {
@@ -2324,6 +2326,7 @@ async function toggleStatus(
   try {
     const res = await axios.patch(url, { isActive: newStatus });
     showToast(res.data?.message || "স্ট্যাটাস পরিবর্তন সফল হয়েছে", "success");
+    notifyCatalogUpdated("catalog");
   } catch (error: any) {
     // Revert optimistic update on failure
     item.isActive = previousStatus;

@@ -407,8 +407,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
+import { notifyCatalogUpdated, onCatalogUpdated } from "@/helpers/catalog-sync";
 
 // Bengali Number Formatter
 function toBengaliNumber(num: number | string | null | undefined): string {
@@ -763,10 +764,12 @@ async function submitForm() {
       const res = await axios.put(`/api/inventory/items/${editingItem.value.id}`, payload);
       showToast(res.data?.message || "পণ্য সফলভাবে আপডেট হয়েছে", "success");
       cancelEdit();
+      notifyCatalogUpdated("item");
     } else {
       const res = await axios.post("/api/inventory/items", payload);
       showToast(res.data?.message || "পণ্য সফলভাবে তৈরি হয়েছে", "success");
       resetForm();
+      notifyCatalogUpdated("item");
     }
     await fetchItems();
   } catch (err: any) {
@@ -842,10 +845,23 @@ async function fetchCompanySettings() {
   }
 }
 
+let cleanupCatalogSync: (() => void) | null = null;
+
 onMounted(async () => {
   await Promise.all([fetchCompanySettings(), fetchCatalogData(), fetchBrands(), fetchItems()]);
   if (!isEditing.value) {
     form.code = generateNextProductCode();
+  }
+
+  cleanupCatalogSync = onCatalogUpdated(async () => {
+    await Promise.all([fetchCatalogData(), fetchBrands()]);
+  });
+});
+
+onBeforeUnmount(() => {
+  if (cleanupCatalogSync) {
+    cleanupCatalogSync();
+    cleanupCatalogSync = null;
   }
 });
 </script>

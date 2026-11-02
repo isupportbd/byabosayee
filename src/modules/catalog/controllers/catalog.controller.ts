@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, ne, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
-import { db, HttpStatusCodes } from "@/framework/facade.js";
+import { broadcast, db, HttpStatusCodes } from "@/framework/facade.js";
 import { executeRawSql } from "@/framework/database/auto-init.js";
 import {
   categories,
@@ -318,6 +318,8 @@ export const createCategory: Handler = async (c: any) => {
       })
       .returning();
 
+    broadcast("catalog.updated", { entity: "category" }, { all: true, rooms: ["catalog"] });
+
     return c.json(
       {
         message: "নতুন ক্যাটাগরি সফলভাবে যুক্ত হয়েছে",
@@ -430,6 +432,8 @@ export const createSubCategory: Handler = async (c: any) => {
         isActive: true
       })
       .returning();
+
+    broadcast("catalog.updated", { entity: "subCategory" }, { all: true, rooms: ["catalog"] });
 
     return c.json(
       {
@@ -722,6 +726,8 @@ export const createSize: Handler = async (c: any) => {
       ...item,
       createdAt: item.createdAt ? String(item.createdAt) : null
     }));
+
+    broadcast("catalog.updated", { entity: "size" }, { all: true, rooms: ["catalog"] });
 
     return c.json(
       {
@@ -1352,6 +1358,8 @@ export const createUnit: Handler = async (c: any) => {
       })
       .returning();
 
+    broadcast("catalog.updated", { entity: "unit" }, { all: true, rooms: ["catalog"] });
+
     return c.json(
       {
         message: "নতুন পরিমাপের একক সফলভাবে যুক্ত হয়েছে",
@@ -1680,6 +1688,8 @@ export const createVendorType: Handler = async (c: any) => {
         isActive: true
       })
       .returning();
+
+    broadcast("catalog.updated", { entity: "vendorType" }, { all: true, rooms: ["catalog"] });
 
     return c.json(
       {

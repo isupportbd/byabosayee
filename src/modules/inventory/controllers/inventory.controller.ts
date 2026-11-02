@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
-import { db, HttpStatusCodes } from "@/framework/facade.js";
+import { broadcast, db, HttpStatusCodes } from "@/framework/facade.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
 import {
   brands,
@@ -379,6 +379,8 @@ export const createBrand: Handler = async (c: any) => {
     })
     .returning();
 
+  broadcast("catalog.updated", { entity: "brand", userId }, { all: true, rooms: ["catalog"] });
+
   return c.json({ message: "ব্রান্ড সফলভাবে যোগ করা হয়েছে", data: created }, HttpStatusCodes.CREATED);
 };
 
@@ -421,6 +423,8 @@ export const updateBrand: Handler = async (c: any) => {
     .set(updateData)
     .where(and(eq(brands.id, id), eq(brands.userId, userId)))
     .returning();
+
+  broadcast("catalog.updated", { entity: "brand", userId }, { all: true, rooms: ["catalog"] });
 
   return c.json({ message: "ব্রান্ড সফলভাবে আপডেট করা হয়েছে", data: updated }, HttpStatusCodes.OK);
 };
@@ -486,6 +490,8 @@ export const createSupplier: Handler = async (c: any) => {
     })
     .returning();
 
+  broadcast("catalog.updated", { entity: "supplier", userId }, { all: true, rooms: ["catalog"] });
+
   return c.json({ message: "সাপ্লায়ার সফলভাবে যোগ করা হয়েছে", data: created }, HttpStatusCodes.CREATED);
 };
 
@@ -496,6 +502,7 @@ export const deleteSupplier: Handler = async (c: any) => {
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
   await db.delete(suppliers).where(and(eq(suppliers.id, id), eq(suppliers.userId, userId)));
+  broadcast("catalog.updated", { entity: "supplier", userId }, { all: true, rooms: ["catalog"] });
   return c.json({ message: "সাপ্লায়ার সফলভাবে মুছে ফেলা হয়েছে" }, HttpStatusCodes.OK);
 };
 
@@ -541,6 +548,8 @@ export const updateSupplier: Handler = async (c: any) => {
     .set(updateData)
     .where(and(eq(suppliers.id, id), eq(suppliers.userId, userId)))
     .returning();
+
+  broadcast("catalog.updated", { entity: "supplier", userId }, { all: true, rooms: ["catalog"] });
 
   return c.json({ message: "সাপ্লায়ারের তথ্য সফলভাবে আপডেট করা হয়েছে", data: updated }, HttpStatusCodes.OK);
 };
@@ -598,6 +607,8 @@ export const createManufacturer: Handler = async (c: any) => {
     })
     .returning();
 
+  broadcast("catalog.updated", { entity: "manufacturer", userId }, { all: true, rooms: ["catalog"] });
+
   return c.json({ message: "প্রস্তুতকারক সফলভাবে যোগ করা হয়েছে", data: created }, HttpStatusCodes.CREATED);
 };
 
@@ -608,6 +619,7 @@ export const deleteManufacturer: Handler = async (c: any) => {
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
   await db.delete(manufacturers).where(and(eq(manufacturers.id, id), eq(manufacturers.userId, userId)));
+  broadcast("catalog.updated", { entity: "manufacturer", userId }, { all: true, rooms: ["catalog"] });
   return c.json({ message: "প্রস্তুতকারক সফলভাবে মুছে ফেলা হয়েছে" }, HttpStatusCodes.OK);
 };
 
@@ -657,6 +669,8 @@ export const updateManufacturer: Handler = async (c: any) => {
     .set(updateData)
     .where(and(eq(manufacturers.id, id), eq(manufacturers.userId, userId)))
     .returning();
+
+  broadcast("catalog.updated", { entity: "manufacturer", userId }, { all: true, rooms: ["catalog"] });
 
   return c.json({ message: "প্রস্তুতকারকের তথ্য সফলভাবে আপডেট করা হয়েছে", data: updated }, HttpStatusCodes.OK);
 };
@@ -811,6 +825,8 @@ export const createItem: Handler = async (c: any) => {
     })
     .returning();
 
+  broadcast("catalog.updated", { entity: "item", userId }, { all: true, rooms: ["catalog"] });
+
   return c.json({ message: "আইটেম সফলভাবে তৈরি করা হয়েছে", data: created }, HttpStatusCodes.CREATED);
 };
 
@@ -821,6 +837,7 @@ export const deleteItem: Handler = async (c: any) => {
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
   await db.delete(items).where(and(eq(items.id, id), eq(items.userId, userId)));
+  broadcast("catalog.updated", { entity: "item", userId }, { all: true, rooms: ["catalog"] });
   return c.json({ message: "আইটেম সফলভাবে মুছে ফেলা হয়েছে" }, HttpStatusCodes.OK);
 };
 
@@ -846,6 +863,8 @@ export const updateItem: Handler = async (c: any) => {
     })
     .where(and(eq(items.id, id), eq(items.userId, userId)))
     .returning();
+
+  broadcast("catalog.updated", { entity: "item", userId }, { all: true, rooms: ["catalog"] });
 
   return c.json({ message: "আইটেম সফলভাবে আপডেট করা হয়েছে", data: updated }, HttpStatusCodes.OK);
 };

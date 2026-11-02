@@ -522,6 +522,7 @@ import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Toast from "@/components/Toast.vue";
+import { notifyCatalogUpdated } from "@/helpers/catalog-sync";
 
 const route = useRoute();
 const router = useRouter();
@@ -989,6 +990,7 @@ async function submitVendorForm() {
         await fetchManufacturers();
       }
       cancelEdit();
+      notifyCatalogUpdated("vendor");
     } else {
       // Create Mode
       if (!isManufacturer(form.type)) {
@@ -1006,6 +1008,7 @@ async function submitVendorForm() {
       }
       resetForm();
       switchView("list");
+      notifyCatalogUpdated("vendor");
     }
   } catch (err: any) {
     showToast(err.response?.data?.message || "কার্যক্রম সম্পন্ন করতে ব্যর্থ হয়েছে", "danger");
