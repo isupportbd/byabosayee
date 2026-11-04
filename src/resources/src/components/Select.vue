@@ -456,6 +456,16 @@ const parentClass = computed(() => {
       @search="inputSearch"
       @clear="onClear">
       
+      <!-- Custom open-indicator chevron using Bootstrap Icons -->
+      <template #open-indicator="{ attributes }">
+        <i class="bi bi-chevron-down vs__open-indicator" v-bind="attributes"></i>
+      </template>
+
+      <!-- Custom clear button using Bootstrap Icons -->
+      <template #clear="{ attributes }">
+        <i class="bi bi-x-lg vs__clear" v-bind="attributes"></i>
+      </template>
+
       <!-- Forward caller-provided slots -->
       <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
         <slot :name="slotName" v-bind="slotProps" />
@@ -506,13 +516,16 @@ const parentClass = computed(() => {
     display: flex;
     align-items: center;
     background-color: var(--bs-body-bg, #ffffff);
-    border: 1px solid var(--bs-border-color, #dee2e6);
+    border: 1px solid var(--bs-border-color, #ced4da);
     border-radius: var(--bs-border-radius-sm, 0.25rem);
-    padding: 0 4px;
+    padding: 0 6px 0 8px;
     min-height: 31px;
     height: 31px;
     box-sizing: border-box;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
   }
 
   &.select-sm .vs__dropdown-toggle {
@@ -542,87 +555,129 @@ const parentClass = computed(() => {
 
   .vs__selected-options {
     display: flex;
-    flex-basis: 100%;
-    flex-grow: 1;
-    flex-wrap: nowrap;
-    padding: 0 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
     position: relative;
-    overflow: hidden;
-    height: 29px;
+    padding: 0;
+    margin: 0;
+    height: 100%;
     align-items: center;
-  }
-
-  .vs__selected {
-    font-size: 0.82rem;
-    color: var(--bs-body-color, #212529);
-    margin: 0;
-    padding: 0 2px;
-    line-height: 29px;
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    border: none;
-    background: transparent;
+    white-space: nowrap;
   }
 
-  &.vs--single.vs--open .vs__selected,
-  &.vs--single.vs--loading .vs__selected {
-    position: absolute;
-    opacity: 0.35;
+  /* When single item is selected and NOT actively searching */
+  &.vs--single:not(.vs--searching) {
+    .vs__selected {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0;
+      padding: 0 2px 0 0;
+      font-size: 0.82rem;
+      color: var(--bs-body-color, #212529);
+      line-height: normal;
+      border: none;
+      background: transparent;
+    }
+
+    .vs__search {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+      opacity: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      cursor: pointer;
+    }
   }
 
+  /* When searching or when opened */
+  &.vs--single.vs--searching,
+  &.vs--single.vs--open {
+    .vs__selected {
+      position: absolute;
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    .vs__search {
+      position: relative !important;
+      width: 100% !important;
+      height: 100% !important;
+      opacity: 1 !important;
+      font-size: 0.82rem;
+      color: var(--bs-body-color, #212529);
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      outline: none;
+      cursor: text;
+    }
+  }
+
+  /* When searching actively, hide selected completely */
   &.vs--single.vs--searching .vs__selected {
-    display: none;
+    display: none !important;
   }
 
+  /* When NO item is selected (placeholder state) */
   .vs__search {
+    width: 100%;
+    min-width: 0;
     font-size: 0.82rem;
     color: var(--bs-body-color, #212529);
     margin: 0;
-    padding: 0 2px;
+    padding: 0;
     border: none;
     background: transparent;
-    line-height: 29px;
-    height: 29px;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .vs__search:focus {
+    line-height: normal;
     outline: none;
-  }
 
-  .vs__search::placeholder {
-    color: var(--bs-secondary-color, #6c757d);
-    font-size: 0.82rem;
+    &::placeholder {
+      color: var(--bs-secondary-color, #6c757d);
+      font-size: 0.82rem;
+    }
   }
 
   .vs__actions {
-    padding: 0 2px;
     display: flex;
     align-items: center;
+    flex-shrink: 0;
+    padding: 0 0 0 4px;
+    margin-left: auto;
+    cursor: pointer;
   }
 
   .vs__open-indicator {
-    fill: #6c757d;
-    transform: scale(0.65);
+    display: inline-block;
     transition: transform 150ms ease;
+    font-size: 0.72rem;
+    color: #6c757d;
   }
 
   &.vs--open .vs__open-indicator {
-    transform: rotate(180deg) scale(0.65);
+    transform: rotate(180deg);
   }
 
   .vs__clear {
-    fill: #adb5bd;
-    margin-right: 2px;
-    transform: scale(0.7);
+    margin-right: 4px;
+    font-size: 0.8rem;
+    color: #adb5bd;
+    cursor: pointer;
     line-height: 1;
-  }
 
-  .vs__clear:hover {
-    fill: #dc3545;
+    &:hover {
+      color: #dc3545;
+    }
   }
 
   .vs__dropdown-menu {
