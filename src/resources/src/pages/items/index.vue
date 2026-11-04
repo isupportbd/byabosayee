@@ -57,16 +57,12 @@
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ক্যাটাগরি">
                 ক্যাটাগরি <span class="text-danger">*</span>
               </label>
-              <select
+              <Select
                 v-model="form.categoryId"
-                class="form-select form-select-sm single-row-input"
-                required
-                @change="onCategoryChange">
-                <option value="" disabled>ক্যাটাগরি নির্বাচন করুন</option>
-                <option v-for="cat in categoriesList" :key="cat.id" :value="cat.id">
-                  {{ cat.name }}
-                </option>
-              </select>
+                :options="categoriesList"
+                placeholder="ক্যাটাগরি নির্বাচন করুন"
+                :searchable="true"
+                @change="onCategoryChange" />
             </div>
 
             <!-- ২. সাব-ক্যাটাগরি -->
@@ -74,20 +70,13 @@
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাব-ক্যাটাগরি">
                 সাব-ক্যাটাগরি <span class="text-danger">*</span>
               </label>
-              <select
+              <Select
                 v-model="form.subCategoryId"
-                class="form-select form-select-sm single-row-input"
-                :class="{ 'frozen-input': !form.categoryId }"
+                :options="filteredSubCategories"
                 :disabled="!form.categoryId"
-                required
-                @change="onSubCategoryChange">
-                <option value="" disabled>
-                  {{ form.categoryId ? 'সাব-ক্যাটাগরি নির্বাচন করুন' : 'আগে ক্যাটাগরি দিন' }}
-                </option>
-                <option v-for="sub in filteredSubCategories" :key="sub.id" :value="sub.id">
-                  {{ sub.name }}
-                </option>
-              </select>
+                :placeholder="form.categoryId ? 'সাব-ক্যাটাগরি নির্বাচন করুন' : 'আগে ক্যাটাগরি দিন'"
+                :searchable="true"
+                @change="onSubCategoryChange" />
             </div>
 
             <!-- ৩. সাইজ (সাব-ক্যাটাগরির পরে) -->
@@ -95,20 +84,13 @@
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
                 সাইজ <span class="text-danger">*</span>
               </label>
-              <select
+              <Select
                 v-model="form.sizeId"
-                class="form-select form-select-sm single-row-input"
-                :class="{ 'frozen-input': !form.subCategoryId }"
+                :options="filteredSizesList"
                 :disabled="!form.subCategoryId"
-                required
-                @change="onSizeChange">
-                <option value="" disabled>
-                  {{ form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন' }}
-                </option>
-                <option v-for="s in filteredSizesList" :key="s.id" :value="s.id">
-                  {{ s.name }}
-                </option>
-              </select>
+                :placeholder="form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন'"
+                :searchable="true"
+                @change="onSizeChange" />
             </div>
 
             <!-- ৪. পণ্যের নাম (লাল দাগ পর্যন্ত ২৪%) -->
@@ -145,19 +127,19 @@
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="একক (Unit)">
                 একক (Unit) <span class="text-danger">*</span>
               </label>
-              <select
+              <Select
                 v-model="form.unitId"
-                class="form-select form-select-sm single-row-input"
-                :class="{ 'frozen-input': !form.categoryId || !form.subCategoryId }"
+                :options="filteredUnitsList"
                 :disabled="!form.categoryId || !form.subCategoryId"
-                required>
-                <option value="" disabled>
-                  {{ !form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : filteredUnitsList.length === 0 ? 'একক নেই' : 'একক নির্বাচন করুন' }}
-                </option>
-                <option v-for="u in filteredUnitsList" :key="u.id" :value="u.id">
-                  {{ u.name }} {{ u.shortName ? `(${u.shortName})` : '' }}
-                </option>
-              </select>
+                :placeholder="!form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : filteredUnitsList.length === 0 ? 'একক নেই' : 'একক নির্বাচন করুন'"
+                :searchable="true">
+                <template #option="option">
+                  <span>{{ option.name }} {{ option.shortName ? `(${option.shortName})` : '' }}</span>
+                </template>
+                <template #selected-option="option">
+                  <span>{{ option.name }} {{ option.shortName ? `(${option.shortName})` : '' }}</span>
+                </template>
+              </Select>
             </div>
 
             <!-- ৭. প্রারম্ভিক স্টক -->
@@ -409,6 +391,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
+import Select from "@/components/Select.vue";
 import { notifyCatalogUpdated, onCatalogUpdated } from "@/helpers/catalog-sync";
 
 // Bengali Number Formatter

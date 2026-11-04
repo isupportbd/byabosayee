@@ -110,15 +110,11 @@
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   চালানের ধরন <span class="text-danger">*</span>
                 </label>
-                <select
+                <Select
                   v-model="form.challanTypeId"
-                  class="form-select form-select-sm"
-                  required>
-                  <option value="" disabled>চালানের ধরন নির্বাচন করুন</option>
-                  <option v-for="ct in challanTypesList" :key="ct.id" :value="ct.id">
-                    {{ ct.name }}
-                  </option>
-                </select>
+                  :options="challanTypesList"
+                  placeholder="চালানের ধরন নির্বাচন করুন"
+                  :searchable="true" />
               </div>
 
               <!-- ২. চালান নং -->
@@ -160,21 +156,15 @@
                     <i class="bi bi-lock-fill me-0.5"></i>লকড
                   </span>
                 </div>
-                <select
+                <Select
                   v-model="vendorType"
-                  class="form-select form-select-sm"
+                  :options="activeVendorTypes"
+                  label="name"
+                  :reduce="(vt: any) => vt.code || vt.name"
                   :disabled="isBillOfEntry"
-                  :class="{ 'bg-light text-muted border-secondary-subtle': isBillOfEntry }"
-                  :title="isBillOfEntry ? 'বিল অব এন্ট্রি চালানে সরবরাহকারী অটোমেটিক রপ্তানিকারক ও লকড থাকে' : ''"
-                  required
-                  @change="onVendorTypeChange">
-                  <option v-for="vt in activeVendorTypes" :key="vt.id" :value="vt.code || vt.name">
-                    {{ vt.name }}
-                  </option>
-                  <option v-if="isBillOfEntry && !hasExporterInVendorTypes" value="রপ্তানিকারক">
-                    রপ্তানিকারক
-                  </option>
-                </select>
+                  placeholder="সরবরাহকারীর ধরন"
+                  :searchable="true"
+                  @change="onVendorTypeChange" />
               </div>
 
               <!-- ৫. প্রতিষ্ঠানের নাম ড্রপডাউন (নির্বাচিত ধরনের সাথে সম্পূর্ণ ডায়নামিক) -->
@@ -182,28 +172,23 @@
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block">
                   {{ selectedVendorTypeName }} <span class="text-danger">*</span>
                 </label>
-                <div class="position-relative">
-                  <select
-                    v-model="selectedPartnerId"
-                    class="form-select form-select-sm"
-                    :title="selectedPartnerName || `${selectedVendorTypeName} নির্বাচন করুন`"
-                    required
-                    @change="onPartnerChange">
-                    <option value="" disabled>{{ selectedVendorTypeName }} নির্বাচন করুন</option>
-                    <option
-                      v-for="v in filteredVendorsBySelectedType"
-                      :key="`${v.source}-${v.id}`"
-                      :value="`${v.source}:${v.id}`">
-                      {{ v.name }}{{ v.address ? `, ${v.address}` : '' }}
-                    </option>
-                  </select>
-                  <div
-                    v-if="selectedPartnerId && selectedPartnerName"
-                    class="selected-item-clean-display position-absolute top-0 start-0 d-flex align-items-center px-2 text-truncate"
-                    :title="selectedPartnerName">
-                    {{ selectedPartnerName }}
-                  </div>
-                </div>
+                <Select
+                  v-model="selectedPartnerId"
+                  :options="filteredVendorsBySelectedType"
+                  label="name"
+                  :reduce="(v: any) => `${v.source}:${v.id}`"
+                  :placeholder="`${selectedVendorTypeName} নির্বাচন করুন`"
+                  :searchable="true"
+                  @change="onPartnerChange">
+                  <template #option="option">
+                    <div class="d-flex flex-column py-0.5">
+                      <span class="fw-semibold">{{ option.name }}</span>
+                      <small v-if="option.address || option.phone" class="text-muted" style="font-size: 0.72rem;">
+                        {{ [option.phone, option.address].filter(Boolean).join(' - ') }}
+                      </small>
+                    </div>
+                  </template>
+                </Select>
               </div>
             </div>
           </div>
@@ -256,24 +241,25 @@
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
                   পণ্যের নাম <span class="text-danger">*</span>
                 </label>
-                <div class="position-relative">
-                  <select
-                    v-model="currentItem.itemId"
-                    class="form-select form-select-sm"
-                    :title="cleanItemName(currentItem.name) || 'পণ্য নির্বাচন করুন'"
-                    @change="onCurrentItemSelect">
-                    <option value="" disabled>পণ্য নির্বাচন করুন</option>
-                    <option v-for="it in itemsList" :key="it.id" :value="it.id">
-                      {{ it.name }}
-                    </option>
-                  </select>
-                  <div
-                    v-if="currentItem.itemId && currentItem.name"
-                    class="selected-item-clean-display position-absolute top-0 start-0 d-flex align-items-center px-2 text-truncate"
-                    :title="cleanItemName(currentItem.name)">
-                    {{ cleanItemName(currentItem.name) }}
-                  </div>
-                </div>
+                <Select
+                  v-model="currentItem.itemId"
+                  :options="itemsList"
+                  label="name"
+                  placeholder="পণ্য নির্বাচন করুন"
+                  :searchable="true"
+                  @change="onCurrentItemSelect">
+                  <template #selected-option="option">
+                    <span class="text-truncate" :title="cleanItemName(option.name)">
+                      {{ cleanItemName(option.name) }}
+                    </span>
+                  </template>
+                  <template #option="option">
+                    <div class="d-flex flex-column py-0.5">
+                      <span class="fw-semibold text-truncate">{{ cleanItemName(option.name) }}</span>
+                      <small v-if="option.code" class="text-muted font-monospace" style="font-size: 0.72rem;">{{ option.code }}</small>
+                    </div>
+                  </template>
+                </Select>
               </div>
 
               <!-- ২. ব্র্যান্ড -->
@@ -281,16 +267,12 @@
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ব্র্যান্ড">
                   ব্র্যান্ড <span class="text-danger">*</span>
                 </label>
-                <select
+                <Select
                   v-model="currentItem.brandId"
-                  class="form-select form-select-sm px-1.5"
-                  required
-                  @change="onCurrentItemBrandChange">
-                  <option value="" disabled>ব্র্যান্ড নির্বাচন করুন *</option>
-                  <option v-for="b in filteredBrandsList" :key="b.id" :value="b.id">
-                    {{ b.name }}
-                  </option>
-                </select>
+                  :options="filteredBrandsList"
+                  placeholder="ব্র্যান্ড *"
+                  :searchable="true"
+                  @change="onCurrentItemBrandChange" />
               </div>
 
               <!-- ৩. সাইজ -->
@@ -298,26 +280,42 @@
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
                   সাইজ <span class="text-danger">*</span>
                 </label>
-                <select
+                <Select
                   v-model="currentItem.sizeId"
-                  class="form-select form-select-sm px-1.5 fw-bold"
-                  @change="onCurrentItemSizeChange">
-                  <option value="" disabled>-</option>
-                  <option v-for="s in filteredSizesList" :key="s.id" :value="s.id">
-                    {{ s.name }}
-                  </option>
-                </select>
+                  :options="filteredSizesList"
+                  placeholder="-"
+                  :searchable="true"
+                  @change="onCurrentItemSizeChange" />
               </div>
 
               <!-- ৪. কালার -->
               <div class="col-item-color">
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কালার">কালার</label>
-                <select v-model="currentItem.colorId" class="form-select form-select-sm px-1.5">
-                  <option value="">(ঐচ্ছিক)</option>
-                  <option v-for="c in colorsList" :key="c.id" :value="c.id">
-                    {{ c.name }}
-                  </option>
-                </select>
+                <Select
+                  v-model="currentItem.colorId"
+                  :options="colorsList"
+                  placeholder="(ঐচ্ছিক)"
+                  :clearable="true"
+                  :searchable="true">
+                  <template #option="option">
+                    <div class="d-flex align-items-center gap-1.5">
+                      <span
+                        v-if="option.code"
+                        class="d-inline-block rounded-circle border shadow-xs"
+                        :style="{ backgroundColor: option.code, width: '12px', height: '12px' }"></span>
+                      <span>{{ option.name }}</span>
+                    </div>
+                  </template>
+                  <template #selected-option="option">
+                    <div class="d-flex align-items-center gap-1 text-truncate">
+                      <span
+                        v-if="option.code"
+                        class="d-inline-block rounded-circle border shadow-xs"
+                        :style="{ backgroundColor: option.code, width: '9px', height: '9px' }"></span>
+                      <span>{{ option.name }}</span>
+                    </div>
+                  </template>
+                </Select>
               </div>
 
               <!-- ৫. পরিমাণ -->
@@ -338,12 +336,11 @@
                 <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="একক">
                   একক <span class="text-danger">*</span>
                 </label>
-                <select v-model="currentItem.unitId" class="form-select form-select-sm px-1.5">
-                  <option value="" disabled>-</option>
-                  <option v-for="u in filteredUnitsList" :key="u.id" :value="u.id">
-                    {{ u.name }}
-                  </option>
-                </select>
+                <Select
+                  v-model="currentItem.unitId"
+                  :options="filteredUnitsList"
+                  placeholder="-"
+                  :searchable="true" />
               </div>
 
               <!-- ৭. একক মূল্য -->
@@ -782,21 +779,21 @@
                       <label class="form-label small fw-semibold mb-1">
                         মাধ্যম <span v-if="Number(form.paidAmount) > 0" class="text-danger">*</span>
                       </label>
-                      <select
+                      <Select
                         v-model="form.paymentMethod"
-                        class="form-select form-select-sm"
+                        :options="activePaymentMethods"
+                        label="name"
+                        :reduce="(pm: any) => pm.code || pm.name"
                         :disabled="!Number(form.paidAmount) || Number(form.paidAmount) <= 0"
-                        :required="Number(form.paidAmount) > 0">
-                        <option v-if="!Number(form.paidAmount) || Number(form.paidAmount) <= 0" value="">
-                          প্রযোজ্য নয় (বকেয়া)
-                        </option>
-                        <option
-                          v-for="pm in activePaymentMethods"
-                          :key="pm.id"
-                          :value="pm.code || pm.name">
-                          {{ formatPaymentMethodName(pm) }}
-                        </option>
-                      </select>
+                        :placeholder="!Number(form.paidAmount) || Number(form.paidAmount) <= 0 ? 'প্রযোজ্য নয় (বকেয়া)' : 'পেমেন্ট মাধ্যম নির্বাচন করুন'"
+                        :searchable="true">
+                        <template #selected-option="option">
+                          <span>{{ formatPaymentMethodName(option) }}</span>
+                        </template>
+                        <template #option="option">
+                          <span>{{ formatPaymentMethodName(option) }}</span>
+                        </template>
+                      </Select>
                     </div>
 
                     <!-- পরিশোধিত টাকা -->
@@ -1593,6 +1590,7 @@
 import axios from "axios";
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import Select from "@/components/Select.vue";
 import { onCatalogUpdated } from "@/helpers/catalog-sync";
 
 const route = useRoute();

@@ -18,51 +18,126 @@ interface FetchPack {
   params?: AnyRecord;
   mapFn?: (x: AnyRecord) => AnyRecord;
   option?:
-  | ((value: unknown) => void | Promise<void>)
-  | Array<(value: unknown) => void | Promise<void>>;
+    | ((value: unknown) => void | Promise<void>)
+    | Array<(value: unknown) => void | Promise<void>>;
   reset?: boolean;
   reload?: boolean;
 }
 
 interface SelectProps {
-  fetched?: (payload: Record<string, any>) => any;
+  options?: any[];
+  label?: string;
+  reduce?: (option: any) => any;
+  valueKey?: string;
+  placeholder?: string;
+  searchable?: boolean;
+  clearable?: boolean;
+  filterable?: boolean;
+  disabled?: boolean;
+  size?: "sm" | "md" | "lg";
+  parentclass?: string;
+  title?: string;
   must?: boolean;
   err?: string | boolean;
   hood?: string | boolean;
   defaultValue?: SelectValue;
   resetKey?: string | number | boolean | AnyRecord | null;
+  fetched?: (payload: Record<string, any>) => any;
+  filterBy?: (option: any, label: string, search: string) => boolean;
+  noOptionsText?: string;
 }
 
 const $attrs = useAttrs();
 const props = withDefaults(defineProps<SelectProps>(), {
+  options: () => [],
+  searchable: true,
+  clearable: false,
+  filterable: true,
+  disabled: false,
+  size: "sm",
   defaultValue: null,
-  resetKey: null
+  resetKey: null,
+  noOptionsText: "কোনো তথ্য পাওয়া যায়নি"
 });
 
-// vue3.4 way
 const emit = defineEmits<{
   (event: "fetched"): void;
   (event: "clear"): void;
+  (event: "change", value: unknown): void;
+  (event: "update:modelValue", value: unknown): void;
+  (event: "select", value: unknown): void;
 }>();
+
 const model = defineModel<SelectValue | SelectValue[]>();
 
 const skipNextSearch = ref(false); // suppress search right after clear
-
-let observer = ref<IntersectionObserver | null>(null);
-let load = ref<HTMLElement | null>(null);
+const observer = ref<IntersectionObserver | null>(null);
+const load = ref<HTMLElement | null>(null);
 
 // store callbacks coming from fetchedDropdown(pack)
-const hooks = ref<{ option: OptionHook | OptionHook[]; }>({ option: null }); // function | function[] | null
+const hooks = ref<{ option: OptionHook | OptionHook[]; }>({ option: null });
 
 // remember last fetch config and search so the child can refetch/append by itself
-const lastPack = ref<FetchPack | null>(null); // { url, data, params, mapFn }
-const lastSearch = ref(""); // current search term
-const lastSearchRows = ref<AnyRecord[]>([]); // results of the last search, to pin on top after clearing
+const lastPack = ref<FetchPack | null>(null);
+const lastSearch = ref("");
+const lastSearchRows = ref<AnyRecord[]>([]);
 
 const hasNextPage = computed(() => {
   const total = Number((fieldData.value as { total?: number; }).total ?? 0);
   return field.all.length < total;
 });
+
+const effectiveOptions = computed<any[]>(() => {
+  if (props.options && props.options.length > 0) {
+    return props.options;
+  }
+  if (field.all && field.all.length > 0) {
+    return field.all;
+  }
+  return props.options || [];
+});
+
+const computedLabel = computed<string>(() => {
+  if (props.label) return props.label;
+  const list = effectiveOptions.value;
+  if (list && list.length > 0 && typeof list[0] === "object" && list[0] !== null) {
+    if ("name" in list[0]) return "name";
+    if ("title" in list[0]) return "title";
+    if ("label" in list[0]) return "label";
+  }
+  return "name";
+});
+
+const computedReduce = computed(() => {
+  if (props.reduce) return props.reduce;
+  if (props.valueKey) {
+    return (opt: any) => (opt && typeof opt === "object" ? opt[props.valueKey!] : opt);
+  }
+  const list = effectiveOptions.value;
+  if (list && list.length > 0 && typeof list[0] !== "object") {
+    return (opt: any) => opt;
+  }
+  return (opt: any) => {
+    if (opt && typeof opt === "object" && "id" in opt) {
+      return opt.id;
+    }
+    return opt;
+  };
+});
+
+const defaultFilterBy = (option: any, label: string, search: string): boolean => {
+  if (!search) return true;
+  const q = search.trim().toLowerCase();
+  if (label && String(label).toLowerCase().includes(q)) return true;
+  if (option && typeof option === "object") {
+    if (option.name && String(option.name).toLowerCase().includes(q)) return true;
+    if (option.code && String(option.code).toLowerCase().includes(q)) return true;
+    if (option.title && String(option.title).toLowerCase().includes(q)) return true;
+    if (option.companyName && String(option.companyName).toLowerCase().includes(q)) return true;
+    if (option.phone && String(option.phone).toLowerCase().includes(q)) return true;
+  }
+  return false;
+};
 
 // ask parent for a pack and run our internal fetcher
 const callParentFetched = async (search: string, opts: Partial<FetchPack> = {}) => {
@@ -73,18 +148,17 @@ const callParentFetched = async (search: string, opts: Partial<FetchPack> = {}) 
 };
 
 const onClear = () => {
-  resetMe(); // clear options + selected value
-  skipNextSearch.value = true; // suppress the immediate empty search
-  emit("clear"); // notify parent that clear button was clicked
+  resetMe();
+  skipNextSearch.value = true;
+  emit("clear");
 };
 
 const onOpen = async () => {
-  // if empty, load page 1 via parent fetcher (no boolean flags)
+  if (!props.fetched) return;
   if (!field.all.length) {
     if (lastPack.value) {
       await fetchedDropdown("", { ...lastPack.value, reset: true });
     } else {
-      // await props.fetched?.('');
       await callParentFetched("", { reset: true });
     }
   }
@@ -100,13 +174,18 @@ const onClose = async () => {
 };
 
 const onModelUpdate = async (val: unknown) => {
+  const newVal = val === null || val === undefined ? "" : val;
+  model.value = newVal as SelectValue;
+  emit("update:modelValue", newVal);
+  emit("change", newVal);
+  emit("select", newVal);
+
   const optHooks = Array.isArray(hooks.value.option)
     ? hooks.value.option
     : hooks.value.option
       ? [hooks.value.option]
       : [];
 
-  // When user clicks × or backspaces everything, v-select sets model to null.
   if (val == null || val === "") {
     for (const f of optHooks) {
       if (typeof f === "function") {
@@ -118,7 +197,6 @@ const onModelUpdate = async (val: unknown) => {
   }
 
   field.val = val as SelectValue;
-
   for (const f of optHooks) {
     if (typeof f === "function") {
       await Promise.resolve(f(val));
@@ -127,8 +205,10 @@ const onModelUpdate = async (val: unknown) => {
 };
 
 const inputSearch = debounce(async (search: string, loading: (value: boolean) => void) => {
+  if (!props.fetched) return;
+
   if (skipNextSearch.value && !search?.trim().length) {
-    skipNextSearch.value = false; // consume the flag
+    skipNextSearch.value = false;
     return;
   }
 
@@ -142,7 +222,6 @@ const inputSearch = debounce(async (search: string, loading: (value: boolean) =>
       await callParentFetched(search, { reset: true }).finally(() => loading(false));
     }
   } else {
-    // user erased the query manually: refetch the full list, then pin the last search results on top
     field.page = 0;
     if (lastPack.value) {
       await fetchedDropdown("", { ...lastPack.value, reset: true });
@@ -156,7 +235,7 @@ const inputSearch = debounce(async (search: string, loading: (value: boolean) =>
 }, 400);
 
 const infiniteScroll = async ([{ isIntersecting, target }]: IntersectionObserverEntry[]) => {
-  if (!isIntersecting) return;
+  if (!isIntersecting || !props.fetched) return;
 
   const ul =
     target instanceof HTMLElement && target.offsetParent instanceof HTMLElement
@@ -165,21 +244,21 @@ const infiniteScroll = async ([{ isIntersecting, target }]: IntersectionObserver
   const scrollTop = ul?.scrollTop ?? 0;
 
   if (lastPack.value) {
-    await fetchedDropdown(lastSearch.value, { ...lastPack.value }); // next page of current mode
+    await fetchedDropdown(lastSearch.value, { ...lastPack.value });
   } else {
     await callParentFetched(lastSearch.value || "");
   }
 
   await nextTick();
-
   if (ul) ul.scrollTop = scrollTop;
 };
 
 onMounted(async () => {
-  observer.value = new IntersectionObserver(infiniteScroll);
+  if (props.fetched) {
+    observer.value = new IntersectionObserver(infiniteScroll);
+  }
 
-  // set default value if provided
-  if (props.defaultValue) {
+  if (props.defaultValue !== null && props.defaultValue !== undefined) {
     await nextTick();
     field.val = props.defaultValue;
     model.value = props.defaultValue;
@@ -191,13 +270,13 @@ onBeforeUnmount(() => {
   observer.value = null;
 });
 
-// prototype and it will call from parent
 const field = reactive<{ all: AnyRecord[]; val: SelectValue; page: number; size: number; }>({
   all: [],
   val: "",
   page: 0,
   size: 10
 });
+
 const fieldData = ref<AnyRecord>({});
 
 const resetMe = () => {
@@ -219,7 +298,6 @@ const fetchedDropdown = async (search: string, pack: FetchPack | null = null) =>
   const reset = !!pack?.reset;
   const reload = !!pack?.reload;
 
-  // make option sticky: only overwrite if caller provided it
   if ("option" in (pack ?? {})) {
     const pOpt = pack?.option;
     hooks.value.option = Array.isArray(pOpt)
@@ -229,21 +307,15 @@ const fetchedDropdown = async (search: string, pack: FetchPack | null = null) =>
         : [];
   }
 
-  // remember essentials so the child can refetch/append on its own
   lastPack.value = { url, data, params, mapFn };
   lastSearch.value = search ?? "";
 
-  // if pass and true -> reset, reload , search
   (reset && resetMe()) ||
     (reload && reloadMe()) ||
     (!empty(search) && !reset && !reload && reloadMe());
 
-  // after reset/reload/search
   field.page++;
   const param = { page: field.page, size: field.size, search: search };
-
-  // log once (don't call axios twice)
-  // console.log('GET', pack.url, { params: pack.params ? { ...pack.params, ...param } : param });
 
   if (!url || !data) {
     return;
@@ -253,7 +325,7 @@ const fetchedDropdown = async (search: string, pack: FetchPack | null = null) =>
   try {
     key = await axios.get(url, { params: params ? { ...params, ...param } : param });
   } catch {
-    return; // failed to fetch (e.g. cascade with missing parent)
+    return;
   }
   const payload = key.data[data as string] as AnyRecord;
 
@@ -266,15 +338,12 @@ const fetchedDropdown = async (search: string, pack: FetchPack | null = null) =>
     .map((dt) => (dt == null ? null : mapFn(dt)))
     .filter((opt): opt is AnyRecord => opt != null);
 
-  // remember the last fresh search results so they can be pinned on top after clearing the search
   if (search?.trim().length && reset) {
     lastSearchRows.value = options.map((opt) => ({ ...opt }));
   }
 
-  // console.log('Fetched', payload?.data);
   options.forEach((opt) => {
-    const key = opt?.id ?? opt?.title ?? JSON.stringify(opt); // build a comparison key: prefer id, then title, then full object
-
+    const key = opt?.id ?? opt?.title ?? JSON.stringify(opt);
     if (
       !field.all.some(
         (o) =>
@@ -294,7 +363,6 @@ const optionKey = (o: AnyRecord) =>
   (o as { id?: unknown; title?: unknown; }).title ??
   JSON.stringify(o);
 
-// after a refetch, move the last search results to the top of the list
 const pinLastSearchRows = () => {
   if (!lastSearchRows.value.length) return;
   const pinKeys = new Set(lastSearchRows.value.map(optionKey));
@@ -302,24 +370,11 @@ const pinLastSearchRows = () => {
   field.all = [...lastSearchRows.value, ...rest];
 };
 
-/**
- * This function created for
- * functionally reset or reload
- * from without component
- * like fn.value.reload({reset:true/reload:true/both});
- * it is exposed, so we can call from with
- * template ref
- */
 const reload = async () => {
-  resetMe(); // clear field.all, page, val
-  await callParentFetched("", { reset: true }); // ask parent to fetch first page again
+  resetMe();
+  await callParentFetched("", { reset: true });
 };
 
-/**
- * if backend send proper object or null
- * then watch function not get any axios
- * error else axios can send error
- */
 watch(
   () => props.resetKey,
   async (newVal, oldVal) => {
@@ -333,39 +388,41 @@ watch(
 
     model.value = "";
 
-    // Notify hooks that selection is gone
     for (const fn of optHooks) {
       if (typeof fn === "function") {
         await Promise.resolve(fn(null));
       }
     }
 
-    skipNextSearch.value = true; // avoid instant empty-search call
+    skipNextSearch.value = true;
     if (newVal == null) {
       lastPack.value = null;
       return;
-    } // parent cleared, don't fetch with null key
+    }
     await callParentFetched("", { reload: true });
     pinLastSearchRows();
-    skipNextSearch.value = false; // allow subsequent empty-searches (backspace-to-empty)
+    skipNextSearch.value = false;
   }
 );
 
 defineExpose({ field, fieldData, fetchedDropdown, reload });
 
-const parentClass = computed(() => ($attrs.parentclass as string | undefined) || "mb-2");
-
-const inputTitle = computed(() => ($attrs.title as string | undefined) || "");
+const inputTitle = computed(() => props.title || ($attrs.title as string | undefined) || "");
 const hoodHtml = computed(() =>
   props.hood === false || props.hood == null ? "" : String(props.hood)
 );
+const parentClass = computed(() => {
+  if (props.parentclass !== undefined) return props.parentclass;
+  if ($attrs.parentclass !== undefined) return String($attrs.parentclass);
+  return inputTitle.value ? "mb-2" : "";
+});
 </script>
 
 <template>
-  <div :class="parentClass">
+  <div :class="[parentClass, 'select-wrapper w-100']">
     <label
-      class="text-capitalize d-flex align-items-center mb-1"
-      :class="{ 'd-none': !inputTitle }">
+      v-if="inputTitle"
+      class="text-capitalize d-flex align-items-center mb-1 form-label small fw-semibold">
       <div class="position-relative">
         <span class="text-capitalize" v-html="inputTitle"></span>
         <span
@@ -373,33 +430,60 @@ const hoodHtml = computed(() =>
           :class="{ 'd-none': !props.must }"></span>
       </div>
       <div
+        v-if="props.hood"
         class="text-uppercase w-100 text-end text-primary fw-semibold"
-        :class="{ 'd-none': !props.hood }"
         style="font-size: 12px; margin-top: 0.15rem"
         v-html="hoodHtml"></div>
     </label>
+
     <v-select
       v-model="model"
-      label="title"
-      :filterable="false"
-      :options="field.all"
+      :label="computedLabel"
+      :reduce="computedReduce"
+      :options="effectiveOptions"
+      :filterable="props.filterable"
+      :filter-by="props.filterBy || defaultFilterBy"
+      :placeholder="props.placeholder"
+      :searchable="props.searchable"
+      :clearable="props.clearable"
+      :disabled="props.disabled"
+      class="bootstrap-select"
+      :class="[`select-${props.size}`, { 'is-invalid': !!props.err }]"
       v-bind="$attrs"
       @open="onOpen"
       @update:model-value="onModelUpdate"
       @close="onClose"
       @search="inputSearch"
       @clear="onClear">
-      <template #list-footer>
-        <li v-show="hasNextPage" ref="load" class="loader">More...</li>
+      
+      <!-- Forward caller-provided slots -->
+      <template v-for="(_, slotName) in $slots" #[slotName]="slotProps">
+        <slot :name="slotName" v-bind="slotProps" />
+      </template>
+
+      <!-- Default no-options slot -->
+      <template v-if="!$slots['no-options']" #no-options="{ search }">
+        <div class="vs__no-options small text-muted py-1">
+          {{ search ? `"${search}" পাওয়া যায়নি` : props.noOptionsText }}
+        </div>
+      </template>
+
+      <template v-if="hasNextPage" #list-footer>
+        <li ref="load" class="loader small py-1">আরো লোড হচ্ছে...</li>
       </template>
     </v-select>
-    <div class="form-text text-danger" :class="{ 'd-none': !props.err }" style="font-size: 0.8rem">
+
+    <div v-if="props.err" class="form-text text-danger mt-1" style="font-size: 0.8rem">
       {{ props.err }}
     </div>
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
+.select-wrapper {
+  position: relative;
+}
+
 .loader {
   text-align: center;
   color: #bbbbbb;
@@ -411,5 +495,180 @@ const hoodHtml = computed(() =>
   top: 0;
   margin-top: 5px;
   margin-left: 2px;
+}
+
+/* Bootstrap 5 Unified Select Styles */
+.v-select.bootstrap-select {
+  width: 100%;
+  font-family: inherit;
+
+  .vs__dropdown-toggle {
+    display: flex;
+    align-items: center;
+    background-color: var(--bs-body-bg, #ffffff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--bs-border-radius-sm, 0.25rem);
+    padding: 0 4px;
+    min-height: 31px;
+    height: 31px;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+
+  &.select-sm .vs__dropdown-toggle {
+    min-height: 31px;
+    height: 31px;
+    font-size: 0.82rem;
+  }
+
+  &.select-md .vs__dropdown-toggle {
+    min-height: 38px;
+    height: 38px;
+    font-size: 0.875rem;
+  }
+
+  &.vs--open .vs__dropdown-toggle,
+  .vs__dropdown-toggle:focus-within {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+
+  &.vs--disabled .vs__dropdown-toggle {
+    background-color: var(--bs-secondary-bg, #e9ecef);
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
+
+  .vs__selected-options {
+    display: flex;
+    flex-basis: 100%;
+    flex-grow: 1;
+    flex-wrap: nowrap;
+    padding: 0 2px;
+    position: relative;
+    overflow: hidden;
+    height: 29px;
+    align-items: center;
+  }
+
+  .vs__selected {
+    font-size: 0.82rem;
+    color: var(--bs-body-color, #212529);
+    margin: 0;
+    padding: 0 2px;
+    line-height: 29px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    border: none;
+    background: transparent;
+  }
+
+  &.vs--single.vs--open .vs__selected,
+  &.vs--single.vs--loading .vs__selected {
+    position: absolute;
+    opacity: 0.35;
+  }
+
+  &.vs--single.vs--searching .vs__selected {
+    display: none;
+  }
+
+  .vs__search {
+    font-size: 0.82rem;
+    color: var(--bs-body-color, #212529);
+    margin: 0;
+    padding: 0 2px;
+    border: none;
+    background: transparent;
+    line-height: 29px;
+    height: 29px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .vs__search:focus {
+    outline: none;
+  }
+
+  .vs__search::placeholder {
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.82rem;
+  }
+
+  .vs__actions {
+    padding: 0 2px;
+    display: flex;
+    align-items: center;
+  }
+
+  .vs__open-indicator {
+    fill: #6c757d;
+    transform: scale(0.65);
+    transition: transform 150ms ease;
+  }
+
+  &.vs--open .vs__open-indicator {
+    transform: rotate(180deg) scale(0.65);
+  }
+
+  .vs__clear {
+    fill: #adb5bd;
+    margin-right: 2px;
+    transform: scale(0.7);
+    line-height: 1;
+  }
+
+  .vs__clear:hover {
+    fill: #dc3545;
+  }
+
+  .vs__dropdown-menu {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    z-index: 99999 !important;
+    width: 100%;
+    min-width: 160px;
+    max-height: 240px;
+    overflow-y: auto;
+    background-color: var(--bs-body-bg, #ffffff);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);
+    padding: 4px 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .vs__dropdown-option {
+    padding: 5px 10px;
+    font-size: 0.82rem;
+    color: var(--bs-body-color, #212529);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .vs__dropdown-option--highlight {
+    background-color: #0d6efd;
+    color: #ffffff;
+  }
+
+  .vs__dropdown-option--selected {
+    font-weight: 600;
+    background-color: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+  }
+
+  .vs__no-options {
+    text-align: center;
+    padding: 8px;
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
 }
 </style>
