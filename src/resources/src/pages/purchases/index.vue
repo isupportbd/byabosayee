@@ -440,6 +440,18 @@
                       <span class="badge bg-light text-dark border">
                         {{ getSizeName(currentItem.sizeId) }}
                       </span>
+                      <span v-if="currentItem.colorId" class="badge bg-light text-dark border">
+                        <span
+                          v-if="getColor(currentItem.colorId)?.code"
+                          class="d-inline-block rounded-circle me-1 border"
+                          :style="{
+                            backgroundColor: getColor(currentItem.colorId).code,
+                            width: '8px',
+                            height: '8px',
+                            verticalAlign: 'middle'
+                          }"></span>
+                        {{ getColorName(currentItem.colorId) }}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -634,6 +646,7 @@
                         <tr class="text-nowrap text-secondary">
                           <th style="width: 30px;" class="text-center">#</th>
                           <th>পণ্যের বিবরণ</th>
+                          <th class="text-center text-nowrap" style="width: 80px;">কালার</th>
                           <th class="text-end text-nowrap">একক | মোট মূল্য</th>
                           <th class="text-end text-nowrap" title="খরচ ও ডিসকাউন্ট সমন্বয় করে প্রতিটি আইটেমের প্রকৃত গড় একক ও মোট খরচ">প্রকৃত একক | মোট মূল্য</th>
                           <th style="width: 60px;" class="text-center">অ্যাকশন</th>
@@ -658,6 +671,21 @@
                                 {{ toBengaliNumber(it.quantity) }} {{ getUnitName(it.unitId) }}
                               </span>
                             </div>
+                          </td>
+                          <td class="text-center text-nowrap">
+                            <span v-if="getColorName(it.colorId) !== '-'" class="badge bg-light text-dark border fw-normal px-2 py-1">
+                              <span
+                                v-if="getColor(it.colorId)?.code"
+                                class="d-inline-block rounded-circle me-1 border"
+                                :style="{
+                                  backgroundColor: getColor(it.colorId).code,
+                                  width: '9px',
+                                  height: '9px',
+                                  verticalAlign: 'middle'
+                                }"></span>
+                              {{ getColorName(it.colorId) }}
+                            </span>
+                            <span v-else class="text-muted small">-</span>
                           </td>
                           <td class="text-end text-nowrap">
                             <span class="text-secondary fw-semibold">
@@ -2357,6 +2385,17 @@ function getSizeName(sizeId: number | ""): string {
   if (!sizeId) return "-";
   const s = sizesList.value.find((sz) => sz.id === Number(sizeId));
   return s ? s.name : "-";
+}
+
+function getColor(colorId: number | ""): any {
+  if (!colorId) return null;
+  return colorsList.value.find((c) => Number(c.id) === Number(colorId)) || null;
+}
+
+function getColorName(colorId: number | ""): string {
+  if (!colorId) return "-";
+  const c = getColor(colorId);
+  return c ? c.name : "-";
 }
 
 function getUnitName(unitId: number | ""): string {
