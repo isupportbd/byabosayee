@@ -298,20 +298,18 @@
                   :clearable="true"
                   :searchable="true">
                   <template #option="option">
-                    <div class="d-flex align-items-center gap-1.5">
+                    <div class="d-flex align-items-center">
                       <span
-                        v-if="option.code"
-                        class="d-inline-block rounded-circle border shadow-xs"
-                        :style="{ backgroundColor: option.code, width: '12px', height: '12px' }"></span>
+                        class="d-inline-block rounded-circle border shadow-xs flex-shrink-0 me-2"
+                        :style="{ backgroundColor: option.code || '#94a3b8', width: '13px', height: '13px' }"></span>
                       <span>{{ option.name }}</span>
                     </div>
                   </template>
                   <template #selected-option="option">
-                    <div class="d-flex align-items-center gap-1 text-truncate">
+                    <div class="d-flex align-items-center text-truncate">
                       <span
-                        v-if="option.code"
-                        class="d-inline-block rounded-circle border shadow-xs"
-                        :style="{ backgroundColor: option.code, width: '9px', height: '9px' }"></span>
+                        class="d-inline-block rounded-circle border shadow-xs flex-shrink-0 me-2"
+                        :style="{ backgroundColor: option.code || '#94a3b8', width: '11px', height: '11px' }"></span>
                       <span>{{ option.name }}</span>
                     </div>
                   </template>
@@ -440,12 +438,13 @@
                       <span v-if="currentItem.colorId" class="badge bg-light text-dark border">
                         <span
                           v-if="getColor(currentItem.colorId)?.code"
-                          class="d-inline-block rounded-circle me-1 border"
+                          class="d-inline-block rounded-circle border flex-shrink-0"
                           :style="{
                             backgroundColor: getColor(currentItem.colorId).code,
-                            width: '8px',
-                            height: '8px',
-                            verticalAlign: 'middle'
+                            width: '9px',
+                            height: '9px',
+                            verticalAlign: 'middle',
+                            marginRight: '6px'
                           }"></span>
                         {{ getColorName(currentItem.colorId) }}
                       </span>
@@ -673,12 +672,13 @@
                             <span v-if="getColorName(it.colorId) !== '-'" class="badge bg-light text-dark border fw-normal px-2 py-1">
                               <span
                                 v-if="getColor(it.colorId)?.code"
-                                class="d-inline-block rounded-circle me-1 border"
+                                class="d-inline-block rounded-circle border flex-shrink-0"
                                 :style="{
                                   backgroundColor: getColor(it.colorId).code,
-                                  width: '9px',
-                                  height: '9px',
-                                  verticalAlign: 'middle'
+                                  width: '10px',
+                                  height: '10px',
+                                  verticalAlign: 'middle',
+                                  marginRight: '6px'
                                 }"></span>
                               {{ getColorName(it.colorId) }}
                             </span>
