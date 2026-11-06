@@ -132,6 +132,42 @@ export async function ensureInventoryTables() {
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "image_url" text;
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "product_type_id" integer REFERENCES "product_types"("id") ON DELETE SET NULL;
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "brand_id" integer REFERENCES "brands"("id") ON DELETE SET NULL;
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "barcode" varchar(100);
+
+      UPDATE "items"
+      SET "barcode" = LPAD("id"::text, 4, '0') || LPAD(COALESCE("size_id", 0)::text, 2, '0') || to_char("created_at", 'YYMM') || '01'
+      WHERE "barcode" IS NULL OR "barcode" = '';
+
+      UPDATE "items" i
+      SET "barcode" = pi.code
+      FROM (
+        SELECT DISTINCT ON (item_id) item_id, code 
+        FROM purchase_items 
+        WHERE code IS NOT NULL AND code != '' 
+        ORDER BY item_id, id DESC
+      ) pi
+      WHERE i.id = pi.item_id AND pi.code IS NOT NULL AND pi.code != '';
+
+      UPDATE "purchase_items" pi
+      SET "item_id" = i.id
+      FROM "items" i
+      WHERE pi.size_id IS NOT NULL 
+        AND pi.size_id = i.size_id 
+        AND pi.sub_category_id = i.sub_category_id 
+        AND pi.brand_id = i.brand_id 
+        AND pi.item_id != i.id;
+
+      -- Sync latest purchase unit_cost into items.purchase_price and items.barcode for all purchased items
+      UPDATE "items" i
+      SET "purchase_price" = pi.unit_cost,
+          "barcode" = COALESCE(NULLIF(pi.code, ''), i.barcode)
+      FROM (
+        SELECT DISTINCT ON (item_id) item_id, unit_cost, code 
+        FROM "purchase_items" 
+        WHERE item_id IS NOT NULL AND unit_cost IS NOT NULL AND unit_cost > 0
+        ORDER BY item_id, id DESC
+      ) pi
+      WHERE i.id = pi.item_id;
 
       CREATE TABLE IF NOT EXISTS "purchases" (
         "id" serial PRIMARY KEY NOT NULL,
@@ -867,6 +903,22 @@ export const createItem: Handler = async (c: any) => {
     })
     .returning();
 
+  // Auto-generate standard 12-digit barcode if not provided
+  if (!created.barcode) {
+    const itemStr = String(created.id).padStart(4, "0").slice(-4);
+    const sizeNum = Number(created.sizeId || 0);
+    const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const generatedBarcode = `${itemStr}${sizeStr}${yy}${mm}01`;
+    await db
+      .update(items)
+      .set({ barcode: generatedBarcode, updatedAt: new Date() })
+      .where(eq(items.id, created.id));
+    created.barcode = generatedBarcode;
+  }
+
   broadcast("catalog.updated", { entity: "item", userId }, { all: true, rooms: ["catalog"] });
 
   return c.json({ message: "আইটেম সফলভাবে তৈরি করা হয়েছে", data: created }, HttpStatusCodes.CREATED);
@@ -1269,14 +1321,36 @@ export const createPurchase: Handler = async (c: any) => {
       const sellingPriceVal = String(sellingPriceNum.toFixed(2));
 
       if (itemId) {
+        let actualItemId = itemId;
         const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
-        if (existingItem) {
+        if (existingItem && existingItem.sizeId !== sizeId && sizeId) {
+          const [matchingItem] = await db
+            .select()
+            .from(items)
+            .where(
+              and(
+                eq(items.userId, userId),
+                eq(items.subCategoryId, subCategoryId),
+                eq(items.brandId, brandId),
+                eq(items.sizeId, sizeId)
+              )
+            )
+            .limit(1);
+          if (matchingItem) {
+            actualItemId = matchingItem.id;
+          }
+        }
+        itemId = actualItemId;
+
+        const [itemToUpdate] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
+        if (itemToUpdate) {
           await db
             .update(items)
             .set({
-              stockQuantity: existingItem.stockQuantity + qty,
+              stockQuantity: itemToUpdate.stockQuantity + qty,
               purchasePrice: actualPurchasePrice,
               sellingPrice: sellingPriceVal,
+              barcode: code,
               updatedAt: new Date()
             })
             .where(eq(items.id, itemId));
@@ -1550,14 +1624,36 @@ export const updatePurchase: Handler = async (c: any) => {
       const sellingPriceVal = String(sellingPriceNum.toFixed(2));
 
       if (itemId) {
+        let actualItemId = itemId;
         const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
-        if (existingItem) {
+        if (existingItem && existingItem.sizeId !== sizeId && sizeId) {
+          const [matchingItem] = await db
+            .select()
+            .from(items)
+            .where(
+              and(
+                eq(items.userId, userId),
+                eq(items.subCategoryId, subCategoryId),
+                eq(items.brandId, brandId),
+                eq(items.sizeId, sizeId)
+              )
+            )
+            .limit(1);
+          if (matchingItem) {
+            actualItemId = matchingItem.id;
+          }
+        }
+        itemId = actualItemId;
+
+        const [itemToUpdate] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
+        if (itemToUpdate) {
           await db
             .update(items)
             .set({
-              stockQuantity: existingItem.stockQuantity + qty,
+              stockQuantity: itemToUpdate.stockQuantity + qty,
               purchasePrice: String(unitCost),
               sellingPrice: sellingPriceVal,
+              barcode: code,
               updatedAt: new Date()
             })
             .where(eq(items.id, itemId));

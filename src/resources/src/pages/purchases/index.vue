@@ -250,12 +250,17 @@
                   @change="onCurrentItemSelect">
                   <template #selected-option="option">
                     <span class="text-truncate" :title="option.name">
-                      {{ option.name }}
+                      {{ option.name }} <span v-if="option.size?.name || getSizeName(option.sizeId)" class="text-muted fw-normal">({{ option.size?.name || getSizeName(option.sizeId) }})</span>
                     </span>
                   </template>
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
-                      <span class="fw-semibold text-truncate">{{ option.name }}</span>
+                      <div class="d-flex align-items-center justify-content-between gap-2">
+                        <span class="fw-semibold text-truncate">{{ option.name }}</span>
+                        <span v-if="option.size?.name || getSizeName(option.sizeId)" class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.72rem;">
+                          {{ option.size?.name || getSizeName(option.sizeId) }}
+                        </span>
+                      </div>
                       <small class="opacity-75 font-monospace mt-0.5" style="font-size: 0.75rem;">
                         <span v-if="option.code">{{ option.code }}</span>
                         <span v-if="option.code && (option.designCode || 'DGN001')" class="mx-1.5 opacity-50">|</span>
@@ -2042,6 +2047,25 @@ function onCurrentItemBrandChange() {
 }
 
 function onCurrentItemSizeChange() {
+  const newSizeId = Number(currentItem.sizeId);
+  if (newSizeId && (currentItem.subCategoryId || currentItem.itemId)) {
+    const subCatId = currentItem.subCategoryId;
+    const brandId = currentItem.brandId;
+    const match = itemsList.value.find(
+      (it) =>
+        Number(it.sizeId || it.size?.id) === newSizeId &&
+        (subCatId ? Number(it.subCategoryId || it.subCategory?.id) === Number(subCatId) : true) &&
+        (brandId ? Number(it.brandId || it.brand?.id) === Number(brandId) : true)
+    );
+    if (match) {
+      currentItem.itemId = match.id;
+      currentItem.name = match.name;
+      currentItem.designCode = match.designCode || "";
+      if (match.sellingPrice) {
+        currentItem.sellingPrice = Number(match.sellingPrice) || 0;
+      }
+    }
+  }
   generateCurrentItemBarcode(true);
 }
 
@@ -2477,9 +2501,21 @@ function editPurchase(p: any) {
 
   // Populate items
   form.items = (p.items || []).map((it: any) => {
+    let matchedItemId = it.itemId || "";
+    if (it.sizeId && (it.subCategoryId || it.brandId)) {
+      const match = itemsList.value.find(
+        (item: any) =>
+          Number(item.sizeId || item.size?.id) === Number(it.sizeId) &&
+          (it.subCategoryId ? Number(item.subCategoryId || item.subCategory?.id) === Number(it.subCategoryId) : true) &&
+          (it.brandId ? Number(item.brandId || item.brand?.id) === Number(it.brandId) : true)
+      );
+      if (match) {
+        matchedItemId = match.id;
+      }
+    }
     const unitPrice = Number(it.unitPriceExclVat || it.unitPrice || it.unitPriceWithVat || it.unitCost || 0);
     return {
-      itemId: it.itemId || "",
+      itemId: matchedItemId,
       categoryId: it.categoryId || "",
       subCategoryId: it.subCategoryId || "",
       brandId: it.brandId || "",

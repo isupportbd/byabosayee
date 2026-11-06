@@ -98,6 +98,7 @@ export const items = pgTable("items", {
     .notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 100 }),
+  barcode: varchar("barcode", { length: 100 }),
   
   // Category dependencies
   categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
