@@ -399,7 +399,7 @@
         </div>
 
         <!-- Table View: #, ক্যাটাগরি, সাব-ক্যাটাগরি, পণ্যের নাম, কোড, সাইজ, একক, স্টেটাস, একশন -->
-        <div v-else class="table-responsive">
+        <div v-else class="table-responsive items-table-container">
           <table class="table table-hover align-middle mb-0">
             <thead class="item-table-header">
               <tr class="small">
@@ -523,24 +523,32 @@
                     <ul
                       v-if="openActionMenuId === item.id"
                       class="dropdown-menu dropdown-menu-end show shadow-sm py-1 border position-absolute"
-                      :style="index >= Math.max(0, paginatedItems.length - 2) ? 'min-width: 140px; z-index: 1050; right: 4px; bottom: 100%; margin-bottom: 4px;' : 'min-width: 140px; z-index: 1050; right: 4px; top: 100%;'">
+                      :style="getDropdownStyle(index)">
                       <li>
                         <button
                           type="button"
                           class="dropdown-item py-1.5 px-3 small d-flex align-items-center gap-2"
                           @click.stop="startEdit(item); openActionMenuId = null">
                           <i class="bi bi-pencil text-primary"></i>
-                          <span>এডিট</span>
+                          <span>এডিট পণ্য</span>
                         </button>
                       </li>
                       <li>
                         <button
                           type="button"
                           class="dropdown-item py-1.5 px-3 small d-flex align-items-center gap-2"
-                          :class="{ 'text-muted': !item.imageUrl }"
                           @click.stop="openImageViewModal(item); openActionMenuId = null">
-                          <i class="bi bi-image" :class="item.imageUrl ? 'text-info' : 'text-muted'"></i>
-                          <span>ভিউ ইমেইজ</span>
+                          <i class="bi bi-eye text-info"></i>
+                          <span>ভিউ ইমেজ</span>
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          class="dropdown-item py-1.5 px-3 small d-flex align-items-center gap-2"
+                          @click.stop="openImageEditModal(item); openActionMenuId = null">
+                          <i class="bi bi-camera text-success"></i>
+                          <span>এডিট ইমেজ</span>
                         </button>
                       </li>
                     </ul>
@@ -588,18 +596,138 @@
               style="max-height: 65vh; max-width: 100%; object-fit: contain; background: #fff;" />
           </div>
           <div class="modal-footer py-2 px-3 border-top d-flex justify-content-between align-items-center bg-light">
-            <a
-              :href="imageModalItem.imageUrl"
-              target="_blank"
-              class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 shadow-none">
-              <i class="bi bi-box-arrow-up-right"></i>
-              <span>আসল লিংকে দেখুন</span>
-            </a>
+            <div class="d-flex align-items-center gap-2">
+              <a
+                v-if="imageModalItem.imageUrl"
+                :href="imageModalItem.imageUrl"
+                target="_blank"
+                class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 shadow-none">
+                <i class="bi bi-box-arrow-up-right"></i>
+                <span>আসল লিংকে দেখুন</span>
+              </a>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 shadow-none"
+                @click="openImageEditModal(imageModalItem)">
+                <i class="bi bi-camera"></i>
+                <span>ছবি এডিট করুন</span>
+              </button>
+            </div>
             <button
               type="button"
               class="btn btn-sm btn-secondary shadow-none px-3"
               @click="closeImageViewModal">
               বন্ধ করুন
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- এডিট ইমেইজ মডাল -->
+    <div
+      v-if="showEditImageModal && editImageItem"
+      class="modal fade show d-block"
+      tabindex="-1"
+      style="background-color: rgba(0, 0, 0, 0.65); z-index: 1065;"
+      @click.self="closeImageEditModal">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+          <div class="modal-header py-2.5 px-3 border-bottom bg-light">
+            <h6 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
+              <i class="bi bi-camera-fill text-primary"></i>
+              <span>ছবি সম্পাদনা / পরিবর্তন</span>
+            </h6>
+            <button
+              type="button"
+              class="btn-close shadow-none"
+              aria-label="Close"
+              @click="closeImageEditModal"></button>
+          </div>
+          <div class="modal-body p-3">
+            <div class="mb-3">
+              <div class="fw-semibold small text-dark mb-1">
+                {{ editImageItem.name }}
+              </div>
+              <div class="text-muted small">
+                পণ্য কোড: <span class="font-monospace fw-bold">{{ editImageItem.code || '-' }}</span> |
+                ডিজাইন কোড: <span class="badge bg-light text-primary border font-monospace">{{ editImageItem.designCode || 'DGN001' }}</span>
+              </div>
+            </div>
+
+            <!-- বর্তমান ছবি প্রিভিউ -->
+            <div class="text-center p-3 mb-3 bg-light rounded border position-relative">
+              <div v-if="editImageUrl" class="position-relative d-inline-block">
+                <img
+                  :src="editImageUrl"
+                  alt="প্রিভিউ"
+                  class="img-fluid rounded border shadow-sm"
+                  style="max-height: 180px; max-width: 100%; object-fit: contain; background: #fff;" />
+                <button
+                  type="button"
+                  class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm"
+                  style="width: 24px; height: 24px;"
+                  title="ছবি মুছুন"
+                  @click="editImageUrl = ''">
+                  <i class="bi bi-x fs-6"></i>
+                </button>
+              </div>
+              <div v-else class="text-muted py-3">
+                <i class="bi bi-image text-secondary fs-1 d-block mb-1"></i>
+                <span class="small">কোনো ছবি নেই। নিচের অপশন থেকে ছবি আপলোড বা লিংক দিন।</span>
+              </div>
+            </div>
+
+            <!-- অপশন ১: সরাসরি ফাইল আপলোড -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold mb-1 d-flex align-items-center justify-content-between">
+                <span>১. ডিভাইস থেকে ছবি আপলোড করুন</span>
+                <span class="text-muted small">(সর্বোচ্চ {{ mediaConfig.maxFileSizeMb }}MB)</span>
+              </label>
+              <div class="input-group input-group-sm">
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="form-control"
+                  :disabled="uploadingModalImage || savingImage"
+                  @change="handleModalFileUpload" />
+                <span v-if="uploadingModalImage" class="input-group-text bg-white">
+                  <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                </span>
+              </div>
+            </div>
+
+            <div class="text-center text-muted small my-2 fw-semibold">অথবা</div>
+
+            <!-- অপশন ২: গুগল ড্রাইভ / ইমেজ লিংক -->
+            <div>
+              <label class="form-label small fw-semibold mb-1">
+                ২. গুগল ড্রাইভ বা সরাসরি ইমেজ লিংক পেস্ট করুন
+              </label>
+              <input
+                v-model.trim="editImageUrl"
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="https://drive.google.com/... বা ছবির সরাসরি লিংক"
+                :disabled="savingImage" />
+            </div>
+          </div>
+          <div class="modal-footer py-2 px-3 border-top d-flex justify-content-between align-items-center bg-light">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary px-3"
+              :disabled="savingImage"
+              @click="closeImageEditModal">
+              বাতিল
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary px-3 d-inline-flex align-items-center gap-1 shadow-sm"
+              :disabled="savingImage || uploadingModalImage"
+              @click="saveItemImage">
+              <span v-if="savingImage" class="spinner-border spinner-border-sm me-1" role="status"></span>
+              <i v-else class="bi bi-check-circle"></i>
+              <span>সংরক্ষণ করুন</span>
             </button>
           </div>
         </div>
@@ -696,13 +824,23 @@ function closeActionMenu() {
   openActionMenuId.value = null;
 }
 
+function getDropdownStyle(index: number) {
+  // If there are at least 4 items and this item is near the bottom, open upwards
+  const openUp = paginatedItems.value.length >= 4 && index >= paginatedItems.value.length - 2;
+  if (openUp) {
+    return "min-width: 145px; z-index: 1060; right: 4px; bottom: 100%; margin-bottom: 4px;";
+  }
+  return "min-width: 145px; z-index: 1060; right: 4px; top: 100%; margin-top: 4px;";
+}
+
 // Image View Modal State
 const showImageModal = ref(false);
 const imageModalItem = ref<any>(null);
 
 function openImageViewModal(item: any) {
   if (!item.imageUrl) {
-    showToast("এই পণ্যের কোনো ছবি সংযুক্ত করা নেই", "warning");
+    showToast("এই পণ্যে ছবি নেই, এখান থেকেই ছবি যুক্ত করুন", "info");
+    openImageEditModal(item);
     return;
   }
   imageModalItem.value = item;
@@ -712,6 +850,77 @@ function openImageViewModal(item: any) {
 function closeImageViewModal() {
   showImageModal.value = false;
   imageModalItem.value = null;
+}
+
+// Edit Image Modal State
+const showEditImageModal = ref(false);
+const editImageItem = ref<any>(null);
+const editImageUrl = ref("");
+const uploadingModalImage = ref(false);
+const savingImage = ref(false);
+
+function openImageEditModal(item: any) {
+  if (showImageModal.value) showImageModal.value = false;
+  editImageItem.value = item;
+  editImageUrl.value = item.imageUrl || "";
+  showEditImageModal.value = true;
+}
+
+function closeImageEditModal() {
+  showEditImageModal.value = false;
+  editImageItem.value = null;
+  editImageUrl.value = "";
+}
+
+async function handleModalFileUpload(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const maxBytes = (mediaConfig.value.maxFileSizeMb || 5) * 1024 * 1024;
+  if (file.size > maxBytes) {
+    showToast(`ফাইলের আকার সর্বোচ্চ ${mediaConfig.value.maxFileSizeMb}MB হতে পারবে`, "warning");
+    return;
+  }
+
+  uploadingModalImage.value = true;
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axios.post("/api/inventory/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    if (res.data?.url) {
+      editImageUrl.value = res.data.url;
+      showToast("ছবি আপলোড হয়েছে, সংরক্ষণে ক্লিক করুন", "success");
+    }
+  } catch (err: any) {
+    showToast(err.response?.data?.message || "ছবি আপলোড ব্যর্থ হয়েছে", "danger");
+  } finally {
+    uploadingModalImage.value = false;
+    input.value = "";
+  }
+}
+
+async function saveItemImage() {
+  if (!editImageItem.value) return;
+  savingImage.value = true;
+  try {
+    const url = editImageUrl.value?.trim() || null;
+    await axios.put(`/api/inventory/items/${editImageItem.value.id}`, {
+      imageUrl: url
+    });
+    editImageItem.value.imageUrl = url;
+    const found = itemsList.value.find((it: any) => it.id === editImageItem.value.id);
+    if (found) found.imageUrl = url;
+    showToast("পণ্যের ছবি সফলভাবে আপডেট করা হয়েছে", "success");
+    closeImageEditModal();
+    notifyCatalogUpdated("item");
+  } catch (err: any) {
+    showToast(err.response?.data?.message || "ছবি সংরক্ষণ ব্যর্থ হয়েছে", "danger");
+  } finally {
+    savingImage.value = false;
+  }
 }
 
 /**
@@ -1605,6 +1814,16 @@ onBeforeUnmount(() => {
   border-color: #92400e !important;
   color: #ffffff !important;
 }
+
+.items-table-container {
+  min-height: 240px;
+}
+@media (min-width: 992px) {
+  .items-table-container {
+    overflow: visible !important;
+  }
+}
+
 </style>
 
 <!-- Unscoped Dark Theme Styles for Pure Neutral Black / Charcoal (Zero Blue) -->
