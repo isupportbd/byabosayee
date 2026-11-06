@@ -21,39 +21,18 @@ import { sessionMiddleware } from "@/framework/session/session.js";
 export function createHttpApp() {
   const app = createRouter();
 
-  const healthRoute = createRoute({
-    path: "/health",
-    method: "get",
-    tags: ["System"],
-    responses: {
-      200: {
-        description: "Application health status",
-        content: {
-          "application/json": {
-            schema: z.object({ message: z.string() })
-          }
-        }
-      }
-    }
-  });
+  const healthHandler = (c: any) =>
+    c.json({
+      status: "ok",
+      message: "Application is healthy",
+      timestamp: new Date().toISOString()
+    });
 
-  if (appConfig.openApiEnabled) {
-    configureOpenApi(app);
-    app.api(healthRoute, (c: any) => c.json({ message: "Application is healthy" }));
-  }
+  // ── Ultra-lightweight health endpoints (bypasses heavy middlewares, sessions & rate limiters) ──
+  // Support both GET and HEAD for /health, /healthz, /live, /api/health
+  app.on(["GET", "HEAD"], ["/health", "/healthz", "/live", "/api/health"], healthHandler);
 
-  app.use("*", sessionMiddleware);
-  app.use("*", corsMiddleware);
-  app.use("*", securityMiddleware);
-  app.use("*", async (_c, next) => {
-    incrementRequestCount();
-    await next();
-  });
-  app.use("*", loggerMiddleware);
-  app.use("*", rateLimiterMiddleware);
-  app.use("/storage/*", storageStaticMiddleware);
-
-  app.get("/ready", (c) => {
+  app.on(["GET", "HEAD"], "/ready", (c: any) => {
     const checks: Record<string, string> = {};
     let allOk = true;
     try {
@@ -77,9 +56,39 @@ export function createHttpApp() {
     return c.json({ status: allOk ? "ready" : "not_ready", checks }, status);
   });
 
-  app.get("/live", (c) => {
-    return c.json({ status: "alive" });
+  const healthRoute = createRoute({
+    path: "/health",
+    method: "get",
+    tags: ["System"],
+    responses: {
+      200: {
+        description: "Application health status",
+        content: {
+          "application/json": {
+            schema: z.object({ message: z.string() })
+          }
+        }
+      }
+    }
   });
+
+  if (appConfig.openApiEnabled) {
+    configureOpenApi(app);
+    app.api(healthRoute, healthHandler);
+  }
+
+  app.use("*", sessionMiddleware);
+  app.use("*", corsMiddleware);
+  app.use("*", securityMiddleware);
+  app.use("*", async (_c, next) => {
+    incrementRequestCount();
+    await next();
+  });
+  app.use("*", loggerMiddleware);
+  app.use("*", rateLimiterMiddleware);
+  app.use("/storage/*", storageStaticMiddleware);
+
+
 
   app.get("/metrics", (c) => {
     const m = getMetrics();
@@ -98,9 +107,7 @@ export function createHttpApp() {
     app.get("/", (c: any) => c.json({ name: appConfig.name, ok: true }));
   }
 
-  if (!appConfig.openApiEnabled) {
-    app.get("/health", (c: any) => c.json({ message: "Application is healthy" }));
-  }
+
 
   app.notFound(notFound);
   app.onError(onError);

@@ -91,8 +91,14 @@ async function waitForHealth(url, maxRetries = 240, intervalMs = 500) {
  *  health before spawning the UI). Set SKIP_BACKEND_WAIT=1 to disable. */
 export async function waitForBackendIfNeeded() {
   if (process.env.SKIP_BACKEND_WAIT === "1") return;
-  const healthUrl = `${process.env.APP_URL || "http://localhost:3000"}/health`;
-  await waitForHealth(healthUrl);
+  const port = process.env.APP_PORT || process.env.PORT || "3000";
+  const healthUrl = `http://127.0.0.1:${port}/health`;
+  try {
+    await waitForHealth(healthUrl, 120, 500);
+  } catch {
+    const fallbackUrl = `${process.env.APP_URL || "http://localhost:3000"}/health`;
+    await waitForHealth(fallbackUrl, 120, 500);
+  }
 }
 
 /** Run the full dev stack: API, UI, queue worker, and optional UI tools. */

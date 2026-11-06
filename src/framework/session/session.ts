@@ -34,6 +34,11 @@ function sessionKey(id: string) {
  * - Refreshes the Redis session TTL on every request.
  */
 export async function sessionMiddleware(c: Context, next: Next) {
+  const p = c.req.path;
+  if (p === "/health" || p === "/healthz" || p === "/live" || p === "/ready" || p === "/api/health") {
+    return next();
+  }
+
   let sessionId = getCookie(c, sessionConfig.cookieName);
 
   if (!sessionId) {

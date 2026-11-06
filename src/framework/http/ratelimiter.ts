@@ -135,6 +135,11 @@ function createFailingOverStore() {
 let middleware: MiddlewareHandler | null = null;
 
 export const rateLimiterMiddleware = async (c: Context, next: Next) => {
+  const p = c.req.path;
+  if (p === "/health" || p === "/healthz" || p === "/live" || p === "/ready" || p === "/api/health") {
+    return next();
+  }
+
   if (!middleware) {
     middleware = rateLimiter({
       windowMs: rateLimitConfig.windowMs,
