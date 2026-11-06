@@ -79,7 +79,21 @@
                 @change="onSubCategoryChange" />
             </div>
 
-            <!-- ৩. সাইজ (সাব-ক্যাটাগরির পরে) -->
+            <!-- ৩. ধরন (সাব-ক্যাটাগরির পরে, ক্যাটাগরি ও সাব-ক্যাটাগরির উপর নির্ভরশীল) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-type">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ধরন">
+                ধরন
+              </label>
+              <Select
+                v-model="form.productTypeId"
+                :options="filteredProductTypesList"
+                :disabled="!form.subCategoryId"
+                :placeholder="!form.categoryId ? 'আগে ক্যাটাগরি দিন' : !form.subCategoryId ? 'আগে সাব-ক্যাটাগরি দিন' : filteredProductTypesList.length === 0 ? 'ধরন নেই' : 'ধরন নির্বাচন করুন'"
+                :searchable="true"
+                @change="onProductTypeChange" />
+            </div>
+
+            <!-- ৪. সাইজ (ধরনের পরে) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-size">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
                 সাইজ <span class="text-danger">*</span>
@@ -93,7 +107,7 @@
                 @change="onSizeChange" />
             </div>
 
-            <!-- ৪. ব্র্যান্ড (সাইজের পরে) -->
+            <!-- ৫. ব্র্যান্ড (সাইজের পরে) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-brand">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ব্র্যান্ড">
                 ব্র্যান্ড <span class="text-danger">*</span>
@@ -107,7 +121,7 @@
                 @change="onBrandChange" />
             </div>
 
-            <!-- ৪. পণ্যের নাম (লাল দাগ পর্যন্ত ২৪%) -->
+            <!-- ৬. পণ্যের নাম -->
             <div class="col-12 col-sm-12 col-md-8 col-item-name">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
                 পণ্যের নাম <span class="text-danger">*</span>
@@ -121,7 +135,7 @@
                 required />
             </div>
 
-            <!-- ৫. পণ্য কোড -->
+            <!-- ৭. পণ্য কোড -->
             <div class="col-6 col-sm-6 col-md-4 col-item-code">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="কোম্পানীর অভ্যন্তরীণ পণ্য কোড">
                 পণ্য কোড <span class="text-danger">*</span>
@@ -136,7 +150,7 @@
                 required />
             </div>
 
-            <!-- ৬. পরিমাপের একক -->
+            <!-- ৮. পরিমাপের একক -->
             <div class="col-6 col-sm-6 col-md-4 col-item-unit">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="একক (Unit)">
                 একক (Unit) <span class="text-danger">*</span>
@@ -156,7 +170,7 @@
               </Select>
             </div>
 
-            <!-- ৬. ডিজাইন কোড (একই পণ্যের প্রতি ডিজাইনে DGN001 থেকে ক্রমান্বয়ে বৃদ্ধি) -->
+            <!-- ৯. ডিজাইন কোড (একই পণ্যের প্রতি ডিজাইনে DGN001 থেকে ক্রমান্বয়ে বৃদ্ধি) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-design-code">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ডিজাইন কোড (প্রতিটি পণ্যে DGN001 থেকে শুরু হবে)">
                 ডিজাইন কোড <span class="text-danger">*</span>
@@ -171,7 +185,7 @@
                 required />
             </div>
 
-            <!-- ৭. প্রারম্ভিক স্টক -->
+            <!-- ১০. প্রারম্ভিক স্টক -->
             <div class="col-6 col-sm-6 col-md-4 col-item-stock">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="প্রারম্ভিক স্টক">
                 প্রারম্ভিক স্টক
@@ -303,6 +317,18 @@
             </select>
           </div>
 
+          <!-- ২.১ ধরন ফিল্টার -->
+          <div style="min-width: 140px;">
+            <select
+              v-model="typeFilter"
+              class="form-select form-select-sm search-input-unified">
+              <option value="all">সকল ধরন</option>
+              <option v-for="t in typesForFilter" :key="t.id" :value="t.id">
+                {{ t.name }}
+              </option>
+            </select>
+          </div>
+
           <!-- ৩. সাইজ ফিল্টার -->
           <div style="min-width: 120px;">
             <select
@@ -378,13 +404,14 @@
             <thead class="item-table-header">
               <tr class="small">
                 <th style="width: 45px;" class="text-center">#</th>
-                <th style="width: 10%;">ক্যাটাগরি</th>
-                <th style="width: 10%;">সাব-ক্যাটাগরি</th>
-                <th style="width: 10%;">ব্র্যান্ড</th>
-                <th style="width: 18%;">পণ্যের নাম</th>
-                <th style="width: 10%;">পণ্য কোড</th>
-                <th style="width: 9%;" class="text-center">ডিজাইন কোড</th>
-                <th style="width: 8%;">সাইজ</th>
+                <th style="width: 9%;">ক্যাটাগরি</th>
+                <th style="width: 9%;">সাব-ক্যাটাগরি</th>
+                <th style="width: 8%;">ধরন</th>
+                <th style="width: 9%;">ব্র্যান্ড</th>
+                <th style="width: 17%;">পণ্যের নাম</th>
+                <th style="width: 9%;">পণ্য কোড</th>
+                <th style="width: 8%;" class="text-center">ডিজাইন কোড</th>
+                <th style="width: 7%;">সাইজ</th>
                 <th style="width: 7%;">একক</th>
                 <th style="width: 7%;" class="text-end">স্টক</th>
                 <th style="width: 75px;" class="text-center">স্টেটাস</th>
@@ -409,6 +436,13 @@
                 <td>
                   <span class="item-cell-text item-subcategory-cell">
                     {{ item.subCategory?.name || '-' }}
+                  </span>
+                </td>
+
+                <!-- ২.১ ধরন -->
+                <td>
+                  <span class="item-cell-text">
+                    {{ item.productType?.name || '-' }}
                   </span>
                 </td>
 
@@ -612,6 +646,7 @@ const togglingStatusId = ref<number | null>(null);
 // Catalog Lists
 const categoriesList = ref<any[]>([]);
 const allSubCategoriesList = ref<any[]>([]);
+const allProductTypesList = ref<any[]>([]);
 const allSizesList = ref<any[]>([]);
 const colorsList = ref<any[]>([]);
 const unitsList = ref<any[]>([]);
@@ -626,6 +661,7 @@ const editingItem = ref<any>(null);
 const form = reactive({
   categoryId: "" as string | number,
   subCategoryId: "" as string | number,
+  productTypeId: "" as string | number,
   sizeId: "" as string | number,
   brandId: "" as string | number,
   name: "",
@@ -685,13 +721,20 @@ function closeImageViewModal() {
 /**
  * একই সাব-ক্যাটাগরি ও ব্র্যান্ডের জন্য স্বয়ংক্রিয় ইউনিক ডিজাইন কোড গণনা (DGN001, DGN002...)
  */
-function computeNextDesignCode(subCatId?: string | number, brandId?: string | number): string {
+function computeNextDesignCode(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): string {
   if (!subCatId) return "DGN001";
 
   const matching = itemsList.value.filter((it: any) => {
     const itSub = it.subCategoryId || it.subCategory?.id;
     if (!itSub || String(itSub) !== String(subCatId)) {
       return false;
+    }
+
+    if (productTypeId) {
+      const itType = it.productTypeId || it.productType?.id;
+      if (!itType || String(itType) !== String(productTypeId)) {
+        return false;
+      }
     }
 
     if (brandId) {
@@ -777,6 +820,17 @@ const filteredSubCategories = computed(() => {
   );
 });
 
+// Filtered Product Types ("ধরন") based on category and subcategory (in Form)
+const filteredProductTypesList = computed(() => {
+  if (!form.subCategoryId) return [];
+  return allProductTypesList.value.filter(
+    (pt: any) =>
+      (!form.categoryId || String(pt.categoryId) === String(form.categoryId)) &&
+      String(pt.subCategoryId) === String(form.subCategoryId) &&
+      (pt.isActive ?? true)
+  );
+});
+
 // Filtered Sizes based on selected category / subcategory or all sizes
 const filteredSizesList = computed(() => {
   if (form.subCategoryId) {
@@ -845,25 +899,36 @@ function updateAutoItemName() {
   const subCat = allSubCategoriesList.value.find(
     (s: any) => String(s.id) === String(form.subCategoryId)
   );
+  const typeObj = allProductTypesList.value.find(
+    (t: any) => String(t.id) === String(form.productTypeId)
+  );
   const brandObj = brandsList.value.find(
     (b: any) => String(b.id) === String(form.brandId)
   );
 
-  if (subCat && brandObj) {
-    const nextCode = computeNextDesignCode(form.subCategoryId, form.brandId);
-    form.designCode = nextCode;
-    form.name = `${subCat.name}_${brandObj.name}_${nextCode}`;
-    isAutoGenerated.value = true;
-  } else if (subCat) {
-    const nextCode = computeNextDesignCode(form.subCategoryId, form.brandId);
-    form.designCode = nextCode;
-    form.name = `${subCat.name}_${nextCode}`;
-    isAutoGenerated.value = true;
+  if (!subCat) return;
+
+  const nextCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  form.designCode = nextCode;
+
+  // Format: [সাব-ক্যাটাগরি]_[ধরন]_[ব্র্যান্ড]_[ডিজাইন কোড]
+  // উদাহরণ: "এপ্রোন_লং_বাটা_DGN001" অথবা ধরন না থাকলে "এপ্রোন_বাটা_DGN001"
+  const parts = [subCat.name.trim()];
+  if (typeObj?.name && typeObj.name.trim()) {
+    parts.push(typeObj.name.trim());
   }
+  if (brandObj?.name && brandObj.name.trim()) {
+    parts.push(brandObj.name.trim());
+  }
+  parts.push(nextCode);
+
+  form.name = parts.join("_");
+  isAutoGenerated.value = true;
 }
 
 function onCategoryChange() {
   form.subCategoryId = "";
+  form.productTypeId = "";
   form.sizeId = "";
   form.name = "";
   form.designCode = "DGN001";
@@ -875,6 +940,7 @@ function onCategoryChange() {
 }
 
 function onSubCategoryChange() {
+  form.productTypeId = "";
   form.sizeId = "";
   if (!form.code) {
     form.code = generateNextProductCode();
@@ -883,6 +949,10 @@ function onSubCategoryChange() {
   if (filteredUnitsList.value.length === 1 && !form.unitId) {
     form.unitId = filteredUnitsList.value[0].id;
   }
+}
+
+function onProductTypeChange() {
+  updateAutoItemName();
 }
 
 function onSizeChange() {
@@ -901,7 +971,7 @@ function onBrandChange() {
 }
 
 watch(
-  () => [form.categoryId, form.subCategoryId, form.sizeId, form.brandId],
+  () => [form.categoryId, form.subCategoryId, form.productTypeId, form.sizeId, form.brandId],
   () => {
     if (!isEditing.value && form.subCategoryId) {
       updateAutoItemName();
@@ -912,6 +982,7 @@ watch(
 function resetForm() {
   form.categoryId = "";
   form.subCategoryId = "";
+  form.productTypeId = "";
   form.sizeId = "";
   form.brandId = "";
   form.name = "";
@@ -928,6 +999,7 @@ function startEdit(item: any) {
   editingItem.value = item;
   form.categoryId = item.categoryId || (item.category ? item.category.id : "");
   form.subCategoryId = item.subCategoryId || (item.subCategory ? item.subCategory.id : "");
+  form.productTypeId = item.productTypeId || (item.productType ? item.productType.id : "");
   form.sizeId = item.sizeId || (item.size ? item.size.id : "");
   form.brandId = item.brandId || (item.brand ? item.brand.id : "");
   form.name = item.name || "";
@@ -950,6 +1022,7 @@ function cancelEdit() {
 // Filters State
 const categoryFilter = ref("all");
 const subCategoryFilter = ref("all");
+const typeFilter = ref("all");
 const sizeFilter = ref("all");
 const brandFilter = ref("all");
 const searchQuery = ref("");
@@ -958,7 +1031,9 @@ const isFiltered = computed(() => {
   return (
     categoryFilter.value !== "all" ||
     subCategoryFilter.value !== "all" ||
+    typeFilter.value !== "all" ||
     sizeFilter.value !== "all" ||
+    brandFilter.value !== "all" ||
     searchQuery.value.trim().length > 0
   );
 });
@@ -968,6 +1043,17 @@ const subCategoriesForFilter = computed(() => {
   return allSubCategoriesList.value.filter(
     (s: any) => String(s.categoryId) === String(categoryFilter.value)
   );
+});
+
+const typesForFilter = computed(() => {
+  let list = allProductTypesList.value;
+  if (categoryFilter.value !== "all") {
+    list = list.filter((t: any) => String(t.categoryId) === String(categoryFilter.value));
+  }
+  if (subCategoryFilter.value !== "all") {
+    list = list.filter((t: any) => String(t.subCategoryId) === String(subCategoryFilter.value));
+  }
+  return list;
 });
 
 const uniqueSizesForFilter = computed(() => {
@@ -980,11 +1066,13 @@ const uniqueSizesForFilter = computed(() => {
 
 function onCategoryFilterChange() {
   subCategoryFilter.value = "all";
+  typeFilter.value = "all";
 }
 
 function resetAllFilters() {
   categoryFilter.value = "all";
   subCategoryFilter.value = "all";
+  typeFilter.value = "all";
   sizeFilter.value = "all";
   brandFilter.value = "all";
   searchQuery.value = "";
@@ -1012,6 +1100,15 @@ const filteredItems = computed(() => {
     );
   }
 
+  // 2.1 Product Type Filter (ধরন)
+  if (typeFilter.value !== "all") {
+    list = list.filter(
+      (item) =>
+        String(item.productTypeId) === String(typeFilter.value) ||
+        String(item.productType?.id) === String(typeFilter.value)
+    );
+  }
+
   // 3. Size Filter
   if (sizeFilter.value !== "all") {
     list = list.filter((item) => item.size?.name === sizeFilter.value);
@@ -1034,8 +1131,9 @@ const filteredItems = computed(() => {
       const matchCode = item.code?.toLowerCase().includes(q);
       const matchCat = item.category?.name?.toLowerCase().includes(q);
       const matchSub = item.subCategory?.name?.toLowerCase().includes(q);
+      const matchType = item.productType?.name?.toLowerCase().includes(q);
       const matchBrand = item.brand?.name?.toLowerCase().includes(q);
-      return matchName || matchCode || matchCat || matchSub || matchBrand;
+      return matchName || matchCode || matchCat || matchSub || matchType || matchBrand;
     });
   }
 
@@ -1047,7 +1145,7 @@ const perPage = ref(7);
 const currentPage = ref(1);
 
 // ফিল্টার বা সার্চ পরিবর্তন হলে প্রথম পেজে ফেরত যাওয়া
-watch([categoryFilter, subCategoryFilter, sizeFilter, brandFilter, searchQuery], () => {
+watch([categoryFilter, subCategoryFilter, typeFilter, sizeFilter, brandFilter, searchQuery], () => {
   currentPage.value = 1;
 });
 
@@ -1150,6 +1248,7 @@ async function submitForm() {
       imageUrl: form.imageUrl?.trim() || null,
       categoryId: Number(form.categoryId),
       subCategoryId: Number(form.subCategoryId),
+      productTypeId: form.productTypeId ? Number(form.productTypeId) : null,
       sizeId: Number(form.sizeId),
       brandId: form.brandId ? Number(form.brandId) : null,
       unitId: Number(form.unitId),
@@ -1182,17 +1281,20 @@ async function fetchCatalogData() {
     const data = masterRes.data?.data || {};
     categoriesList.value = data.categories || [];
     allSubCategoriesList.value = data.subCategories || [];
+    allProductTypesList.value = data.productTypes || [];
     allSizesList.value = data.sizes || [];
     colorsList.value = data.colors || [];
     unitsList.value = data.units || [];
   } catch {
     try {
-      const [catRes, subRes] = await Promise.all([
+      const [catRes, subRes, typeRes] = await Promise.all([
         axios.get("/api/catalog/categories"),
-        axios.get("/api/catalog/sub-categories")
+        axios.get("/api/catalog/sub-categories"),
+        axios.get("/api/catalog/product-types")
       ]);
       categoriesList.value = catRes.data?.data || [];
       allSubCategoriesList.value = subRes.data?.data || [];
+      allProductTypesList.value = typeRes.data?.data || [];
     } catch {
       // Fallback
     }
@@ -1302,46 +1404,50 @@ onBeforeUnmount(() => {
     padding-left: 0.25rem;
     padding-right: 0.25rem;
   }
-  /* ১০-কলাম বিশিষ্ট এন্ট্রি রো */
+  /* ১১-কলাম বিশিষ্ট এন্ট্রি রো */
   .item-create-row .col-item-cat {
-    flex: 0 0 10%;
-    max-width: 10%;
+    flex: 0 0 9%;
+    max-width: 9%;
   }
   .item-create-row .col-item-subcat {
-    flex: 0 0 10.5%;
-    max-width: 10.5%;
-  }
-  .item-create-row .col-item-size {
-    flex: 0 0 7.5%;
-    max-width: 7.5%;
-  }
-  .item-create-row .col-item-brand {
     flex: 0 0 9.5%;
     max-width: 9.5%;
   }
+  .item-create-row .col-item-type {
+    flex: 0 0 8.5%;
+    max-width: 8.5%;
+  }
+  .item-create-row .col-item-size {
+    flex: 0 0 7%;
+    max-width: 7%;
+  }
+  .item-create-row .col-item-brand {
+    flex: 0 0 8.5%;
+    max-width: 8.5%;
+  }
   .item-create-row .col-item-name {
-    flex: 0 0 16.5%;
-    max-width: 16.5%;
+    flex: 0 0 15%;
+    max-width: 15%;
   }
   .item-create-row .col-item-code {
-    flex: 0 0 8.5%;
-    max-width: 8.5%;
+    flex: 0 0 8%;
+    max-width: 8%;
   }
   .item-create-row .col-item-unit {
-    flex: 0 0 7.5%;
-    max-width: 7.5%;
+    flex: 0 0 7%;
+    max-width: 7%;
   }
   .item-create-row .col-item-design-code {
-    flex: 0 0 8.5%;
-    max-width: 8.5%;
+    flex: 0 0 8%;
+    max-width: 8%;
   }
   .item-create-row .col-item-stock {
-    flex: 0 0 7.5%;
-    max-width: 7.5%;
+    flex: 0 0 6.5%;
+    max-width: 6.5%;
   }
   .item-create-row .col-item-image {
-    flex: 0 0 14%;
-    max-width: 14%;
+    flex: 0 0 11%;
+    max-width: 11%;
   }
 
   .item-create-row .col-item-size .form-select-sm,

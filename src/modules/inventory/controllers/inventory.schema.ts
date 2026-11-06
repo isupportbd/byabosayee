@@ -27,6 +27,8 @@ export const CreateItemSchema = z.object({
   code: z.string().max(100).optional().nullable(),
   categoryId: z.number().int().positive().optional().nullable(),
   subCategoryId: z.number().int().positive().optional().nullable(),
+  productTypeId: z.number().int().positive().optional().nullable(),
+  brandId: z.number().int().positive().optional().nullable(),
   sizeId: z.number().int().positive().optional().nullable(),
   unitId: z.number().int().positive().optional().nullable(),
   stockQuantity: z.number().int().nonnegative().optional().default(0)

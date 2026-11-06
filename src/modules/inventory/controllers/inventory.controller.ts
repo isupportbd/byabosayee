@@ -129,6 +129,8 @@ export async function ensureInventoryTables() {
 
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "design_code" varchar(50);
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "image_url" text;
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "product_type_id" integer REFERENCES "product_types"("id") ON DELETE SET NULL;
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "brand_id" integer REFERENCES "brands"("id") ON DELETE SET NULL;
 
       CREATE TABLE IF NOT EXISTS "purchases" (
         "id" serial PRIMARY KEY NOT NULL,
@@ -835,6 +837,7 @@ export const createItem: Handler = async (c: any) => {
       imageUrl: body.imageUrl?.trim() || null,
       categoryId: body.categoryId ? Number(body.categoryId) : null,
       subCategoryId: body.subCategoryId ? Number(body.subCategoryId) : null,
+      productTypeId: body.productTypeId ? Number(body.productTypeId) : null,
       brandId: body.brandId ? Number(body.brandId) : null,
       sizeId: body.sizeId ? Number(body.sizeId) : null,
       unitId: body.unitId ? Number(body.unitId) : null,
@@ -875,6 +878,7 @@ export const updateItem: Handler = async (c: any) => {
       code: body.code !== undefined ? body.code?.trim() || null : undefined,
       categoryId: body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : undefined,
       subCategoryId: body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : undefined,
+      productTypeId: body.productTypeId !== undefined ? (body.productTypeId ? Number(body.productTypeId) : null) : undefined,
       brandId: body.brandId !== undefined ? (body.brandId ? Number(body.brandId) : null) : undefined,
       sizeId: body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : undefined,
       unitId: body.unitId !== undefined ? (body.unitId ? Number(body.unitId) : null) : undefined,
