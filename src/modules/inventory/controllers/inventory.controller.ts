@@ -119,12 +119,16 @@ export async function ensureInventoryTables() {
         "selling_price" numeric(12, 2) DEFAULT '0' NOT NULL,
         "stock_quantity" integer DEFAULT 0 NOT NULL,
         "alert_quantity" integer DEFAULT 5 NOT NULL,
+        "design_code" varchar(50),
         "image_url" text,
         "description" text,
         "is_active" boolean DEFAULT true NOT NULL,
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "design_code" varchar(50);
+      ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "image_url" text;
 
       CREATE TABLE IF NOT EXISTS "purchases" (
         "id" serial PRIMARY KEY NOT NULL,
@@ -808,12 +812,27 @@ export const createItem: Handler = async (c: any) => {
     code = `${prefix}${count + 1}`;
   }
 
+  // Design code: default DGN001 or calculate based on existing same items
+  let designCode = body.designCode?.trim();
+  if (!designCode && body.name) {
+    const existingSame = await db.execute(sql`
+      SELECT count(*)::int as count
+      FROM "items"
+      WHERE "user_id" = ${userId}
+        AND LOWER(TRIM("name")) = LOWER(TRIM(${body.name.trim()}))
+    `);
+    const c = Number((existingSame.rows || existingSame)[0]?.count || 0);
+    designCode = `DGN${String(c + 1).padStart(3, "0")}`;
+  }
+
   const [created] = await db
     .insert(items)
     .values({
       userId,
       name: body.name.trim(),
       code,
+      designCode: designCode || "DGN001",
+      imageUrl: body.imageUrl?.trim() || null,
       categoryId: body.categoryId ? Number(body.categoryId) : null,
       subCategoryId: body.subCategoryId ? Number(body.subCategoryId) : null,
       sizeId: body.sizeId ? Number(body.sizeId) : null,
@@ -858,6 +877,8 @@ export const updateItem: Handler = async (c: any) => {
       sizeId: body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : undefined,
       unitId: body.unitId !== undefined ? (body.unitId ? Number(body.unitId) : null) : undefined,
       stockQuantity: body.stockQuantity !== undefined ? Number(body.stockQuantity) : undefined,
+      designCode: body.designCode !== undefined ? (body.designCode?.trim() || null) : undefined,
+      imageUrl: body.imageUrl !== undefined ? (body.imageUrl?.trim() || null) : undefined,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
       updatedAt: new Date()
     })

@@ -122,6 +122,7 @@ export const items = pgTable("items", {
   alertQuantity: integer("alert_quantity").default(5).notNull(),
   
   // Media & Info
+  designCode: varchar("design_code", { length: 50 }),
   imageUrl: text("image_url"),
   description: text("description"),
 

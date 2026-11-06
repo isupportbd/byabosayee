@@ -142,6 +142,21 @@
               </Select>
             </div>
 
+            <!-- ৬. ডিজাইন কোড (একই পণ্যের প্রতি ডিজাইনে DGN001 থেকে ক্রমান্বয়ে বৃদ্ধি) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-design-code">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ডিজাইন কোড (প্রতিটি পণ্যে DGN001 থেকে শুরু হবে)">
+                ডিজাইন কোড <span class="text-danger">*</span>
+              </label>
+              <input
+                v-model.trim="form.designCode"
+                type="text"
+                class="form-control form-control-sm single-row-input font-monospace frozen-input"
+                readonly
+                tabindex="-1"
+                placeholder="DGN001"
+                required />
+            </div>
+
             <!-- ৭. প্রারম্ভিক স্টক -->
             <div class="col-6 col-sm-6 col-md-4 col-item-stock">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="প্রারম্ভিক স্টক">
@@ -153,6 +168,56 @@
                 min="0"
                 class="form-control form-control-sm single-row-input text-end"
                 placeholder="0" />
+            </div>
+
+            <!-- ৮. ছবি সংযুক্তি (সুপারএডমিন পলিসি অনুযায়ী) -->
+            <div class="col-12 col-sm-12 col-md-4 col-item-image">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label small fw-semibold mb-0 text-truncate" title="পণ্যের ছবি">
+                  ছবি <span class="text-muted fw-normal" style="font-size: 0.72rem;">({{ mediaConfig.uploadMode === 'google_drive' ? 'ড্রাইভ লিংক' : (mediaConfig.uploadMode === 'direct_upload' ? 'আপলোড' : 'আপলোড / লিংক') }})</span>
+                </label>
+                <div v-if="form.imageUrl" class="d-flex align-items-center gap-1">
+                  <span class="badge bg-success-subtle text-success py-0 px-1 border" style="font-size: 0.65rem;">সংযুক্ত</span>
+                  <button type="button" class="btn btn-link p-0 text-danger text-decoration-none" title="ছবি সরান" @click="form.imageUrl = ''" style="font-size: 0.7rem; line-height: 1;">
+                    <i class="bi bi-x-circle-fill"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Option A: Direct upload only -->
+              <div v-if="mediaConfig.uploadMode === 'direct_upload'" class="d-flex align-items-center gap-1">
+                <label class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center gap-1 flex-grow-1 single-row-input text-truncate mb-0 cursor-pointer shadow-none" :class="{ 'disabled': uploadingImage }">
+                  <span v-if="uploadingImage" class="spinner-border spinner-border-sm" role="status"></span>
+                  <i v-else class="bi bi-cloud-arrow-up"></i>
+                  <span class="small">{{ uploadingImage ? 'আপলোড হচ্ছে...' : (form.imageUrl ? 'ছবি পরিবর্তন' : 'ছবি বেছে নিন') }}</span>
+                  <input type="file" accept="image/*" class="d-none" :disabled="uploadingImage" @change="handleFileUpload" />
+                </label>
+              </div>
+
+              <!-- Option B: Google drive / Web link only -->
+              <div v-else-if="mediaConfig.uploadMode === 'google_drive'" class="input-group input-group-sm">
+                <input
+                  v-model.trim="form.imageUrl"
+                  type="text"
+                  class="form-control form-control-sm single-row-input font-monospace"
+                  placeholder="গুগল ড্রাইভ বা ইমেজ লিংক পেস্ট করুন"
+                  style="font-size: 0.78rem;" />
+              </div>
+
+              <!-- Option C: Both (Hybrid) -->
+              <div v-else class="input-group input-group-sm">
+                <input
+                  v-model.trim="form.imageUrl"
+                  type="text"
+                  class="form-control form-control-sm single-row-input font-monospace"
+                  placeholder="ড্রাইভ লিংক অথবা আপলোড করুন"
+                  style="font-size: 0.78rem;" />
+                <label class="btn btn-outline-secondary d-flex align-items-center px-2 single-row-input mb-0 cursor-pointer shadow-none" title="পিসি/মোবাইল থেকে সরাসরি আপলোড" :class="{ 'disabled': uploadingImage }">
+                  <span v-if="uploadingImage" class="spinner-border spinner-border-sm" role="status"></span>
+                  <i v-else class="bi bi-upload"></i>
+                  <input type="file" accept="image/*" class="d-none" :disabled="uploadingImage" @change="handleFileUpload" />
+                </label>
+              </div>
             </div>
           </div>
 
@@ -287,15 +352,16 @@
             <thead class="item-table-header">
               <tr class="small">
                 <th style="width: 45px;" class="text-center">#</th>
-                <th style="width: 15%;">ক্যাটাগরি</th>
-                <th style="width: 15%;">সাব-ক্যাটাগরি</th>
-                <th style="width: 25%;">পণ্যের নাম</th>
-                <th style="width: 15%;">পণ্য কোড</th>
-                <th style="width: 10%;">সাইজ</th>
-                <th style="width: 10%;">একক</th>
-                <th style="width: 10%;" class="text-end">স্টক</th>
-                <th style="width: 80px;" class="text-center">স্টেটাস</th>
-                <th style="width: 70px;" class="text-center">একশন</th>
+                <th style="width: 13%;">ক্যাটাগরি</th>
+                <th style="width: 13%;">সাব-ক্যাটাগরি</th>
+                <th style="width: 20%;">পণ্যের নাম</th>
+                <th style="width: 12%;">পণ্য কোড</th>
+                <th style="width: 11%;" class="text-center">ডিজাইন কোড</th>
+                <th style="width: 9%;">সাইজ</th>
+                <th style="width: 8%;">একক</th>
+                <th style="width: 8%;" class="text-end">স্টক</th>
+                <th style="width: 75px;" class="text-center">স্টেটাস</th>
+                <th style="width: 65px;" class="text-center">একশন</th>
               </tr>
             </thead>
             <tbody>
@@ -333,7 +399,14 @@
                   </span>
                 </td>
 
-                <!-- ৫. সাইজ (রেগুলার ফন্ট) -->
+                <!-- ৫. ডিজাইন কোড -->
+                <td class="text-center">
+                  <span class="badge bg-light text-primary border font-monospace small px-2 py-0.5">
+                    {{ item.designCode || 'DGN001' }}
+                  </span>
+                </td>
+
+                <!-- ৬. সাইজ (রেগুলার ফন্ট) -->
                 <td>
                   <span class="item-cell-text">
                     {{ item.size?.name || '-' }}
@@ -369,19 +442,90 @@
                   </div>
                 </td>
 
-                <!-- ৮. একশন (শুধুমাত্র এডিট বাটন) -->
-                <td class="text-center">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-primary p-1 px-2 d-inline-flex align-items-center justify-content-center shadow-none action-btn"
-                    title="সম্পাদন করুন"
-                    @click="startEdit(item)">
-                    <i class="bi bi-pencil"></i>
-                  </button>
+                <!-- একশন (... বাটনে এডিট ও ভিউ ইমেইজ) -->
+                <td class="text-center position-relative" @click.stop>
+                  <div class="dropdown d-inline-block">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary py-0 px-2 shadow-none action-dots-btn"
+                      title="অ্যাকশন"
+                      @click.stop="toggleActionMenu(item.id)">
+                      <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul
+                      v-if="openActionMenuId === item.id"
+                      class="dropdown-menu dropdown-menu-end show shadow-sm py-1 border position-absolute"
+                      style="min-width: 140px; z-index: 1050; right: 4px; top: 100%;">
+                      <li>
+                        <button
+                          type="button"
+                          class="dropdown-item py-1.5 px-3 small d-flex align-items-center gap-2"
+                          @click.stop="startEdit(item); openActionMenuId = null">
+                          <i class="bi bi-pencil text-primary"></i>
+                          <span>এডিট</span>
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          class="dropdown-item py-1.5 px-3 small d-flex align-items-center gap-2"
+                          :class="{ 'text-muted': !item.imageUrl }"
+                          @click.stop="openImageViewModal(item); openActionMenuId = null">
+                          <i class="bi bi-image" :class="item.imageUrl ? 'text-info' : 'text-muted'"></i>
+                          <span>ভিউ ইমেইজ</span>
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+    <!-- ভিউ ইমেইজ পপআপ মডাল -->
+    <div
+      v-if="showImageModal && imageModalItem"
+      class="modal fade show d-block"
+      tabindex="-1"
+      style="background-color: rgba(0, 0, 0, 0.65); z-index: 1060;"
+      @click.self="closeImageViewModal">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg border-0 overflow-hidden">
+          <div class="modal-header py-2 px-3 border-bottom bg-light">
+            <h6 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
+              <i class="bi bi-image-fill text-primary"></i>
+              <span>{{ imageModalItem.name }} ({{ imageModalItem.designCode || 'DGN001' }})</span>
+            </h6>
+            <button
+              type="button"
+              class="btn-close shadow-none"
+              aria-label="Close"
+              @click="closeImageViewModal"></button>
+          </div>
+          <div class="modal-body p-3 text-center bg-body-tertiary">
+            <img
+              :src="imageModalItem.imageUrl"
+              :alt="imageModalItem.name"
+              class="img-fluid rounded border shadow-sm mx-auto d-block"
+              style="max-height: 65vh; max-width: 100%; object-fit: contain; background: #fff;" />
+          </div>
+          <div class="modal-footer py-2 px-3 border-top d-flex justify-content-between align-items-center bg-light">
+            <a
+              :href="imageModalItem.imageUrl"
+              target="_blank"
+              class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 shadow-none">
+              <i class="bi bi-box-arrow-up-right"></i>
+              <span>আসল লিংকে দেখুন</span>
+            </a>
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary shadow-none px-3"
+              @click="closeImageViewModal">
+              বন্ধ করুন
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -442,9 +586,131 @@ const form = reactive({
   sizeId: "" as string | number,
   name: "",
   code: "",
+  designCode: "DGN001",
+  imageUrl: "",
   unitId: "" as string | number,
   stockQuantity: 0
 });
+
+// Media & Storage Settings from Super Admin Policy
+const mediaConfig = ref<{
+  uploadMode: "both" | "direct_upload" | "google_drive";
+  maxFileSizeMb: number;
+  allowedExtensions: string;
+}>({
+  uploadMode: "both",
+  maxFileSizeMb: 5,
+  allowedExtensions: "jpg, jpeg, png, webp, gif"
+});
+
+const uploadingImage = ref(false);
+
+// Action Menu State (Three dots dropdown)
+const openActionMenuId = ref<number | null>(null);
+
+function toggleActionMenu(id: number) {
+  openActionMenuId.value = openActionMenuId.value === id ? null : id;
+}
+
+function closeActionMenu() {
+  openActionMenuId.value = null;
+}
+
+// Image View Modal State
+const showImageModal = ref(false);
+const imageModalItem = ref<any>(null);
+
+function openImageViewModal(item: any) {
+  if (!item.imageUrl) {
+    showToast("এই পণ্যের কোনো ছবি সংযুক্ত করা নেই", "warning");
+    return;
+  }
+  imageModalItem.value = item;
+  showImageModal.value = true;
+}
+
+function closeImageViewModal() {
+  showImageModal.value = false;
+  imageModalItem.value = null;
+}
+
+/**
+ * একই পণ্যের জন্য ডিজাইন কোড গণনা (DGN001, DGN002, DGN003...)
+ */
+function computeNextDesignCode(productName: string, catId?: string | number, subCatId?: string | number): string {
+  if (!productName || !productName.trim()) return "DGN001";
+  const nameNorm = productName.trim().toLowerCase();
+
+  // Find all items matching this product name
+  const matching = itemsList.value.filter((it: any) => {
+    const itName = (it.name || "").trim().toLowerCase();
+    if (itName !== nameNorm) return false;
+    if (catId && it.categoryId && Number(it.categoryId) !== Number(catId)) return false;
+    if (subCatId && it.subCategoryId && Number(it.subCategoryId) !== Number(subCatId)) return false;
+    return true;
+  });
+
+  if (matching.length === 0) return "DGN001";
+
+  // Check highest existing DGN sequence number
+  let maxSeq = 0;
+  for (const it of matching) {
+    const code = it.designCode || "";
+    const match = code.match(/DGN(d+)/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxSeq) maxSeq = num;
+    }
+  }
+
+  const nextSeq = Math.max(maxSeq + 1, matching.length + 1);
+  return `DGN${String(nextSeq).padStart(3, "0")}`;
+}
+
+async function fetchMediaConfig() {
+  try {
+    const res = await axios.get("/api/inventory/media-config");
+    if (res.data?.data) {
+      mediaConfig.value = {
+        uploadMode: res.data.data.uploadMode || "both",
+        maxFileSizeMb: res.data.data.maxFileSizeMb || 5,
+        allowedExtensions: res.data.data.allowedExtensions || "jpg, jpeg, png, webp, gif"
+      };
+    }
+  } catch {
+    // default to both
+  }
+}
+
+async function handleFileUpload(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const maxBytes = (mediaConfig.value.maxFileSizeMb || 5) * 1024 * 1024;
+  if (file.size > maxBytes) {
+    showToast(`ফাইলের আকার সর্বোচ্চ ${mediaConfig.value.maxFileSizeMb}MB হতে পারবে`, "warning");
+    return;
+  }
+
+  uploadingImage.value = true;
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axios.post("/api/inventory/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    if (res.data?.url) {
+      form.imageUrl = res.data.url;
+      showToast("ছবি সফলভাবে আপলোড হয়েছে", "success");
+    }
+  } catch (err: any) {
+    showToast(err.response?.data?.message || "ছবি আপলোড ব্যর্থ হয়েছে", "danger");
+  } finally {
+    uploadingImage.value = false;
+    input.value = "";
+  }
+}
 
 // Flag to indicate if name was auto-generated
 const isAutoGenerated = ref(false);
@@ -569,12 +835,23 @@ function onSizeChange() {
   }
 }
 
+watch(
+  () => [form.name, form.categoryId, form.subCategoryId],
+  () => {
+    if (!isEditing.value) {
+      form.designCode = computeNextDesignCode(form.name, form.categoryId, form.subCategoryId);
+    }
+  }
+);
+
 function resetForm() {
   form.categoryId = "";
   form.subCategoryId = "";
   form.sizeId = "";
   form.name = "";
   form.code = generateNextProductCode();
+  form.designCode = "DGN001";
+  form.imageUrl = "";
   form.unitId = "";
   form.stockQuantity = 0;
   isAutoGenerated.value = false;
@@ -588,6 +865,8 @@ function startEdit(item: any) {
   form.sizeId = item.sizeId || (item.size ? item.size.id : "");
   form.name = item.name || "";
   form.code = item.code || "";
+  form.designCode = item.designCode || "DGN001";
+  form.imageUrl = item.imageUrl || "";
   form.unitId = item.unitId || (item.unit ? item.unit.id : "");
   form.stockQuantity = Number(item.stockQuantity || item.stock_quantity || 0);
   isAutoGenerated.value = false;
@@ -736,6 +1015,8 @@ async function submitForm() {
     const payload = {
       name: form.name.trim(),
       code: form.code.trim(),
+      designCode: form.designCode?.trim() || "DGN001",
+      imageUrl: form.imageUrl?.trim() || null,
       categoryId: Number(form.categoryId),
       subCategoryId: Number(form.subCategoryId),
       sizeId: Number(form.sizeId),
@@ -831,10 +1112,12 @@ async function fetchCompanySettings() {
 let cleanupCatalogSync: (() => void) | null = null;
 
 onMounted(async () => {
-  await Promise.all([fetchCompanySettings(), fetchCatalogData(), fetchBrands(), fetchItems()]);
+  await Promise.all([fetchCompanySettings(), fetchCatalogData(), fetchBrands(), fetchItems(), fetchMediaConfig()]);
   if (!isEditing.value) {
     form.code = generateNextProductCode();
   }
+
+  window.addEventListener("click", closeActionMenu);
 
   cleanupCatalogSync = onCatalogUpdated(async () => {
     await Promise.all([fetchCatalogData(), fetchBrands()]);
@@ -842,6 +1125,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener("click", closeActionMenu);
   if (cleanupCatalogSync) {
     cleanupCatalogSync();
     cleanupCatalogSync = null;
@@ -888,35 +1172,40 @@ onBeforeUnmount(() => {
   }
   /* ক্যাটাগরি ও সাব-ক্যাটাগরি */
   .item-create-row .col-item-cat {
-    flex: 0 0 14%;
-    max-width: 14%;
-  }
-  .item-create-row .col-item-subcat {
-    flex: 0 0 14%;
-    max-width: 14%;
-  }
-  /* পণ্যের নাম - লাল দাগ পর্যন্ত (২৪%) */
-  .item-create-row .col-item-name {
-    flex: 0 0 24%;
-    max-width: 24%;
-  }
-  /* কোড */
-  .item-create-row .col-item-code {
     flex: 0 0 11.5%;
     max-width: 11.5%;
   }
-  /* সাইজ, একক ও প্রারম্ভিক স্টক - অবশিষ্ট অংশ যুক্ত */
+  .item-create-row .col-item-subcat {
+    flex: 0 0 11.5%;
+    max-width: 11.5%;
+  }
+  .item-create-row .col-item-name {
+    flex: 0 0 18%;
+    max-width: 18%;
+  }
+  .item-create-row .col-item-code {
+    flex: 0 0 9.5%;
+    max-width: 9.5%;
+  }
+  .item-create-row .col-item-design-code {
+    flex: 0 0 9.5%;
+    max-width: 9.5%;
+  }
   .item-create-row .col-item-size {
-    flex: 0 0 12%;
-    max-width: 12%;
+    flex: 0 0 8.5%;
+    max-width: 8.5%;
   }
   .item-create-row .col-item-unit {
-    flex: 0 0 12.5%;
-    max-width: 12.5%;
+    flex: 0 0 8.5%;
+    max-width: 8.5%;
   }
   .item-create-row .col-item-stock {
-    flex: 0 0 12%;
-    max-width: 12%;
+    flex: 0 0 8%;
+    max-width: 8%;
+  }
+  .item-create-row .col-item-image {
+    flex: 0 0 15%;
+    max-width: 15%;
   }
 
   .item-create-row .col-item-size .form-select-sm,
