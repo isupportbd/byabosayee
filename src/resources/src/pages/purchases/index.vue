@@ -538,7 +538,7 @@
                 <!-- ৯. বারকোড (অটো জেনারেট প্রিভিউ) -->
                 <div class="col-6 col-md-3 col-lg-3">
                   <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">১৪-ডিজিট বারকোড:</span>
+                    <span class="text-muted small d-block">বারকোড:</span>
                     <strong class="font-monospace text-dark d-block text-truncate">
                       {{ currentItem.code || '(পণ্য নির্বাচন করুন)' }}
                     </strong>
@@ -548,9 +548,6 @@
                       </span>
                       <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="সাইজ আইডি">
                         সাইজ: {{ String(currentItem.sizeId || 0).padStart(2, "0").slice(-2) }}
-                      </span>
-                      <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="কালার আইডি">
-                        কালার: {{ String(currentItem.colorId || 0).padStart(2, "0").slice(-2) }}
                       </span>
                     </div>
                   </div>
@@ -2222,9 +2219,9 @@ const selectedPartnerName = computed(() => {
 });
 
 /**
- * ১৪-ডিজিট বারকোড জেনারেশন ফর্মুলা:
- * আইটেম আইডি (৪ ডিজিট) + সাইজ আইডি (২ ডিজিট) + কালার আইডি (২ ডিজিট) + YYMM (৪ ডিজিট) + ব্যাচ (২ ডিজিট) = ১৪ ডিজিট
- * উদাহরণ: আইটেম 0125 + সাইজ 02 + কালার 05 + YYMM 2611 + ব্যাচ 01 -> 01250205261101
+ * বারকোড জেনারেশন ফর্মুলা (কালার আইডি ব্যতীত):
+ * আইটেম আইডি (৪ ডিজিট) + সাইজ আইডি (২ ডিজিট) + YYMM (৪ ডিজিট) + ব্যাচ (২ ডিজিট) = ১২ ডিজিট
+ * উদাহরণ: আইটেম 0125 + সাইজ 02 + YYMM 2611 + ব্যাচ 01 -> 012502261101
  */
 function generateCurrentItemBarcode(force: boolean = false) {
   if (!force && currentItem.isCodeCustomized && currentItem.code) {
@@ -2238,7 +2235,6 @@ function generateCurrentItemBarcode(force: boolean = false) {
   const itemIdNum = Number(currentItem.itemId || 0);
   const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
   const size = String(currentItem.sizeId || 0).padStart(2, "0").slice(-2);
-  const color = String(currentItem.colorId || 0).padStart(2, "0").slice(-2);
 
   let d = form.challanDate ? new Date(form.challanDate) : new Date();
   if (isNaN(d.getTime())) d = new Date();
@@ -2247,7 +2243,7 @@ function generateCurrentItemBarcode(force: boolean = false) {
   const yymm = `${yy}${mm}`;
   const batch = "01";
 
-  currentItem.code = `${itemStr}${size}${color}${yymm}${batch}`;
+  currentItem.code = `${itemStr}${size}${yymm}${batch}`;
 }
 
 function onCurrentItemBrandChange() {

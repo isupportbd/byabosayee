@@ -1199,24 +1199,22 @@ export const createPurchase: Handler = async (c: any) => {
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
 
-      // Barcode: 14-digit formula: Item ID(4) + Size ID(2) + Color ID(2) + YYMM(4) + Batch(2) = 14 digits
+      // Barcode: Item ID(4) + Size ID(2) + YYMM(4) + Batch(2) = 12 digits (কালার আইডি বাদ)
       let code = (item.code || "").trim();
       if (!code) {
         const itemStr = String(item.itemId || 0).padStart(4, "0").slice(-4);
         const sizeStr = String(sizeId || 0).padStart(2, "0").slice(-2);
-        const colorStr = String(colorId || 0).padStart(2, "0").slice(-2);
 
         const existingCountRes = await db.execute(sql`
           SELECT count(*)::int as count 
           FROM "purchase_items" 
           WHERE "item_id" = ${item.itemId ? Number(item.itemId) : null}
             AND "size_id" IS NOT DISTINCT FROM ${sizeId}
-            AND "color_id" IS NOT DISTINCT FROM ${colorId}
             AND "code" LIKE ${`%${yymm}%`}
         `);
         const existingCount = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
         const batchSerial = String(existingCount + 1).padStart(2, "0").slice(-2);
-        code = `${itemStr}${sizeStr}${colorStr}${yymm}${batchSerial}`;
+        code = `${itemStr}${sizeStr}${yymm}${batchSerial}`;
       }
 
       // Create or update item in items table to increment stock and set purchase price
@@ -1486,19 +1484,17 @@ export const updatePurchase: Handler = async (c: any) => {
       if (!code) {
         const itemStr = String(item.itemId || 0).padStart(4, "0").slice(-4);
         const sizeStr = String(sizeId || 0).padStart(2, "0").slice(-2);
-        const colorStr = String(colorId || 0).padStart(2, "0").slice(-2);
 
         const existingCountRes = await db.execute(sql`
           SELECT count(*)::int as count 
           FROM "purchase_items" 
           WHERE "item_id" = ${item.itemId ? Number(item.itemId) : null}
             AND "size_id" IS NOT DISTINCT FROM ${sizeId}
-            AND "color_id" IS NOT DISTINCT FROM ${colorId}
             AND "code" LIKE ${`%${yymm}%`}
         `);
         const existingCount = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
         const batchSerial = String(existingCount + 1).padStart(2, "0").slice(-2);
-        code = `${itemStr}${sizeStr}${colorStr}${yymm}${batchSerial}`;
+        code = `${itemStr}${sizeStr}${yymm}${batchSerial}`;
       }
 
       let itemId = item.itemId ? Number(item.itemId) : null;
