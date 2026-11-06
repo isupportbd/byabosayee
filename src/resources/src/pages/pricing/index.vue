@@ -471,9 +471,7 @@ function cleanItemName(name: string): string {
   if (!name) return "";
   return name
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
-    .replace(/\s*(?:সাইজ|size)[\s\-:—].*$/i, "")
-    .replace(/\s*(?:সাইজ|size)\s*[-:—]?\s*.*$/i, "")
-    .replace(/_[^_]+$/, "")
+    .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
     .trim();
 }
 

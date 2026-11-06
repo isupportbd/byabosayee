@@ -249,13 +249,13 @@
                   :searchable="true"
                   @change="onCurrentItemSelect">
                   <template #selected-option="option">
-                    <span class="text-truncate" :title="cleanItemName(option.name)">
-                      {{ cleanItemName(option.name) }}
+                    <span class="text-truncate" :title="option.name">
+                      {{ option.name }}
                     </span>
                   </template>
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
-                      <span class="fw-semibold text-truncate">{{ cleanItemName(option.name) }}</span>
+                      <span class="fw-semibold text-truncate">{{ option.name }}</span>
                       <small class="opacity-75 font-monospace mt-0.5" style="font-size: 0.75rem;">
                         <span v-if="option.code">{{ option.code }}</span>
                         <span v-if="option.code && (option.designCode || 'DGN001')" class="mx-1.5 opacity-50">|</span>
@@ -1763,12 +1763,10 @@ function formatPaymentMethodName(pm: any): string {
 // পণ্যের নাম থেকে সাইজের অংশ বাদ দেওয়ার ফাংশন (যেহেতু পাশে আলাদা সাইজ ফিল্ড রয়েছে)
 function cleanItemName(name: string): string {
   if (!name) return "";
+  // Strip only legacy size suffix if present (e.g. ' সাইজ-ফ্রি'), preserve 'সাবক্যাটাগরি_ব্রান্ড_ডিজাইন কোড'
   return name
-    .replace(/\s*DGN\d+\b/gi, "")
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
-    .replace(/\s*(?:সাইজ|size)[\s\-:—].*$/i, "")
-    .replace(/\s*(?:সাইজ|size)\s*[-:—]?\s*.*$/i, "")
-    .replace(/_[^_]+$/, "")
+    .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
     .trim();
 }
 

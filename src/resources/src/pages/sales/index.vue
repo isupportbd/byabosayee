@@ -1148,11 +1148,10 @@ const availableItems = computed(() => {
 // Clean Item Name helper (strips size suffix like _S, _38 as already verified)
 function cleanItemName(name: string): string {
   if (!name) return "";
+  // Strip only legacy size suffix if present, preserve 'সাবক্যাটাগরি_ব্রান্ড_ডিজাইন কোড'
   return name
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
-    .replace(/\s*(?:সাইজ|size)[\s\-:—].*$/i, "")
-    .replace(/\s*(?:সাইজ|size)\s*[-:—]?\s*.*$/i, "")
-    .replace(/_[^_]+$/, "")
+    .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
     .trim();
 }
 
