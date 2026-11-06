@@ -93,6 +93,20 @@
                 @change="onSizeChange" />
             </div>
 
+            <!-- ৪. ব্র্যান্ড (সাইজের পরে) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-brand">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ব্র্যান্ড">
+                ব্র্যান্ড <span class="text-danger">*</span>
+              </label>
+              <Select
+                v-model="form.brandId"
+                :options="brandsList"
+                :disabled="!form.subCategoryId"
+                :placeholder="form.subCategoryId ? 'ব্র্যান্ড নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন'"
+                :searchable="true"
+                @change="onBrandChange" />
+            </div>
+
             <!-- ৪. পণ্যের নাম (লাল দাগ পর্যন্ত ২৪%) -->
             <div class="col-12 col-sm-12 col-md-8 col-item-name">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্যের নাম">
@@ -301,6 +315,18 @@
             </select>
           </div>
 
+          <!-- ৩.১ ব্র্যান্ড ফিল্টার -->
+          <div style="min-width: 130px;">
+            <select
+              v-model="brandFilter"
+              class="form-select form-select-sm search-input-unified">
+              <option value="all">সকল ব্র্যান্ড</option>
+              <option v-for="b in brandsList" :key="b.id" :value="b.id">
+                {{ b.name }}
+              </option>
+            </select>
+          </div>
+
           <!-- ৪. সার্চ বক্স -->
           <div class="position-relative" style="min-width: 170px;">
             <input
@@ -352,14 +378,15 @@
             <thead class="item-table-header">
               <tr class="small">
                 <th style="width: 45px;" class="text-center">#</th>
-                <th style="width: 13%;">ক্যাটাগরি</th>
-                <th style="width: 13%;">সাব-ক্যাটাগরি</th>
-                <th style="width: 20%;">পণ্যের নাম</th>
-                <th style="width: 12%;">পণ্য কোড</th>
-                <th style="width: 11%;" class="text-center">ডিজাইন কোড</th>
-                <th style="width: 9%;">সাইজ</th>
-                <th style="width: 8%;">একক</th>
-                <th style="width: 8%;" class="text-end">স্টক</th>
+                <th style="width: 10%;">ক্যাটাগরি</th>
+                <th style="width: 10%;">সাব-ক্যাটাগরি</th>
+                <th style="width: 10%;">ব্র্যান্ড</th>
+                <th style="width: 18%;">পণ্যের নাম</th>
+                <th style="width: 10%;">পণ্য কোড</th>
+                <th style="width: 9%;" class="text-center">ডিজাইন কোড</th>
+                <th style="width: 8%;">সাইজ</th>
+                <th style="width: 7%;">একক</th>
+                <th style="width: 7%;" class="text-end">স্টক</th>
                 <th style="width: 75px;" class="text-center">স্টেটাস</th>
                 <th style="width: 65px;" class="text-center">একশন</th>
               </tr>
@@ -382,6 +409,13 @@
                 <td>
                   <span class="item-cell-text item-subcategory-cell">
                     {{ item.subCategory?.name || '-' }}
+                  </span>
+                </td>
+
+                <!-- ২.১ ব্র্যান্ড (রেগুলার ফন্ট) -->
+                <td>
+                  <span class="item-cell-text">
+                    {{ item.brand?.name || '-' }}
                   </span>
                 </td>
 
@@ -593,6 +627,7 @@ const form = reactive({
   categoryId: "" as string | number,
   subCategoryId: "" as string | number,
   sizeId: "" as string | number,
+  brandId: "" as string | number,
   name: "",
   code: "",
   designCode: "DGN001",
@@ -647,8 +682,16 @@ function closeImageViewModal() {
  * একই পণ্যের জন্য ডিজাইন কোড গণনা (DGN001, DGN002, DGN003...)
  * সাব-ক্যাটাগরি ও সাইজ (বা বেস নাম) অনুযায়ী চেক করে
  */
-function computeNextDesignCode(subCatId?: string | number, sizeId?: string | number, baseName?: string): string {
+function computeNextDesignCode(subCatId?: string | number, sizeId?: string | number, brandId?: string | number, baseName?: string): string {
   const matching = itemsList.value.filter((it: any) => {
+    // ব্র্যান্ড ফিল্টারিং: ব্র্যান্ড সিলেক্ট করা থাকলে শুধুমাত্র সেই ব্র্যান্ডের আইটেমগুলোর সাথেই মিলবে
+    if (brandId) {
+      const itBrand = it.brandId || it.brand?.id;
+      if (!itBrand || String(itBrand) !== String(brandId)) {
+        return false;
+      }
+    }
+
     if (subCatId && sizeId) {
       const itSub = it.subCategoryId || it.subCategory?.id;
       const itSize = it.sizeId || it.size?.id;
@@ -814,12 +857,12 @@ function updateAutoItemName() {
   );
 
   if (subCat && sizeObj) {
-    const nextCode = computeNextDesignCode(form.subCategoryId, form.sizeId, `${subCat.name} সাইজ-${sizeObj.name}`);
+    const nextCode = computeNextDesignCode(form.subCategoryId, form.sizeId, form.brandId, `${subCat.name} সাইজ-${sizeObj.name}`);
     form.designCode = nextCode;
     form.name = `${subCat.name} ${nextCode} সাইজ-${sizeObj.name}`;
     isAutoGenerated.value = true;
   } else if (subCat) {
-    const nextCode = computeNextDesignCode(form.subCategoryId, undefined, subCat.name);
+    const nextCode = computeNextDesignCode(form.subCategoryId, undefined, form.brandId, subCat.name);
     form.designCode = nextCode;
     form.name = `${subCat.name} ${nextCode}`;
     isAutoGenerated.value = true;
@@ -860,10 +903,24 @@ function onSizeChange() {
   }
 }
 
+function onBrandChange() {
+  updateAutoItemName();
+}
+
+watch(
+  () => [form.categoryId, form.subCategoryId, form.sizeId, form.brandId],
+  () => {
+    if (!isEditing.value && form.subCategoryId) {
+      updateAutoItemName();
+    }
+  }
+);
+
 function resetForm() {
   form.categoryId = "";
   form.subCategoryId = "";
   form.sizeId = "";
+  form.brandId = "";
   form.name = "";
   form.code = generateNextProductCode();
   form.designCode = "DGN001";
@@ -879,6 +936,7 @@ function startEdit(item: any) {
   form.categoryId = item.categoryId || (item.category ? item.category.id : "");
   form.subCategoryId = item.subCategoryId || (item.subCategory ? item.subCategory.id : "");
   form.sizeId = item.sizeId || (item.size ? item.size.id : "");
+  form.brandId = item.brandId || (item.brand ? item.brand.id : "");
   form.name = item.name || "";
   form.code = item.code || "";
   form.designCode = item.designCode || "DGN001";
@@ -900,6 +958,7 @@ function cancelEdit() {
 const categoryFilter = ref("all");
 const subCategoryFilter = ref("all");
 const sizeFilter = ref("all");
+const brandFilter = ref("all");
 const searchQuery = ref("");
 
 const isFiltered = computed(() => {
@@ -934,6 +993,7 @@ function resetAllFilters() {
   categoryFilter.value = "all";
   subCategoryFilter.value = "all";
   sizeFilter.value = "all";
+  brandFilter.value = "all";
   searchQuery.value = "";
 }
 
@@ -964,6 +1024,15 @@ const filteredItems = computed(() => {
     list = list.filter((item) => item.size?.name === sizeFilter.value);
   }
 
+  // 3.1 Brand Filter
+  if (brandFilter.value !== "all") {
+    list = list.filter(
+      (item) =>
+        String(item.brandId) === String(brandFilter.value) ||
+        String(item.brand?.id) === String(brandFilter.value)
+    );
+  }
+
   // 4. Search Query Filter
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase();
@@ -985,7 +1054,7 @@ const perPage = ref(7);
 const currentPage = ref(1);
 
 // ফিল্টার বা সার্চ পরিবর্তন হলে প্রথম পেজে ফেরত যাওয়া
-watch([categoryFilter, subCategoryFilter, sizeFilter, searchQuery], () => {
+watch([categoryFilter, subCategoryFilter, sizeFilter, brandFilter, searchQuery], () => {
   currentPage.value = 1;
 });
 
@@ -1089,6 +1158,7 @@ async function submitForm() {
       categoryId: Number(form.categoryId),
       subCategoryId: Number(form.subCategoryId),
       sizeId: Number(form.sizeId),
+      brandId: form.brandId ? Number(form.brandId) : null,
       unitId: Number(form.unitId),
       stockQuantity: Number(form.stockQuantity || 0)
     };
@@ -1239,42 +1309,46 @@ onBeforeUnmount(() => {
     padding-left: 0.25rem;
     padding-right: 0.25rem;
   }
-  /* ক্যাটাগরি ও সাব-ক্যাটাগরি */
+  /* ১০-কলাম বিশিষ্ট এন্ট্রি রো */
   .item-create-row .col-item-cat {
-    flex: 0 0 11.5%;
-    max-width: 11.5%;
+    flex: 0 0 10%;
+    max-width: 10%;
   }
   .item-create-row .col-item-subcat {
-    flex: 0 0 11.5%;
-    max-width: 11.5%;
-  }
-  .item-create-row .col-item-name {
-    flex: 0 0 18%;
-    max-width: 18%;
-  }
-  .item-create-row .col-item-code {
-    flex: 0 0 9.5%;
-    max-width: 9.5%;
-  }
-  .item-create-row .col-item-design-code {
-    flex: 0 0 9.5%;
-    max-width: 9.5%;
+    flex: 0 0 10.5%;
+    max-width: 10.5%;
   }
   .item-create-row .col-item-size {
+    flex: 0 0 7.5%;
+    max-width: 7.5%;
+  }
+  .item-create-row .col-item-brand {
+    flex: 0 0 9.5%;
+    max-width: 9.5%;
+  }
+  .item-create-row .col-item-name {
+    flex: 0 0 16.5%;
+    max-width: 16.5%;
+  }
+  .item-create-row .col-item-code {
     flex: 0 0 8.5%;
     max-width: 8.5%;
   }
   .item-create-row .col-item-unit {
+    flex: 0 0 7.5%;
+    max-width: 7.5%;
+  }
+  .item-create-row .col-item-design-code {
     flex: 0 0 8.5%;
     max-width: 8.5%;
   }
   .item-create-row .col-item-stock {
-    flex: 0 0 8%;
-    max-width: 8%;
+    flex: 0 0 7.5%;
+    max-width: 7.5%;
   }
   .item-create-row .col-item-image {
-    flex: 0 0 15%;
-    max-width: 15%;
+    flex: 0 0 14%;
+    max-width: 14%;
   }
 
   .item-create-row .col-item-size .form-select-sm,
