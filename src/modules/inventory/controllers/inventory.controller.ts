@@ -201,27 +201,7 @@ export async function ensureInventoryTables() {
 
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_id" integer REFERENCES "customers"("id") ON DELETE SET NULL;
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_address" text;
-      -- Recalculate purchases due_amount and total_amount where expenses were wrongly included in supplier bill
-      UPDATE "purchases"
-      SET "total_amount" = GREATEST(0, "items_amount" - "discount_amount"),
-          "due_amount" = GREATEST(0, (GREATEST(0, "items_amount" - "discount_amount") - "paid_amount")),
-          "status" = CASE WHEN (GREATEST(0, (GREATEST(0, "items_amount" - "discount_amount") - "paid_amount"))) > 0 THEN 'partial' ELSE 'completed' END
-      WHERE "other_expenses" > 0;
-      -- Fix items.purchase_price from purchase_items raw rate instead of landed unitCost
-      UPDATE "items" i
-      SET "purchase_price" = COALESCE(
-        (
-          SELECT CASE WHEN pi."unit_price_with_vat" > 0 THEN pi."unit_price_with_vat" ELSE pi."unit_price_excl_vat" END
-          FROM "purchase_items" pi 
-          WHERE pi."item_id" = i."id" 
-          ORDER BY pi."id" DESC 
-          LIMIT 1
-        ),
-        i."purchase_price"
-      )
-      WHERE EXISTS (SELECT 1 FROM "purchase_items" pi WHERE pi."item_id" = i."id");
-
-
+      
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "cashier_name" varchar(255);
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "sale_date" varchar(50);
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "subtotal" numeric(12, 2) DEFAULT '0' NOT NULL;
