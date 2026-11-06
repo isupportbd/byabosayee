@@ -249,14 +249,26 @@
                   :searchable="true"
                   @change="onCurrentItemSelect">
                   <template #selected-option="option">
-                    <span class="text-truncate" :title="cleanItemName(option.name)">
-                      {{ cleanItemName(option.name) }}
-                    </span>
+                    <div class="d-flex align-items-center gap-1.5 text-truncate" :title="cleanItemName(option.name)">
+                      <span class="text-truncate fw-medium">{{ cleanItemName(option.name) }}</span>
+                      <span v-if="option.code" class="badge bg-light text-dark border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ option.code }}</span>
+                      <span class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ option.designCode || 'DGN001' }}</span>
+                    </div>
                   </template>
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
                       <span class="fw-semibold text-truncate">{{ cleanItemName(option.name) }}</span>
-                      <small v-if="option.code" class="text-muted font-monospace" style="font-size: 0.72rem;">{{ option.code }}</small>
+                      <div class="d-flex align-items-center gap-1 mt-0.5 flex-wrap">
+                        <span v-if="option.code" class="badge bg-light text-dark border font-monospace px-1 py-0" style="font-size: 0.68rem;">
+                          {{ option.code }}
+                        </span>
+                        <span class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">
+                          {{ option.designCode || 'DGN001' }}
+                        </span>
+                        <span v-if="option.size?.name" class="badge bg-secondary-subtle text-secondary border px-1 py-0" style="font-size: 0.68rem;">
+                          {{ option.size.name }}
+                        </span>
+                      </div>
                     </div>
                   </template>
                 </Select>
@@ -429,6 +441,12 @@
                       {{ cleanItemName(currentItem.name) || '(পণ্য নির্বাচন করুন)' }}
                     </strong>
                     <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                      <span v-if="currentItem.code" class="badge bg-light text-dark border font-monospace px-1.5 py-0.5">
+                        {{ currentItem.code }}
+                      </span>
+                      <span v-if="currentItem.name" class="badge bg-light text-primary border font-monospace px-1.5 py-0.5">
+                        {{ currentItem.designCode || 'DGN001' }}
+                      </span>
                       <span class="badge border" :class="vatMode === 'incl' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary'">
                         মোড: {{ vatMode === 'incl' ? 'ভ্যাট সহ' : 'ভ্যাট ছাড়া' }}
                       </span>
@@ -658,7 +676,9 @@
                             <div class="fw-semibold text-truncate" style="max-width: 200px;" :title="it.name">
                               {{ it.name }}
                             </div>
-                            <div class="d-flex align-items-center gap-1.5 mt-0.5" style="font-size: 0.82rem;">
+                            <div class="d-flex align-items-center gap-1.5 mt-0.5 flex-wrap" style="font-size: 0.82rem;">
+                              <span v-if="it.code" class="badge bg-light text-dark border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ it.code }}</span>
+                              <span class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ it.designCode || 'DGN001' }}</span>
                               <span class="fw-bold text-dark">
                                 {{ getSizeName(it.sizeId) }}
                               </span>
@@ -1760,6 +1780,7 @@ function formatPaymentMethodName(pm: any): string {
 function cleanItemName(name: string): string {
   if (!name) return "";
   return name
+    .replace(/\s*DGN\d+\b/gi, "")
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
     .replace(/\s*(?:সাইজ|size)[\s\-:—].*$/i, "")
     .replace(/\s*(?:সাইজ|size)\s*[-:—]?\s*.*$/i, "")
@@ -1786,6 +1807,7 @@ interface PurchaseItemRow {
   unitId: number | "";
   name: string;
   code: string;
+  designCode?: string;
   isCodeCustomized?: boolean;
   quantity: number | "";
   unitPrice: number | "";
@@ -1808,6 +1830,7 @@ const currentItem = reactive<PurchaseItemRow & { vatRate: number | "" }>({
   unitId: "",
   name: "",
   code: "",
+  designCode: "",
   isCodeCustomized: false,
   quantity: "" as any,
   unitPrice: "" as any,
@@ -2236,6 +2259,8 @@ function onCurrentItemSelect() {
   const selected = itemsList.value.find((it) => it.id === Number(currentItem.itemId));
   if (selected) {
     currentItem.name = cleanItemName(selected.name);
+    currentItem.code = selected.code || "";
+    currentItem.designCode = selected.designCode || "";
     currentItem.categoryId = selected.categoryId || (selected.category?.id ?? "");
     currentItem.subCategoryId = selected.subCategoryId || (selected.subCategory?.id ?? "");
     if (selected.brandId) currentItem.brandId = selected.brandId;
@@ -2302,6 +2327,7 @@ function addItemToList() {
     unitId: currentItem.unitId,
     name: cleanItemName(currentItem.name).trim(),
     code: currentItem.code?.trim() || "",
+    designCode: currentItem.designCode?.trim() || "",
     isCodeCustomized: currentItem.isCodeCustomized,
     quantity: Number(currentItem.quantity) || 1,
     unitPrice: Number(currentItem.unitPrice) || 0,
@@ -2335,6 +2361,7 @@ function resetCurrentItem() {
   currentItem.unitId = "";
   currentItem.name = "";
   currentItem.code = "";
+  currentItem.designCode = "";
   currentItem.isCodeCustomized = false;
   currentItem.quantity = "" as any;
   currentItem.unitPrice = "" as any;
@@ -2356,6 +2383,7 @@ function editItem(index: number) {
   currentItem.unitId = it.unitId;
   currentItem.name = cleanItemName(it.name);
   currentItem.code = it.code || "";
+  currentItem.designCode = it.designCode || "";
   currentItem.isCodeCustomized = it.isCodeCustomized || false;
   currentItem.quantity = it.quantity;
   const qty = Number(it.quantity) || 1;
