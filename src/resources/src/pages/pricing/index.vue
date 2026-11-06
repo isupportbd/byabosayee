@@ -572,6 +572,22 @@ const pricedRecordsCount = computed(() => {
   return itemsList.value.filter((it) => Number(it.sellingPrice) > 0).length;
 });
 
+function getStandardBarcode(it: any): string {
+  if (it.barcode) return it.barcode;
+  if (it.latestBarcode) return it.latestBarcode;
+  const itemIdNum = Number(it.id || 0);
+  if (!itemIdNum) return "";
+  const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
+  const sizeNum = Number(it.sizeId || it.size?.id || 0);
+  const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
+  let d = it.createdAt ? new Date(it.createdAt) : new Date();
+  if (isNaN(d.getTime())) d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yymm = `${yy}${mm}`;
+  return `${itemStr}${sizeStr}${yymm}01`;
+}
+
 // Merged Table Records
 const allPricingRecords = computed(() => {
   const pricingsByItemId = new Map<number, any>();
@@ -588,7 +604,7 @@ const allPricingRecords = computed(() => {
       pricingId: pricing?.id || null,
       name: it.name,
       code: it.code,
-      barcode: pricing?.barcode || it.latestBarcode || null,
+      barcode: pricing?.barcode || it.latestBarcode || it.barcode || getStandardBarcode(it) || null,
       category: it.category,
       subCategory: it.subCategory,
       brand: it.brand,

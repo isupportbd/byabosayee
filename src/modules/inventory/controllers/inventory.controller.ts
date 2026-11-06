@@ -771,7 +771,22 @@ export const listItems: Handler = async (c: any) => {
           ? String(Number(pricingSellingPrice).toFixed(2))
           : String(Number(it.sellingPrice || 0).toFixed(2));
 
-        const purchaseBarcode = lp?.barcode || lp?.code || null;
+        // 12-digit standard barcode formula: ItemId(4) + SizeId(2) + YYMM(4) + Batch(2) = 12 digits
+        let fallbackBarcode = "";
+        const itemIdNum = Number(it.id || 0);
+        if (itemIdNum > 0) {
+          const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
+          const sizeNum = Number(it.sizeId || it.size_id || it.size?.id || 0);
+          const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
+          let d = it.createdAt ? new Date(it.createdAt) : new Date();
+          if (isNaN(d.getTime())) d = new Date();
+          const yy = String(d.getFullYear()).slice(-2);
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const yymm = `${yy}${mm}`;
+          fallbackBarcode = `${itemStr}${sizeStr}${yymm}01`;
+        }
+
+        const purchaseBarcode = lp?.barcode || lp?.code || fallbackBarcode || null;
         return {
           ...it,
           code: it.code,
