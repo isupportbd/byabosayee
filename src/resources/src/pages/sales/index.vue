@@ -116,23 +116,11 @@
                 </select>
               </div>
 
-              <!-- ২. গ্রাহকের নাম (Customer Name with Dropdown & Quick Add) -->
+              <!-- ২. গ্রাহকের নাম (Customer Name with Dropdown) -->
               <div class="col-12 col-md-5">
-                <label class="form-label small fw-semibold mb-1 d-flex justify-content-between">
-                  <span>
-                    গ্রাহকের নাম
-                    <span v-if="isCustomerMandatory" class="text-danger">*</span>
-                  </span>
-                  <button
-                    v-if="canQuickSaveCustomer"
-                    type="button"
-                    class="btn btn-link btn-xs p-0 text-primary text-decoration-none fw-semibold"
-                    :disabled="savingCustomer"
-                    @click="quickSaveCustomer">
-                    <i class="bi bi-person-plus-fill me-1"></i>
-                    <span v-if="savingCustomer">সংরক্ষণ হচ্ছে...</span>
-                    <span v-else>তালিকায় যোগ করুন</span>
-                  </button>
+                <label class="form-label small fw-semibold mb-1">
+                  গ্রাহকের নাম
+                  <span v-if="isCustomerMandatory" class="text-danger">*</span>
                 </label>
                 <div class="position-relative customer-dropdown-wrapper" ref="customerDropdownRef">
                   <div class="input-group input-group-sm">
@@ -161,17 +149,7 @@
                     class="customer-dropdown-menu shadow-lg rounded border bg-white position-absolute w-100 mt-1 py-1"
                     style="z-index: 1060; max-height: 260px; overflow-y: auto;">
                     
-                    <!-- Quick Add Option if typed name is not in list -->
-                    <div
-                      v-if="canQuickSaveCustomer"
-                      class="customer-dropdown-item px-3 py-2 cursor-pointer bg-light border-bottom text-primary fw-semibold d-flex align-items-center justify-content-between"
-                      @click="quickSaveCustomer">
-                      <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-person-plus-fill text-primary"></i>
-                        <span>"{{ form.customerName }}" তালিকায় যোগ করুন</span>
-                      </div>
-                      <span class="badge bg-primary text-white">নতুন সংরক্ষণ</span>
-                    </div>
+
 
                     <!-- Filtered List of Customers -->
                     <div
@@ -193,9 +171,9 @@
                     </div>
 
                     <div
-                      v-if="filteredDropdownCustomers.length === 0 && !canQuickSaveCustomer"
+                      v-if="filteredDropdownCustomers.length === 0"
                       class="px-3 py-3 text-muted small text-center">
-                      কোনো গ্রাহক পাওয়া যায়নি
+                      কোনো সংরক্ষিত গ্রাহক পাওয়া যায়নি
                     </div>
                   </div>
                 </div>
@@ -1255,7 +1233,7 @@ const customerDropdownRef = ref<HTMLElement | null>(null);
 const customerNameInputRef = ref<HTMLInputElement | null>(null);
 const customerMobileInputRef = ref<HTMLInputElement | null>(null);
 const showCustomerDropdown = ref(false);
-const savingCustomer = ref(false);
+
 
 // Rule: পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে নাম ও মোবাইল বাধ্যতামূলক
 const isCustomerMandatory = computed(() => {
@@ -1292,11 +1270,7 @@ function getCustomerTypeLabel(type: string): string {
   }
 }
 
-const canQuickSaveCustomer = computed(() => {
-  const name = (form.customerName || "").trim();
-  if (!name || name === "ওয়াক-ইন কাস্টমার" || name === "ওয়াকিং কাস্টমার") return false;
-  return !customersList.value.some((c) => (c.name || "").trim().toLowerCase() === name.toLowerCase());
-});
+
 
 const filteredDropdownCustomers = computed(() => {
   const q = (form.customerName || "").trim().toLowerCase();
@@ -1391,42 +1365,7 @@ function resetToDefaultCustomer() {
   showCustomerDropdown.value = false;
 }
 
-async function quickSaveCustomer() {
-  const name = (form.customerName || "").trim();
-  if (!name) {
-    showToast("গ্রাহকের নাম লিখুন", "warning");
-    customerNameInputRef.value?.focus();
-    return;
-  }
 
-  if (isCustomerMandatory.value && (!form.customerMobile || !form.customerMobile.trim())) {
-    showToast("পাইকারী ও কর্পোরেট কাস্টমারের জন্য মোবাইল নম্বর আবশ্যক", "warning");
-    customerMobileInputRef.value?.focus();
-    return;
-  }
-
-  savingCustomer.value = true;
-  try {
-    const res = await axios.post("/api/inventory/customers", {
-      name,
-      mobile: form.customerMobile?.trim() || null,
-      customerType: form.customerType || "retail",
-      address: "কাউন্টার সেল",
-      notes: "সেলস পিওএস কাউন্টার থেকে সরাসরি যুক্ত"
-    });
-    const created = res.data?.data;
-    if (created) {
-      customersList.value.unshift(created);
-      form.customerId = created.id;
-      showToast(`"${created.name}" কাস্টমার তালিকায় সফলভাবে যুক্ত হয়েছে!`, "success");
-    }
-    showCustomerDropdown.value = false;
-  } catch (err: any) {
-    showToast(err.response?.data?.message || "কাস্টমার যোগ করতে ব্যর্থ হয়েছে", "danger");
-  } finally {
-    savingCustomer.value = false;
-  }
-}
 
 function handleClickOutside(event: MouseEvent) {
   if (customerDropdownRef.value && !customerDropdownRef.value.contains(event.target as Node)) {
