@@ -413,217 +413,6 @@
             </div>
           </div>
 
-          <!-- 🧪 টেস্ট ও ক্যালকুলেশন যাচাই কার্ড (টেম্পোরারি - পরে মুছে দেওয়া যাবে) -->
-          <div class="card mb-3 border border-info border-opacity-50 shadow-sm bg-info-subtle bg-opacity-10">
-            <div class="card-header bg-white border-bottom py-2 d-flex align-items-center justify-content-between">
-              <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-calculator-fill text-info fs-5"></i>
-                <h6 class="m-0 fw-bold text-dark">ক্যালকুলেশন টেস্ট ও যাচাই প্যানেল (রিয়েলটাইম লাইভ)</h6>
-              </div>
-              <span class="badge bg-info-subtle text-info border border-info-subtle font-monospace">
-                টেস্টিং কার্ড
-              </span>
-            </div>
-            <div class="card-body p-3">
-              <div class="row g-2 text-dark" style="font-size: 0.85rem;">
-                <!-- ০. মোড ও নির্বাচিত পণ্য -->
-                <div class="col-12 col-md-4 col-lg-3">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">পণ্য ও মোড:</span>
-                    <strong class="text-primary text-truncate d-block">
-                      {{ cleanItemName(currentItem.name) || '(পণ্য নির্বাচন করুন)' }}
-                    </strong>
-                    <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                      <span class="badge border" :class="vatMode === 'incl' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary'">
-                        মোড: {{ vatMode === 'incl' ? 'ভ্যাট সহ' : 'ভ্যাট ছাড়া' }}
-                      </span>
-                      <span class="badge bg-light text-dark border">
-                        {{ getSizeName(currentItem.sizeId) }}
-                      </span>
-                      <span v-if="currentItem.colorId" class="badge bg-light text-dark border">
-                        <span
-                          v-if="getColor(currentItem.colorId)?.code"
-                          class="d-inline-block rounded-circle border flex-shrink-0"
-                          :style="{
-                            backgroundColor: getColor(currentItem.colorId).code,
-                            width: '9px',
-                            height: '9px',
-                            verticalAlign: 'middle',
-                            marginRight: '6px'
-                          }"></span>
-                        {{ getColorName(currentItem.colorId) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- ২. পরিমাণ ও একক -->
-                <div class="col-6 col-md-2 col-lg-2">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">পরিমাণ:</span>
-                    <strong class="fs-6 text-dark d-block">
-                      {{ toBengaliNumber(currentItem.quantity || 0) }} {{ getUnitName(currentItem.unitId) || 'পিস' }}
-                    </strong>
-                    <span class="text-muted d-block" style="font-size: 0.72rem;">একক: {{ getUnitName(currentItem.unitId) || '-' }}</span>
-                  </div>
-                </div>
-
-                <!-- ৩. একক ক্রয়মূল্য (ভ্যাট ছাড়া) -->
-                <div class="col-6 col-md-3 col-lg-2">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">একক মূল্য (ভ্যাট ছাড়া):</span>
-                    <strong class="fs-6 text-dark d-block">
-                      ৳ {{ toBengaliNumber(currentItemUnitCostExclVat.toFixed(2)) }}
-                    </strong>
-                    <span v-if="vatMode === 'incl'" class="text-info d-block" style="font-size: 0.72rem;">(ভ্যাট বাদ দিয়ে রিয়েল রেট)</span>
-                  </div>
-                </div>
-
-                <!-- ৪. মোট মূল্য (ভ্যাট ছাড়া) -->
-                <div class="col-6 col-md-3 col-lg-2">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">মোট মূল্য (ভ্যাট ছাড়া):</span>
-                    <strong class="fs-6 text-dark d-block">
-                      ৳ {{ toBengaliNumber(currentItemTotalExclVat.toFixed(2)) }}
-                    </strong>
-                    <span class="text-muted d-block" style="font-size: 0.72rem;">(পরিমাণ × ভ্যাট ছাড়া একক)</span>
-                  </div>
-                </div>
-
-                <!-- ৫. ভ্যাট ও ভ্যাটের টাকা -->
-                <div class="col-6 col-md-3 col-lg-3">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">ভ্যাট ({{ toBengaliNumber(currentItem.vatRate || 0) }}%):</span>
-                    <strong class="fs-6 text-danger d-block">
-                      + ৳ {{ toBengaliNumber(currentItemVatAmount.toFixed(2)) }}
-                    </strong>
-                    <span class="text-muted d-block" style="font-size: 0.72rem;">ভ্যাট সহ মোট: ৳ {{ toBengaliNumber(currentItemPriceWithVat) }}</span>
-                  </div>
-                </div>
-
-                <!-- ৬. ভ্যাট সহ একক মূল্য -->
-                <div class="col-6 col-md-3 col-lg-3">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">ভ্যাট সহ একক মূল্য:</span>
-                    <strong class="fs-6 text-primary d-block">
-                      ৳ {{ toBengaliNumber(currentItemUnitCost) }}
-                    </strong>
-                    <span class="text-muted d-block" style="font-size: 0.72rem;">(ভ্যাট সহ মোট ÷ পরিমাণ)</span>
-                  </div>
-                </div>
-
-                <!-- ৭. MRP (বিক্রয়মূল্য) -->
-                <div class="col-6 col-md-3 col-lg-3">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">MRP / বিক্রয়মূল্য:</span>
-                    <strong class="fs-6 text-success d-block">
-                      ৳ {{ toBengaliNumber(Number(currentItem.sellingPrice || 0).toFixed(2)) }}
-                    </strong>
-                  </div>
-                </div>
-
-                <!-- ৮. সম্ভাব্য একক লাভ / মার্জিন -->
-                <div class="col-6 col-md-3 col-lg-3">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">সম্ভাব্য একক মার্জিন:</span>
-                    <strong
-                      class="fs-6 d-block"
-                      :class="(Number(currentItem.sellingPrice || 0) - parseFloat(currentItemUnitCost)) >= 0 ? 'text-success' : 'text-danger'">
-                      ৳ {{ toBengaliNumber((Number(currentItem.sellingPrice || 0) - parseFloat(currentItemUnitCost)).toFixed(2)) }}
-                    </strong>
-                    <span class="text-muted d-block" style="font-size: 0.72rem;">(MRP - ভ্যাটসহ একক ক্রয়দর)</span>
-                  </div>
-                </div>
-
-                <!-- ৯. বারকোড (অটো জেনারেট প্রিভিউ) -->
-                <div class="col-6 col-md-3 col-lg-3">
-                  <div class="p-2 bg-white rounded border h-100">
-                    <span class="text-muted small d-block">বারকোড:</span>
-                    <strong class="font-monospace text-dark d-block text-truncate">
-                      {{ currentItem.code || '(পণ্য নির্বাচন করুন)' }}
-                    </strong>
-                    <div v-if="currentItem.code" class="mt-1 d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.68rem;">
-                      <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="আইটেম আইডি">
-                        আইটেম: {{ String(currentItem.itemId || 0).padStart(4, "0").slice(-4) }}
-                      </span>
-                      <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="সাইজ আইডি">
-                        সাইজ: {{ String(currentItem.sizeId || 0).padStart(2, "0").slice(-2) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- ⚡ খরচ ও সমন্বয় পরবর্তী রিয়েলটাইম লাইভ প্রভাব (Landed Cost Breakdown) -->
-              <div class="mt-3 pt-2.5 border-top">
-                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
-                  <div class="d-flex align-items-center gap-1.5">
-                    <i class="bi bi-diagram-3-fill text-warning fs-6"></i>
-                    <strong class="text-dark" style="font-size: 0.85rem;">
-                      খরচ ও ডিসকাউন্ট সমন্বয় পরবর্তী অবস্থা (Landed Cost &amp; প্রকৃত মুনাফা):
-                    </strong>
-                  </div>
-                  <span v-if="(Number(form.otherExpenses) || 0) > 0 || (Number(form.discountAmount) || 0) > 0" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-monospace">
-                    বিবিধ খরচ: +৳{{ toBengaliNumber((form.otherExpenses || 0).toFixed(2)) }} | ডিসকাউন্ট: -৳{{ toBengaliNumber((form.discountAmount || 0).toFixed(2)) }}
-                  </span>
-                  <span v-else class="badge bg-secondary-subtle text-secondary border font-monospace">
-                    কোনো খরচ বা ডিসকাউন্ট ইনপুট দেওয়া হয়নি (০.০০)
-                  </span>
-                </div>
-
-                <div class="row g-2 text-dark" style="font-size: 0.85rem;">
-                  <!-- ১০. প্রতি পিসে খরচ সমন্বয় (+/-) -->
-                  <div class="col-6 col-md-3 col-lg-3">
-                    <div class="p-2 rounded border h-100" :class="testItemExpenseAdjustment.perUnit >= 0 ? 'bg-danger-subtle bg-opacity-25 border-danger-subtle' : 'bg-success-subtle bg-opacity-25 border-success-subtle'">
-                      <span class="text-muted small d-block">খরচ সমন্বয় (প্রতি পিস):</span>
-                      <strong class="fs-6 d-block" :class="testItemExpenseAdjustment.perUnit >= 0 ? 'text-danger' : 'text-success'">
-                        {{ testItemExpenseAdjustment.perUnit >= 0 ? '+' : '' }} ৳ {{ toBengaliNumber(testItemExpenseAdjustment.perUnit.toFixed(2)) }}
-                      </strong>
-                      <span class="text-muted d-block" style="font-size: 0.72rem;">
-                        নিট সমন্বয়: {{ testItemExpenseAdjustment.netExtra >= 0 ? '+' : '' }}৳ {{ toBengaliNumber(testItemExpenseAdjustment.total.toFixed(2)) }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- ১১. খরচ সমন্বয়ের পর প্রকৃত একক ক্রয়দর -->
-                  <div class="col-6 col-md-3 col-lg-3">
-                    <div class="p-2 bg-primary-subtle bg-opacity-30 rounded border border-primary-subtle h-100">
-                      <span class="text-muted small d-block">প্রকৃত একক ক্রয়দর (Landed):</span>
-                      <strong class="fs-6 text-primary d-block">
-                        ৳ {{ toBengaliNumber(testItemLandedUnitCost.toFixed(2)) }}
-                      </strong>
-                      <span class="text-muted d-block" style="font-size: 0.72rem;">
-                        (ভ্যাটসহ {{ toBengaliNumber(activeTestItem ? activeTestItem.unitWithVat.toFixed(2) : '0') }} {{ testItemExpenseAdjustment.perUnit >= 0 ? '+' : '' }} {{ toBengaliNumber(testItemExpenseAdjustment.perUnit.toFixed(2)) }})
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- ১২. খরচ সমন্বয়ের পর মোট ক্রয় খরচ -->
-                  <div class="col-6 col-md-3 col-lg-3">
-                    <div class="p-2 bg-white rounded border h-100">
-                      <span class="text-muted small d-block">সমন্বয়ের পর মোট খরচ:</span>
-                      <strong class="fs-6 text-dark d-block">
-                        ৳ {{ toBengaliNumber(testItemLandedTotalCost.toFixed(2)) }}
-                      </strong>
-                      <span class="text-muted d-block" style="font-size: 0.72rem;">(চালানের এই পণ্যের প্রকৃত ব্যয়)</span>
-                    </div>
-                  </div>
-
-                  <!-- ১৩. সমন্বয়ের পর প্রকৃত বাস্তব মার্জিন (লাভ) -->
-                  <div class="col-6 col-md-3 col-lg-3">
-                    <div class="p-2 rounded border h-100" :class="testItemActualMargin >= 0 ? 'bg-success-subtle bg-opacity-30 border-success-subtle' : 'bg-danger-subtle bg-opacity-30 border-danger-subtle'">
-                      <span class="text-muted small d-block">প্রকৃত বাস্তব মার্জিন (লাভ):</span>
-                      <strong class="fs-6 d-block" :class="testItemActualMargin >= 0 ? 'text-success' : 'text-danger'">
-                        ৳ {{ toBengaliNumber(testItemActualMargin.toFixed(2)) }}
-                      </strong>
-                      <span class="text-muted d-block" style="font-size: 0.72rem;">(MRP - প্রকৃত ক্রয়দর {{ toBengaliNumber(testItemLandedUnitCost.toFixed(2)) }})</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- সেকশন ৩: তিনটি কার্ড (১. পণ্যের সংক্ষিপ্ত বিবরণ, ২. খরচ ও সমন্বয়, ৩. চূড়ান্ত হিসাব) -->
           <div class="row g-3 mb-3">
             <!-- কার্ড ১: পণ্যের সংক্ষিপ্ত বিবরণ (টেম্পেরেরি জমা হবে, এডিট/ডিলেট করা যাবে) -->
@@ -655,9 +444,8 @@
                         <tr class="text-nowrap text-secondary">
                           <th style="width: 30px;" class="text-center">#</th>
                           <th>পণ্যের বিবরণ</th>
-                          <th class="text-center text-nowrap" style="width: 80px;">কালার</th>
-                          <th class="text-end text-nowrap">একক | মোট মূল্য</th>
-                          <th class="text-end text-nowrap" title="খরচ ও ডিসকাউন্ট সমন্বয় করে প্রতিটি আইটেমের প্রকৃত গড় একক ও মোট খরচ">প্রকৃত একক | মোট মূল্য</th>
+                          <th class="text-end text-nowrap">দর | মোট মূল্য</th>
+                          <th class="text-end text-nowrap" title="খরচ ও ডিসকাউন্ট সমন্বয় করে প্রতিটি আইটেমের প্রকৃত গড় একক ও মোট খরচ">প্রকৃত দর | মোট মূল্য</th>
                           <th style="width: 60px;" class="text-center">অ্যাকশন</th>
                         </tr>
                       </thead>
@@ -668,10 +456,10 @@
                           :class="{ 'table-warning': editingIndex === idx }">
                           <td class="text-center text-muted small">{{ toBengaliNumber(idx + 1) }}</td>
                           <td>
-                            <div class="fw-semibold text-truncate" style="max-width: 200px;" :title="it.name">
+                            <div class="fw-semibold" :title="it.name">
                               {{ it.name }}
                             </div>
-                            <div class="d-flex align-items-center gap-1.5 mt-0.5" style="font-size: 0.82rem;">
+                            <div class="d-flex align-items-center gap-1.5 mt-0.5 flex-wrap" style="font-size: 0.82rem;">
                               <span class="fw-bold text-dark">
                                 {{ getSizeName(it.sizeId) }}
                               </span>
@@ -679,23 +467,21 @@
                               <span class="fw-bold text-dark">
                                 {{ toBengaliNumber(it.quantity) }} {{ getUnitName(it.unitId) }}
                               </span>
+                              <template v-if="getColorName(it.colorId) !== '-'">
+                                <span class="text-secondary fw-bold px-1">|</span>
+                                <span class="d-inline-flex align-items-center text-dark">
+                                  <span
+                                    v-if="getColor(it.colorId)?.code"
+                                    class="d-inline-block rounded-circle border flex-shrink-0 me-1"
+                                    :style="{
+                                      backgroundColor: getColor(it.colorId).code,
+                                      width: '10px',
+                                      height: '10px'
+                                    }"></span>
+                                  <span>{{ getColorName(it.colorId) }}</span>
+                                </span>
+                              </template>
                             </div>
-                          </td>
-                          <td class="text-center text-nowrap">
-                            <span v-if="getColorName(it.colorId) !== '-'" class="badge bg-light text-dark border fw-normal px-2 py-1">
-                              <span
-                                v-if="getColor(it.colorId)?.code"
-                                class="d-inline-block rounded-circle border flex-shrink-0"
-                                :style="{
-                                  backgroundColor: getColor(it.colorId).code,
-                                  width: '10px',
-                                  height: '10px',
-                                  verticalAlign: 'middle',
-                                  marginRight: '6px'
-                                }"></span>
-                              {{ getColorName(it.colorId) }}
-                            </span>
-                            <span v-else class="text-muted small">-</span>
                           </td>
                           <td class="text-end text-nowrap">
                             <span class="text-secondary fw-semibold">
@@ -2263,17 +2049,19 @@ function onCurrentItemColorChange() {
   generateCurrentItemBarcode(true);
 }
 
-function onCurrentItemSelect() {
-  const selected = itemsList.value.find((it) => it.id === Number(currentItem.itemId));
+function onCurrentItemSelect(val?: any) {
+  const itemId = (val && typeof val === 'object' ? val.id : val) || Number(currentItem.itemId);
+  const selected = itemsList.value.find((it) => Number(it.id) === Number(itemId));
   if (selected) {
+    currentItem.itemId = selected.id;
     currentItem.name = selected.name;
     currentItem.designCode = selected.designCode || "";
-    currentItem.categoryId = selected.categoryId || (selected.category?.id ?? "");
-    currentItem.subCategoryId = selected.subCategoryId || (selected.subCategory?.id ?? "");
-    if (selected.brandId) currentItem.brandId = selected.brandId;
-    if (selected.sizeId) currentItem.sizeId = selected.sizeId;
-    if (selected.colorId) currentItem.colorId = selected.colorId;
-    if (selected.unitId) currentItem.unitId = selected.unitId;
+    currentItem.categoryId = selected.categoryId ?? selected.category_id ?? (selected.category?.id ?? "");
+    currentItem.subCategoryId = selected.subCategoryId ?? selected.sub_category_id ?? (selected.subCategory?.id ?? "");
+    currentItem.brandId = selected.brandId ?? selected.brand_id ?? (selected.brand?.id ?? "");
+    currentItem.sizeId = selected.sizeId ?? selected.size_id ?? (selected.size?.id ?? "");
+    currentItem.colorId = selected.colorId ?? selected.color_id ?? (selected.color?.id ?? "");
+    currentItem.unitId = selected.unitId ?? selected.unit_id ?? (selected.unit?.id ?? "");
     // নতুন এন্ট্রির জন্য ক্রয়মূল্য খালি রাখা হচ্ছে যাতে ব্যবহারকারী চালানের প্রকৃত ক্রয়দর টাইপ করতে পারেন
     currentItem.unitPrice = "" as any;
     if (selected.sellingPrice) {
@@ -2557,85 +2345,6 @@ function getItemEffectiveCosts(it: PurchaseItemRow): { unit: string; total: stri
 // চালানের নিট অতিরিক্ত খরচ (বিবিধ খরচ - ডিসকাউন্ট)
 const netExtraExpenses = computed(() => {
   return (Number(form.otherExpenses) || 0) - (Number(form.discountAmount) || 0);
-});
-
-// টেস্ট আইটেমের রেফারেন্স (যদি currentItem এ তথ্য থাকে, নয়তো তালিকার প্রথম পণ্য)
-const activeTestItem = computed(() => {
-  if (Number(currentItem.quantity) > 0 && (Number(currentItem.unitPrice) > 0 || currentItem.name.trim())) {
-    const p = getItemPricing(currentItem);
-    return {
-      name: currentItem.name.trim() || "বর্তমান পণ্য",
-      quantity: Number(currentItem.quantity) || 1,
-      totalWithVat: p.totalWithVat,
-      unitWithVat: p.unitWithVat,
-      sellingPrice: Number(currentItem.sellingPrice) || 0
-    };
-  }
-  if (form.items.length > 0) {
-    const first = form.items[0];
-    const qty = Math.max(1, Number(first.quantity) || 1);
-    const p = getItemPricing(first);
-    return {
-      name: first.name,
-      quantity: qty,
-      totalWithVat: p.totalWithVat,
-      unitWithVat: p.unitWithVat,
-      sellingPrice: Number(first.sellingPrice) || 0
-    };
-  }
-  return null;
-});
-
-// টেস্ট আইটেমে খরচ ও ছাড় সমন্বয় (Cost Allocation)
-const testItemExpenseAdjustment = computed(() => {
-  const item = activeTestItem.value;
-  if (!item || item.quantity <= 0) {
-    return { perUnit: 0, total: 0, netExtra: 0 };
-  }
-  const netExtra = netExtraExpenses.value;
-  if (netExtra === 0) {
-    return { perUnit: 0, total: 0, netExtra: 0 };
-  }
-
-  const sub = itemsSubtotal.value;
-  let allocatedTotal = 0;
-  if (sub > 0) {
-    allocatedTotal = (item.totalWithVat / sub) * netExtra;
-  } else {
-    allocatedTotal = netExtra;
-  }
-
-  const perUnit = allocatedTotal / item.quantity;
-  return {
-    perUnit: Number(perUnit.toFixed(2)),
-    total: Number(allocatedTotal.toFixed(2)),
-    netExtra
-  };
-});
-
-// খরচ সমন্বয়ের পর প্রকৃত একক ক্রয়দর
-const testItemLandedUnitCost = computed(() => {
-  const item = activeTestItem.value;
-  if (!item) return 0;
-  const landed = item.unitWithVat + testItemExpenseAdjustment.value.perUnit;
-  return Math.max(0, Number(landed.toFixed(2)));
-});
-
-// খরচ সমন্বয়ের পর টেস্ট আইটেমের মোট ক্রয় খরচ
-const testItemLandedTotalCost = computed(() => {
-  const item = activeTestItem.value;
-  if (!item) return 0;
-  const landedTotal = item.totalWithVat + testItemExpenseAdjustment.value.total;
-  return Math.max(0, Number(landedTotal.toFixed(2)));
-});
-
-// খরচ সমন্বয়ের পর প্রকৃত মার্জিন (MRP - Landed Cost)
-const testItemActualMargin = computed(() => {
-  const item = activeTestItem.value;
-  if (!item) return 0;
-  const mrp = item.sellingPrice || 0;
-  const landed = testItemLandedUnitCost.value;
-  return Number((mrp - landed).toFixed(2));
 });
 
 // Filtered purchases
