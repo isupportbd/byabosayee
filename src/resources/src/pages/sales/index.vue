@@ -104,79 +104,44 @@
                     <i class="bi bi-arrow-counterclockwise"></i> ডিফল্ট ওয়াক-ইন
                   </button>
                 </label>
-                <select
+                <Select
                   v-model="form.customerType"
-                  class="form-select form-select-sm search-input-unified"
-                  @change="onCustomerTypeChange">
-                  <option value="walk_in">ওয়াক-ইন কাস্টমার (Walk-in)</option>
-                  <option value="retail">খুচরা কাস্টমার (Retail)</option>
-                  <option value="wholesale">পাইকারি কাস্টমার (Wholesale)</option>
-                  <option value="corporate">কর্পোরেট কাস্টমার (Corporate)</option>
-                  
-                </select>
+                  :options="customerTypeOptions"
+                  label="label"
+                  :reduce="(opt: any) => opt.value"
+                  placeholder="গ্রাহকের ধরন নির্বাচন করুন"
+                  :searchable="false"
+                  :clearable="false"
+                  @change="onCustomerTypeChange" />
               </div>
 
-              <!-- ২. গ্রাহকের নাম (Customer Name with Dropdown) -->
+              <!-- ২. গ্রাহকের নাম (Customer Name) -->
               <div class="col-12 col-md-5">
                 <label class="form-label small fw-semibold mb-1">
                   গ্রাহকের নাম
                   <span v-if="isCustomerMandatory" class="text-danger">*</span>
                 </label>
-                <div class="position-relative customer-dropdown-wrapper" ref="customerDropdownRef">
-                  <div class="input-group input-group-sm">
-                    <input
-                      ref="customerNameInputRef"
-                      v-model="form.customerName"
-                      type="text"
-                      class="form-control form-control-sm search-input-unified"
-                      :placeholder="isCustomerMandatory ? 'গ্রাহকের নাম আবশ্যক...' : 'গ্রাহকের নাম লিখুন বা তালিকা হতে খুঁজুন...'"
-                      :class="{ 'border-danger': isCustomerMandatory && (!form.customerName || form.customerName === 'ওয়াক-ইন কাস্টমার') }"
-                      autocomplete="off"
-                      @focus="openCustomerDropdown"
-                      @input="onCustomerNameInput" />
-                    <button
-                      type="button"
-                      class="btn btn-outline-secondary btn-sm px-2"
-                      title="কাস্টমার ড্রপ-ডাউন তালিকা"
-                      @click="toggleCustomerDropdown">
-                      <i class="bi" :class="showCustomerDropdown ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
-                    </button>
-                  </div>
-
-                  <!-- কাস্টমার লিস্ট ড্রপ-ডাউন মেন্যু -->
-                  <div
-                    v-if="showCustomerDropdown"
-                    class="customer-dropdown-menu shadow-lg rounded border bg-white position-absolute w-100 mt-1 py-1"
-                    style="z-index: 1060; max-height: 260px; overflow-y: auto;">
-                    
-
-
-                    <!-- Filtered List of Customers -->
-                    <div
-                      v-for="c in filteredDropdownCustomers"
-                      :key="c.id"
-                      class="customer-dropdown-item px-3 py-2 cursor-pointer d-flex justify-content-between align-items-center border-bottom border-light hover-bg"
-                      :class="{ 'bg-primary-subtle': String(form.customerId) === String(c.id) }"
-                      @click="selectCustomerFromDropdown(c)">
-                      <div>
-                        <div class="fw-semibold text-dark">{{ c.name }}</div>
-                        <div class="text-muted small font-monospace">
-                          <i class="bi bi-telephone me-1 text-secondary"></i>
-                          {{ c.mobile || 'মোবাইল নেই' }}
-                        </div>
-                      </div>
-                      <span class="badge" :class="getCustomerBadgeClass(c.customerType)">
-                        {{ getCustomerTypeLabel(c.customerType) }}
-                      </span>
+                <Select
+                  v-model="form.customerName"
+                  :options="filteredCustomerOptions"
+                  label="name"
+                  :reduce="(opt: any) => opt.name"
+                  :searchable="true"
+                  :taggable="true"
+                  :create-option="createCustomerOption"
+                  :placeholder="isCustomerMandatory ? 'গ্রাহকের নাম আবশ্যক...' : 'গ্রাহকের নাম নির্বাচন বা টাইপ করুন...'"
+                  :clearable="true"
+                  @change="onCustomerNameSelect"
+                  @search="onCustomerSearch">
+                  <template #option="opt">
+                    <div class="d-flex flex-column py-0.5">
+                      <span class="fw-semibold text-dark">{{ opt.name }}</span>
+                      <small v-if="opt.mobile" class="text-muted font-monospace" style="font-size: 0.72rem;">
+                        <i class="bi bi-telephone me-1"></i>{{ opt.mobile }}
+                      </small>
                     </div>
-
-                    <div
-                      v-if="filteredDropdownCustomers.length === 0"
-                      class="px-3 py-3 text-muted small text-center">
-                      কোনো সংরক্ষিত গ্রাহক পাওয়া যায়নি
-                    </div>
-                  </div>
-                </div>
+                  </template>
+                </Select>
               </div>
 
               <!-- ৩. মোবাইল নম্বর (Mobile Number) -->
@@ -187,7 +152,7 @@
                 </label>
                 <input
                   ref="customerMobileInputRef"
-                  v-model="form.customerMobile"
+                  v-model.trim="form.customerMobile"
                   type="text"
                   class="form-control form-control-sm search-input-unified font-monospace"
                   :class="{ 'border-danger': isCustomerMandatory && !form.customerMobile }"
@@ -993,6 +958,7 @@ import axios from "axios";
 import { authUser } from "@/composables/useAuth";
 import Pagination from "@/components/datatable/Pagination.vue";
 import Input from "@/components/Input.vue";
+import Select from "@/components/Select.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -1228,32 +1194,20 @@ function focusBarcodeInput() {
   });
 }
 
-// Customer references & Dropdown state
-const customerDropdownRef = ref<HTMLElement | null>(null);
-const customerNameInputRef = ref<HTMLInputElement | null>(null);
+// Customer dropdown options & state
 const customerMobileInputRef = ref<HTMLInputElement | null>(null);
-const showCustomerDropdown = ref(false);
 
+const customerTypeOptions = [
+  { label: "ওয়াক-ইন কাস্টমার (Walk-in)", value: "walk_in" },
+  { label: "খুচরা কাস্টমার (Retail)", value: "retail" },
+  { label: "পাইকারি কাস্টমার (Wholesale)", value: "wholesale" },
+  { label: "কর্পোরেট কাস্টমার (Corporate)", value: "corporate" }
+];
 
 // Rule: পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে নাম ও মোবাইল বাধ্যতামূলক
 const isCustomerMandatory = computed(() => {
   return form.customerType === "wholesale" || form.customerType === "corporate";
 });
-
-function getCustomerBadgeClass(type: string): string {
-  switch (type) {
-    case "walk_in":
-      return "bg-secondary text-white";
-    case "retail":
-      return "bg-info text-dark";
-    case "wholesale":
-      return "bg-warning text-dark";
-    case "corporate":
-      return "bg-primary text-white";
-    default:
-      return "bg-light text-dark border";
-  }
-}
 
 function getCustomerTypeLabel(type: string): string {
   switch (type) {
@@ -1266,15 +1220,12 @@ function getCustomerTypeLabel(type: string): string {
     case "corporate":
       return "কর্পোরেট";
     default:
-      return "অন্যান্য";
+      return "সাধারণ";
   }
 }
 
-
-
-const filteredDropdownCustomers = computed(() => {
-  const q = (form.customerName || "").trim().toLowerCase();
-  // Only show real registered customers in dropdown (exclude generic walk-in)
+const filteredCustomerOptions = computed(() => {
+  // Only real registered customers in dropdown
   let list = customersList.value.filter(
     (c) =>
       c.customerType !== "walk_in" &&
@@ -1286,15 +1237,6 @@ const filteredDropdownCustomers = computed(() => {
       c.name !== "কর্পোরেট কাস্টমার" &&
       c.name !== "অন্যান্য কাস্টমার"
   );
-
-  if (q) {
-    list = list.filter((c) => {
-      const name = (c.name || "").toLowerCase();
-      const mobile = (c.mobile || "").toLowerCase();
-      const type = getCustomerTypeLabel(c.customerType).toLowerCase();
-      return name.includes(q) || mobile.includes(q) || type.includes(q);
-    });
-  }
 
   // Prioritize customers of current selected customerType
   if (form.customerType && form.customerType !== "walk_in") {
@@ -1308,26 +1250,48 @@ const filteredDropdownCustomers = computed(() => {
   return list;
 });
 
-function openCustomerDropdown() {
-  showCustomerDropdown.value = true;
+function createCustomerOption(newVal: string) {
+  const cleanName = (newVal || "").trim();
+  return {
+    id: null,
+    name: cleanName,
+    mobile: "",
+    customerType: form.customerType || "retail"
+  };
 }
 
-function toggleCustomerDropdown() {
-  showCustomerDropdown.value = !showCustomerDropdown.value;
-}
+function onCustomerNameSelect(selected: any) {
+  const selectedName = typeof selected === "object" && selected ? selected.name : selected;
+  form.customerName = (selectedName || "").trim();
 
-function onCustomerNameInput() {
-  showCustomerDropdown.value = true;
+  if (!form.customerName) {
+    form.customerId = "";
+    if (form.customerType === "walk_in") {
+      form.customerName = "ওয়াক-ইন কাস্টমার";
+    }
+    return;
+  }
+
   const matched = customersList.value.find(
-    (c) => (c.name || "").trim().toLowerCase() === (form.customerName || "").trim().toLowerCase()
+    (c) => (c.name || "").trim().toLowerCase() === form.customerName.toLowerCase()
   );
+
   if (matched) {
     form.customerId = matched.id;
-    if (!form.customerMobile && matched.mobile) {
+    if (matched.mobile) {
       form.customerMobile = matched.mobile;
+    }
+    if (matched.customerType && matched.customerType !== "walk_in") {
+      form.customerType = matched.customerType;
     }
   } else {
     form.customerId = "";
+  }
+}
+
+function onCustomerSearch(search: string) {
+  if (search && search.trim()) {
+    form.customerName = search.trim();
   }
 }
 
@@ -1340,16 +1304,6 @@ function onCustomerMobileInput(e: Event) {
   target.value = clean;
 }
 
-function selectCustomerFromDropdown(c: any) {
-  form.customerId = c.id;
-  form.customerName = c.name || "";
-  form.customerMobile = c.mobile || "";
-  if (c.customerType && c.customerType !== "walk_in") {
-    form.customerType = c.customerType;
-  }
-  showCustomerDropdown.value = false;
-}
-
 function onCustomerTypeChange() {
   if (form.customerType === "walk_in") {
     resetToDefaultCustomer();
@@ -1359,7 +1313,6 @@ function onCustomerTypeChange() {
       form.customerMobile = "";
       form.customerId = "";
     }
-    showCustomerDropdown.value = true;
   }
 }
 
@@ -1371,15 +1324,6 @@ function resetToDefaultCustomer() {
     (c) => c.customerType === "walk_in" || c.name === "ওয়াক-ইন কাস্টমার" || c.name === "ওয়াকিং কাস্টমার"
   );
   form.customerId = walkIn ? walkIn.id : "";
-  showCustomerDropdown.value = false;
-}
-
-
-
-function handleClickOutside(event: MouseEvent) {
-  if (customerDropdownRef.value && !customerDropdownRef.value.contains(event.target as Node)) {
-    showCustomerDropdown.value = false;
-  }
 }
 
 // Add Item to Cart Helper
@@ -1920,13 +1864,8 @@ async function loadAllData() {
 }
 
 onMounted(() => {
-  document.addEventListener("click", handleClickOutside);
   loadAllData();
   focusBarcodeInput();
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("click", handleClickOutside);
 });
 </script>
 
@@ -2149,29 +2088,4 @@ onBeforeUnmount(() => {
   }
 }
 
-.customer-dropdown-wrapper {
-  position: relative;
-}
-
-.customer-dropdown-menu {
-  top: 100%;
-  left: 0;
-  z-index: 1060;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
-  border-radius: 6px;
-  background-color: #ffffff;
-}
-
-.customer-dropdown-item {
-  transition: background-color 0.15s ease-in-out;
-}
-
-.customer-dropdown-item:hover,
-.hover-bg:hover {
-  background-color: #f1f5f9;
-}
-
-.cursor-pointer {
-  cursor: pointer;
-}
 </style>
