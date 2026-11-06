@@ -795,6 +795,20 @@ async function toggleStatus(c: any) {
   }
 }
 
+
+function broadcastCustomerSync() {
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('byabosayee_customer_sync');
+      bc.postMessage({ action: 'customer_changed', timestamp: Date.now() });
+      bc.close();
+    }
+  } catch {}
+  try {
+    localStorage.setItem('byabosayee_customer_synced_at', String(Date.now()));
+  } catch {}
+}
+
 // Submit Customer Form (Create or Update)
 async function submitCustomerForm() {
   if (!form.name || !form.name.trim()) {

@@ -283,30 +283,15 @@
                       </td>
 
                       <!-- পরিমাণ -->
-                      <td class="text-center text-nowrap">
-                        <div class="input-group input-group-sm mx-auto" style="width: 100px;">
-                          <button
-                            type="button"
-                            class="btn btn-outline-secondary px-2"
-                            title="পরিমাণ কমান"
-                            @click="changeQty(row, -1)">
-                            -
-                          </button>
-                          <input
-                            v-model.number="row.quantity"
-                            type="number"
-                            min="1"
-                            :max="row.availableStock"
-                            class="form-control text-center p-0 fw-bold"
-                            @input="if (row.quantity > row.availableStock) { row.quantity = row.availableStock; showToast(`'${cleanItemName(row.name)}' এর সর্বোচ্চ উপলব্ধ স্টক ${row.availableStock} টি`, 'warning'); } recalculateLine(row)" />
-                          <button
-                            type="button"
-                            class="btn btn-outline-secondary px-2"
-                            title="পরিমাণ বাড়ান"
-                            @click="changeQty(row, 1)">
-                            +
-                          </button>
-                        </div>
+                      <td class="text-center">
+                        <input
+                          v-model.number="row.quantity"
+                          type="number"
+                          min="1"
+                          :max="row.availableStock"
+                          class="form-control form-control-sm text-center mx-auto fw-semibold"
+                          style="max-width: 85px;"
+                          @input="if (row.quantity > row.availableStock) { row.quantity = row.availableStock; showToast(`'${cleanItemName(row.name)}' এর সর্বোচ্চ উপলব্ধ স্টক ${row.availableStock} টি`, 'warning'); } recalculateLine(row)" />
                       </td>
 
                       <!-- দর (৳) -->
@@ -326,32 +311,22 @@
                         {{ Number(row.totalPrice || 0).toFixed(2) }}
                       </td>
 
-                      <!-- ছাড় (% বা ৳) -->
+                      <!-- ছাড় -->
                       <td class="text-center">
-                        <div class="input-group input-group-sm mx-auto" style="width: 100px;">
-                          <input
-                            v-model.number="row.discountValue"
-                            type="number"
-                            min="0"
-                            step="any"
-                            class="form-control text-end px-1"
-                            placeholder="0"
-                            @input="recalculateLine(row)" />
-                          <button
-                            type="button"
-                            class="btn btn-outline-secondary px-2 fw-bold"
-                            :title="row.discountType === 'fixed' ? 'টাকা (৳) - ক্লিক করলে শতাংশ (%) হবে' : 'শতাংশ (%) - ক্লিক করলে টাকা (৳) হবে'"
-                            @click="row.discountType = (row.discountType === 'fixed' ? 'percent' : 'fixed'); recalculateLine(row)">
-                            {{ row.discountType === 'fixed' ? '৳' : '%' }}
-                          </button>
-                        </div>
+                        <input
+                          v-model.number="row.discountValue"
+                          type="number"
+                          min="0"
+                          step="any"
+                          class="form-control form-control-sm text-end mx-auto"
+                          style="max-width: 85px;"
+                          placeholder="0"
+                          @input="recalculateLine(row)" />
                       </td>
 
                       <!-- ভ্যাট (%) -->
-                      <td class="text-center text-nowrap">
-                        <span class="badge bg-light text-dark border font-monospace">
-                          {{ row.vatRate || 0 }}%
-                        </span>
+                      <td class="text-center text-nowrap font-monospace">
+                        {{ row.vatRate || 0 }}%
                       </td>
 
                       <!-- ডিলিট বাটন -->
@@ -957,7 +932,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
+import { computed, inject, nextTick, onMounted, onUnmounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import { authUser } from "@/composables/useAuth";
@@ -1850,13 +1825,36 @@ const paginatedSales = computed(() => {
   return filteredSalesList.value.slice(start, start + perPage.value);
 });
 
+
+// Background Real-time Customer Sync
+async function fetchCustomersOnly() {
+  try {
+    const custRes = await axios.get(`/api/inventory/customers?_t=${Date.now()}`);
+    const fresh = custRes.data?.data || [];
+    customersList.value = fresh;
+  } catch {}
+}
+
+let customerBc: BroadcastChannel | null = null;
+let customerSyncTimer: any = null;
+
+function onStorageSync(e: StorageEvent) {
+  if (e.key === "byabosayee_customer_synced_at") {
+    fetchCustomersOnly();
+  }
+}
+
+function onWindowFocus() {
+  fetchCustomersOnly();
+}
+
 // Load All Backend Data
 async function loadAllData() {
   loading.value = true;
   try {
     const [itemsRes, custRes, salesRes, compRes] = await Promise.all([
       axios.get("/api/inventory/items"),
-      axios.get("/api/inventory/customers").catch(() => ({ data: { data: [] } })),
+      axios.get(`/api/inventory/customers?_t=${Date.now()}`).catch(() => ({ data: { data: [] } })),
       axios.get("/api/inventory/sales").catch(() => ({ data: { data: [] } })),
       axios.get("/api/company/profile").catch(() => ({ data: { data: {} } }))
     ]);
