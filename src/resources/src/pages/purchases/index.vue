@@ -852,17 +852,12 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                      <span class="text-muted small">(+) অন্যান্য খরচ:</span>
-                      <span class="text-danger fw-semibold">+ ৳ {{ toBengaliNumber((form.otherExpenses || 0).toFixed(2)) }}</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
                       <span class="text-muted small">(-) চালান ডিসকাউন্ট / ছাড়:</span>
                       <span class="text-success fw-semibold">- ৳ {{ toBengaliNumber((form.discountAmount || 0).toFixed(2)) }}</span>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom bg-light px-2 rounded mt-2">
-                      <span class="fw-bold text-dark">সর্বমোট প্রদেয় মূল্য:</span>
+                      <span class="fw-bold text-dark">সরবরাহকারী চালান বিল:</span>
                       <span class="fw-bold fs-5 text-primary">৳ {{ toBengaliNumber(finalTotalAmount.toFixed(2)) }}</span>
                     </div>
 
@@ -871,14 +866,24 @@
                       <span class="text-success fw-bold">৳ {{ toBengaliNumber((form.paidAmount || 0).toFixed(2)) }}</span>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center py-1">
-                      <span class="text-muted small">বকেয়া টাকা (Due):</span>
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom pb-2">
+                      <span class="text-muted small">সরবরাহকারী বকেয়া (Due):</span>
                       <span
                         class="fw-bold"
                         :class="dueAmount > 0 ? 'text-danger' : 'text-muted'">
                         ৳ {{ toBengaliNumber(dueAmount.toFixed(2)) }}
                         <span v-if="dueAmount <= 0 && finalTotalAmount > 0" class="badge bg-success-subtle text-success ms-1 py-0 px-1 small">পরিশোধিত</span>
                       </span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-1 text-muted mt-2 small">
+                      <span>(+) নিজস্ব বিবিধ খরচ (ক্রেতা বহনকৃত):</span>
+                      <span class="text-dark fw-semibold">+ ৳ {{ toBengaliNumber((form.otherExpenses || 0).toFixed(2)) }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center py-1 text-muted small">
+                      <span>মোট ইনভেন্টরি ব্যয় (খরচসহ):</span>
+                      <span class="text-dark fw-bold">৳ {{ toBengaliNumber(totalLandedCost.toFixed(2)) }}</span>
                     </div>
                   </div>
 
@@ -2269,9 +2274,8 @@ function onCurrentItemSelect() {
     if (selected.sizeId) currentItem.sizeId = selected.sizeId;
     if (selected.colorId) currentItem.colorId = selected.colorId;
     if (selected.unitId) currentItem.unitId = selected.unitId;
-    if (Number(selected.purchasePrice) > 0) {
-      currentItem.unitPrice = Number(selected.purchasePrice);
-    }
+    // নতুন এন্ট্রির জন্য ক্রয়মূল্য খালি রাখা হচ্ছে যাতে ব্যবহারকারী চালানের প্রকৃত ক্রয়দর টাইপ করতে পারেন
+    currentItem.unitPrice = "" as any;
     if (selected.sellingPrice) {
       currentItem.sellingPrice = Number(selected.sellingPrice) || 0;
     }
@@ -2495,13 +2499,21 @@ const itemsSubtotal = computed(() => {
   return form.items.reduce((sum, item) => sum + getItemPricing(item).totalWithVat, 0);
 });
 
+// সরবরাহকারী চালান মূল্য = পণ্যের উপমোট - চালান ডিসকাউন্ট (বিবিধ খরচ ক্রেতা বহন করে, যা সাপ্লায়ারকে দিতে হয় না)
 const finalTotalAmount = computed(() => {
   const sub = itemsSubtotal.value;
-  const extra = Number(form.otherExpenses) || 0;
   const disc = Number(form.discountAmount) || 0;
-  return Math.max(0, sub + extra - disc);
+  return Math.max(0, sub - disc);
 });
 
+// মোট ইনভেন্টরি ব্যয় (ক্রেতার নিজস্ব বিবিধ খরচ সহ প্রকৃত ইনভেন্টরি সম্পদ মূল্য)
+const totalLandedCost = computed(() => {
+  const bill = finalTotalAmount.value;
+  const extra = Number(form.otherExpenses) || 0;
+  return Math.max(0, bill + extra);
+});
+
+// সরবরাহকারীর বকেয়া (Due) = চালান বিল - পরিশোধিত টাকা
 const dueAmount = computed(() => {
   const total = finalTotalAmount.value;
   const paid = Number(form.paidAmount) || 0;

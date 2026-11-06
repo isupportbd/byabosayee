@@ -201,6 +201,27 @@ export async function ensureInventoryTables() {
 
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_id" integer REFERENCES "customers"("id") ON DELETE SET NULL;
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_address" text;
+      -- Recalculate purchases due_amount and total_amount where expenses were wrongly included in supplier bill
+      UPDATE "purchases"
+      SET "total_amount" = GREATEST(0, "items_amount" - "discount_amount"),
+          "due_amount" = GREATEST(0, (GREATEST(0, "items_amount" - "discount_amount") - "paid_amount")),
+          "status" = CASE WHEN (GREATEST(0, (GREATEST(0, "items_amount" - "discount_amount") - "paid_amount"))) > 0 THEN 'partial' ELSE 'completed' END
+      WHERE "other_expenses" > 0;
+      -- Fix items.purchase_price from purchase_items raw rate instead of landed unitCost
+      UPDATE "items" i
+      SET "purchase_price" = COALESCE(
+        (
+          SELECT CASE WHEN pi."unit_price_with_vat" > 0 THEN pi."unit_price_with_vat" ELSE pi."unit_price_excl_vat" END
+          FROM "purchase_items" pi 
+          WHERE pi."item_id" = i."id" 
+          ORDER BY pi."id" DESC 
+          LIMIT 1
+        ),
+        i."purchase_price"
+      )
+      WHERE EXISTS (SELECT 1 FROM "purchase_items" pi WHERE pi."item_id" = i."id");
+
+
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "cashier_name" varchar(255);
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "sale_date" varchar(50);
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "subtotal" numeric(12, 2) DEFAULT '0' NOT NULL;
@@ -1166,7 +1187,7 @@ export const createPurchase: Handler = async (c: any) => {
       totalVatAmount += vatAmount;
     }
 
-    const totalAmount = Math.max(0, itemsAmount + otherExpenses - discountAmount);
+    const totalAmount = Math.max(0, itemsAmount - discountAmount);
     const dueAmount = Math.max(0, totalAmount - paidAmount);
 
     // 2. Insert purchase header (entry date is auto-managed by database created_at)
@@ -1211,6 +1232,7 @@ export const createPurchase: Handler = async (c: any) => {
       const itemExtra = itemsAmount > 0 ? (lineTotal / itemsAmount) * netExtra : 0;
       const finalLineCost = Math.max(0, lineTotal + itemExtra);
       const unitCost = Number((finalLineCost / qty).toFixed(2));
+      const actualPurchasePrice = String(Number(item.unitPrice || comp.unitWithVat || comp.unitExclVat || 0).toFixed(2));
 
       const itemName = (item.name || "").trim();
       const categoryId = item.categoryId ? Number(item.categoryId) : null;
@@ -1255,7 +1277,7 @@ export const createPurchase: Handler = async (c: any) => {
             .update(items)
             .set({
               stockQuantity: existingItem.stockQuantity + qty,
-              purchasePrice: String(unitCost),
+              purchasePrice: actualPurchasePrice,
               sellingPrice: sellingPriceVal,
               updatedAt: new Date()
             })
@@ -1277,7 +1299,7 @@ export const createPurchase: Handler = async (c: any) => {
             unitId,
             supplierId,
             manufacturerId,
-            purchasePrice: String(unitCost),
+            purchasePrice: actualPurchasePrice,
             sellingPrice: sellingPriceVal,
             stockQuantity: qty,
             isActive: true
@@ -1444,7 +1466,7 @@ export const updatePurchase: Handler = async (c: any) => {
       totalVatAmount += vatAmount;
     }
 
-    const totalAmount = Math.max(0, itemsAmount + otherExpenses - discountAmount);
+    const totalAmount = Math.max(0, itemsAmount - discountAmount);
     const dueAmount = Math.max(0, totalAmount - paidAmount);
 
     // Update purchase header
@@ -1880,7 +1902,7 @@ export const saveItemPricing: Handler = async (c: any) => {
       .limit(1);
 
     const challanDate = body.challanDate || latestPurchase?.challanDate || null;
-    const purchasePrice = latestPurchase?.unitCost ? String(Number(latestPurchase.unitCost).toFixed(2)) : (item.purchasePrice || "0");
+    const purchasePrice = latestPurchase?.unitPriceWithVat ? String(Number(latestPurchase.unitPriceWithVat).toFixed(2)) : (latestPurchase?.unitPriceExclVat ? String(Number(latestPurchase.unitPriceExclVat).toFixed(2)) : (item.purchasePrice || "0"));
 
     // VALIDATION: কার্যকর তারিখ ক্রয়ের চালানের তারিখের আগের হতে পারবে না
     if (challanDate) {
