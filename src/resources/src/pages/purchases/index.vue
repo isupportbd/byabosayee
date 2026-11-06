@@ -2931,7 +2931,7 @@ async function submitPurchase() {
       vatMode: vatMode.value,
       supplierId: !isManufacturerVendor.value ? form.supplierId : null,
       manufacturerId: isManufacturerVendor.value ? form.manufacturerId : null,
-      paymentMethod: Number(form.paidAmount) > 0 ? form.paymentMethod : null,
+      paymentMethod: form.paymentMethod || (Number(form.paidAmount) > 0 ? "cash" : "due"),
       otherExpenses: form.otherExpenses,
       discountAmount: form.discountAmount,
       paidAmount: form.paidAmount,

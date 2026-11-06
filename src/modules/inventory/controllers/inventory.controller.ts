@@ -156,7 +156,8 @@ export async function ensureInventoryTables() {
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "total_vat_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "other_expenses" numeric(12, 2) DEFAULT '0' NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 2) DEFAULT '0' NOT NULL;
-      ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "payment_method" varchar(50) DEFAULT 'cash' NOT NULL;
+      ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "payment_method" varchar(50) DEFAULT 'cash';
+      ALTER TABLE "purchases" ALTER COLUMN "payment_method" DROP NOT NULL;
       ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "document_url" text;
 
       CREATE TABLE IF NOT EXISTS "purchase_items" (
@@ -1113,7 +1114,9 @@ export const createPurchase: Handler = async (c: any) => {
     const discountAmount = Math.max(0, Number(body.discountAmount) || 0);
     const paidAmount = Math.max(0, Number(body.paidAmount) || 0);
 
-    const paymentMethod = paidAmount > 0 && body.paymentMethod ? String(body.paymentMethod).trim() : null;
+    const paymentMethod = body.paymentMethod && String(body.paymentMethod).trim()
+      ? String(body.paymentMethod).trim()
+      : (paidAmount > 0 ? "cash" : "due");
     const notes = body.notes ? body.notes.trim() : null;
 
     const vatMode = (body.vatMode || "excl").trim().toLowerCase() === "incl" ? "incl" : "excl";
@@ -1367,7 +1370,9 @@ export const updatePurchase: Handler = async (c: any) => {
     const discountAmount = Math.max(0, Number(body.discountAmount) || 0);
     const paidAmount = Math.max(0, Number(body.paidAmount) || 0);
 
-    const paymentMethod = paidAmount > 0 && body.paymentMethod ? String(body.paymentMethod).trim() : null;
+    const paymentMethod = body.paymentMethod && String(body.paymentMethod).trim()
+      ? String(body.paymentMethod).trim()
+      : (paidAmount > 0 ? "cash" : "due");
     const notes = body.notes ? body.notes.trim() : null;
 
     const vatMode = (body.vatMode || "excl").trim().toLowerCase() === "incl" ? "incl" : "excl";
