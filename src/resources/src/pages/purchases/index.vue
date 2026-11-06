@@ -300,7 +300,8 @@
                   :options="colorsList"
                   placeholder="(ঐচ্ছিক)"
                   :clearable="true"
-                  :searchable="true">
+                  :searchable="true"
+                  @change="onCurrentItemColorChange">
                   <template #option="option">
                     <div class="d-flex align-items-center">
                       <span
@@ -539,8 +540,19 @@
                   <div class="p-2 bg-white rounded border h-100">
                     <span class="text-muted small d-block">১৪-ডিজিট বারকোড:</span>
                     <strong class="font-monospace text-dark d-block text-truncate">
-                      {{ currentItem.code || '(সেভ করার সময় অটো তৈরি হবে)' }}
+                      {{ currentItem.code || '(পণ্য নির্বাচন করুন)' }}
                     </strong>
+                    <div v-if="currentItem.code" class="mt-1 d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.68rem;">
+                      <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="আইটেম আইডি">
+                        আইটেম: {{ String(currentItem.itemId || 0).padStart(4, "0").slice(-4) }}
+                      </span>
+                      <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="সাইজ আইডি">
+                        সাইজ: {{ String(currentItem.sizeId || 0).padStart(2, "0").slice(-2) }}
+                      </span>
+                      <span class="badge bg-light text-dark border font-monospace px-1 py-0" title="কালার আইডি">
+                        কালার: {{ String(currentItem.colorId || 0).padStart(2, "0").slice(-2) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2209,15 +2221,24 @@ const selectedPartnerName = computed(() => {
   return selectedPartner.value?.name || "";
 });
 
+/**
+ * ১৪-ডিজিট বারকোড জেনারেশন ফর্মুলা:
+ * আইটেম আইডি (৪ ডিজিট) + সাইজ আইডি (২ ডিজিট) + কালার আইডি (২ ডিজিট) + YYMM (৪ ডিজিট) + ব্যাচ (২ ডিজিট) = ১৪ ডিজিট
+ * উদাহরণ: আইটেম 0125 + সাইজ 02 + কালার 05 + YYMM 2611 + ব্যাচ 01 -> 01250205261101
+ */
 function generateCurrentItemBarcode(force: boolean = false) {
   if (!force && currentItem.isCodeCustomized && currentItem.code) {
     return;
   }
-  // Formula: Category(2) + SubCategory(2) + Brand(2) + Size(2) + YYMM(4) + Batch(2) = 14 digits
-  const cat = String(currentItem.categoryId || 0).padStart(2, "0").slice(-2);
-  const sub = String(currentItem.subCategoryId || 0).padStart(2, "0").slice(-2);
-  const brand = String(currentItem.brandId || 0).padStart(2, "0").slice(-2);
+  if (!currentItem.itemId) {
+    currentItem.code = "";
+    return;
+  }
+
+  const itemIdNum = Number(currentItem.itemId || 0);
+  const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
   const size = String(currentItem.sizeId || 0).padStart(2, "0").slice(-2);
+  const color = String(currentItem.colorId || 0).padStart(2, "0").slice(-2);
 
   let d = form.challanDate ? new Date(form.challanDate) : new Date();
   if (isNaN(d.getTime())) d = new Date();
@@ -2226,7 +2247,7 @@ function generateCurrentItemBarcode(force: boolean = false) {
   const yymm = `${yy}${mm}`;
   const batch = "01";
 
-  currentItem.code = `${cat}${sub}${brand}${size}${yymm}${batch}`;
+  currentItem.code = `${itemStr}${size}${color}${yymm}${batch}`;
 }
 
 function onCurrentItemBrandChange() {
@@ -2234,14 +2255,17 @@ function onCurrentItemBrandChange() {
 }
 
 function onCurrentItemSizeChange() {
-  generateCurrentItemBarcode(false);
+  generateCurrentItemBarcode(true);
+}
+
+function onCurrentItemColorChange() {
+  generateCurrentItemBarcode(true);
 }
 
 function onCurrentItemSelect() {
   const selected = itemsList.value.find((it) => it.id === Number(currentItem.itemId));
   if (selected) {
-    currentItem.name = cleanItemName(selected.name);
-    currentItem.code = selected.code || "";
+    currentItem.name = selected.name;
     currentItem.designCode = selected.designCode || "";
     currentItem.categoryId = selected.categoryId || (selected.category?.id ?? "");
     currentItem.subCategoryId = selected.subCategoryId || (selected.subCategory?.id ?? "");
@@ -2255,7 +2279,7 @@ function onCurrentItemSelect() {
     if (selected.sellingPrice) {
       currentItem.sellingPrice = Number(selected.sellingPrice) || 0;
     }
-    generateCurrentItemBarcode(false);
+    generateCurrentItemBarcode(true);
   }
 }
 
