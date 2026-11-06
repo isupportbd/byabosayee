@@ -714,10 +714,9 @@
           <table class="table table-hover align-middle mb-0">
             <thead class="sales-table-header">
               <tr class="small text-nowrap">
-                <th style="width: 50px;" class="text-center">#</th>
-                <th style="width: 160px;" class="text-start">ইনভয়েস নং</th>
-                <th style="width: 110px;" class="text-center">তারিখ</th>
-                <th style="min-width: 160px;" class="text-start">গ্রাহক</th>
+                <th style="width: 45px;" class="text-center">#</th>
+                <th style="width: 170px;" class="text-start">ইনভয়েস ও তারিখ</th>
+                <th style="min-width: 250px;" class="text-start">গ্রাহক</th>
                 <th style="width: 130px;" class="text-center">ক্যাশিয়ার</th>
                 <th style="width: 90px;" class="text-center">পণ্য সংখ্যা</th>
                 <th style="width: 130px;" class="text-end">মোট বিল (৳)</th>
@@ -732,16 +731,16 @@
                 <td class="text-center text-muted">
                   {{ (currentPage - 1) * perPage + idx + 1 }}
                 </td>
-                <td class="text-start">
-                  <span class="font-monospace fw-semibold text-dark">{{ sale.invoiceNumber }}</span>
+                <td class="text-start text-nowrap">
+                  <div class="font-monospace fw-semibold text-dark">{{ sale.invoiceNumber }}</div>
+                  <div class="text-muted mt-0.5" style="font-size: 0.76rem;">
+                    <i class="bi bi-calendar-event me-1"></i>{{ formatDate(sale.saleDate) }}
+                  </div>
                 </td>
-                <td class="text-center text-muted">
-                  {{ formatDate(sale.saleDate) }}
-                </td>
                 <td class="text-start">
-                  <div class="fw-semibold text-dark">{{ sale.customerName || 'ওয়াকিং কাস্টমার' }}</div>
-                  <div v-if="sale.customerMobile" class="text-muted font-monospace" style="font-size: 0.72rem;">
-                    {{ sale.customerMobile }}
+                  <div class="fw-semibold text-dark fs-6">{{ sale.customerName || 'ওয়াক-ইন কাস্টমার' }}</div>
+                  <div v-if="sale.customerMobile" class="text-muted font-monospace mt-0.5" style="font-size: 0.76rem;">
+                    <i class="bi bi-telephone me-1"></i>{{ sale.customerMobile }}
                   </div>
                 </td>
                 <td class="text-center">
@@ -827,7 +826,7 @@
             <div id="thermal-receipt" class="receipt-container p-3 bg-white border rounded">
               <div class="text-center pb-2 border-bottom mb-2">
                 <h5 class="fw-bold m-0 fs-5">{{ companyDisplayName }}</h5>
-                <p class="small text-muted mb-0">ফ্যাশন ও গার্মেন্টস বিক্রয় শো-রুম</p>
+                <p v-if="companySlogan" class="small text-muted mb-0">{{ companySlogan }}</p>
                 <p class="small text-muted mb-0">মোবাইল: {{ companyPhone }}</p>
               </div>
 
@@ -1166,6 +1165,74 @@ function cleanItemName(name: string): string {
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
     .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
     .trim();
+}
+
+
+// Send WhatsApp Receipt
+function sendWhatsAppReceipt() {
+  const sale = activeReceiptSale.value;
+  if (!sale) return;
+
+  let mobile = (sale.customerMobile || "").trim();
+  // Strip non-digits
+  mobile = mobile.replace(/[^\d]/g, "");
+  if (mobile.startsWith("01")) {
+    mobile = "88" + mobile;
+  } else if (mobile.startsWith("1") && mobile.length === 10) {
+    mobile = "880" + mobile;
+  }
+
+  const compName = companyDisplayName.value;
+  const invNo = sale.invoiceNumber;
+  const date = formatDate(sale.saleDate);
+  const total = Number(sale.totalAmount || 0).toFixed(2);
+  const paid = Number(sale.paidAmount || 0).toFixed(2);
+  const due = Number(sale.dueAmount || 0).toFixed(2);
+
+  let itemsListText = "";
+  (sale.items || []).forEach((it: any, i: number) => {
+    const itName = cleanItemName(it.name);
+    const size = it.sizeName ? ` (${it.sizeName})` : "";
+    const qty = it.quantity;
+    const price = Number(it.unitPrice).toFixed(2);
+    const lineTotal = Number(it.totalPrice).toFixed(2);
+    itemsListText += `${i + 1}. ${itName}${size} - ${qty} x ৳${price} = ৳${lineTotal}\n`;
+  });
+
+  let msg = `*${compName}*\n`;
+  if (companySlogan.value) {
+    msg += `_${companySlogan.value}_\n`;
+  }
+  msg += `মোবাইল: ${companyPhone.value}\n`;
+  msg += `--------------------------------\n`;
+  msg += `*বিক্রয় রসিদ (Cash Memo)*\n`;
+  msg += `ইনভয়েস: *${invNo}*\n`;
+  msg += `তারিখ: ${date}\n`;
+  msg += `গ্রাহক: ${sale.customerName || "সম্মানিত গ্রাহক"}\n`;
+  msg += `--------------------------------\n`;
+  msg += `*পণ্যের বিবরণ:*\n${itemsListText}`;
+  msg += `--------------------------------\n`;
+  msg += `সাবটোটাল: ৳${Number(sale.subtotal || 0).toFixed(2)}\n`;
+  if (Number(sale.discountAmount || 0) > 0) {
+    msg += `ছাড়: -৳${Number(sale.discountAmount).toFixed(2)}\n`;
+  }
+  if (Number(sale.vatAmount || 0) > 0) {
+    msg += `ভ্যাট: ৳${Number(sale.vatAmount).toFixed(2)}\n`;
+  }
+  msg += `*সর্বমোট প্রদেয়: ৳${total}*\n`;
+  msg += `পরিশোধিত: ৳${paid} (${sale.paymentMethod || "ক্যাশ"})\n`;
+  if (Number(due) > 0) {
+    msg += `*বকেয়া: ৳${due}*\n`;
+  }
+  msg += `--------------------------------\n`;
+  msg += `ধন্যবাদ, আবার আসবেন!`;
+
+  const url = mobile
+    ? `https://api.whatsapp.com/send?phone=${encodeURIComponent(mobile)}&text=${encodeURIComponent(msg)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+
+  window.open(url, "_blank");
+  showToast("হোয়াটসঅ্যাপ খোলা হচ্ছে...", "info");
 }
 
 // Focus Barcode Input
