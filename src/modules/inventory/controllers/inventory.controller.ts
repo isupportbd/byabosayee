@@ -911,7 +911,7 @@ export const listCustomers: Handler = async (c: any) => {
       { name: "খুচরা কাস্টমার", customerType: "retail", notes: "সিস্টেম ডিফল্ট খুচরা গ্রাহক" },
       { name: "পাইকারি কাস্টমার", customerType: "wholesale", notes: "সিস্টেম ডিফল্ট পাইকারি গ্রাহক" },
       { name: "কর্পোরেট কাস্টমার", customerType: "corporate", notes: "সিস্টেম ডিফল্ট কর্পোরেট গ্রাহক" },
-      { name: "অন্যান্য কাস্টমার", customerType: "other", notes: "সিস্টেম ডিফল্ট অন্যান্য গ্রাহক" }
+      
     ];
 
     const userCustomers = await db
@@ -2170,9 +2170,58 @@ export const createSale: Handler = async (c: any) => {
       invoiceNumber = autoInvoiceNumber;
     }
 
-    const customerId = body.customerId ? Number(body.customerId) : null;
-    const customerName = (body.customerName || "ওয়াকিং কাস্টমার").trim();
+    let customerId = body.customerId ? Number(body.customerId) : null;
+    const customerType = body.customerType || "walk_in";
+    const customerName = (body.customerName || "ওয়াক-ইন কাস্টমার").trim();
     const customerMobile = (body.customerMobile || "").trim();
+
+    // Wholesale & Corporate mandatory validation
+    if (customerType === "wholesale" || customerType === "corporate") {
+      if (!customerName || customerName === "ওয়াক-ইন কাস্টমার" || customerName === "ওয়াকিং কাস্টমার") {
+        return c.json({ message: "পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে নাম আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
+      }
+      if (!customerMobile) {
+        return c.json({ message: "পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে মোবাইল নম্বর আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
+      }
+    }
+
+    // Auto-save new customer into customers table if not already linked
+    if (!customerId && customerName && customerName !== "ওয়াক-ইন কাস্টমার" && customerName !== "ওয়াকিং কাস্টমার") {
+      try {
+        const [existing] = await db
+          .select({ id: customers.id })
+          .from(customers)
+          .where(
+            and(
+              eq(customers.userId, userId),
+              customerMobile ? eq(customers.mobile, customerMobile) : eq(customers.name, customerName)
+            )
+          )
+          .limit(1);
+
+        if (existing) {
+          customerId = existing.id;
+        } else {
+          const [newCust] = await db
+            .insert(customers)
+            .values({
+              userId,
+              name: customerName,
+              mobile: customerMobile || null,
+              customerType,
+              address: "কাউন্টার সেল",
+              notes: "সেলস পিওএস থেকে স্বয়ংক্রিয়ভাবে সংরক্ষিত",
+              isActive: true
+            })
+            .returning();
+          if (newCust) {
+            customerId = newCust.id;
+          }
+        }
+      } catch (e) {
+        console.error("Auto customer save error in createSale:", e);
+      }
+    }
     const saleDate = body.saleDate || `${now.getFullYear()}-${mm}-${dd}`;
     const subtotal = Math.max(0, Number(body.subtotal) || 0);
     const discountAmount = Math.max(0, Number(body.discountAmount) || 0);

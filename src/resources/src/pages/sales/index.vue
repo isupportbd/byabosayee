@@ -93,9 +93,10 @@
           <div class="card-body p-3 d-flex flex-column h-100" style="min-height: 0;">
             <!-- গ্রাহক নির্বাচন ও মোবাইল সার্চ ব্লক (রেগুলার ফর্ম রো) -->
             <div class="row g-2 align-items-center mb-2 flex-shrink-0">
-              <div class="col-12 col-md-5">
+              <!-- ১. গ্রাহকের ধরন (Customer Type) -->
+              <div class="col-12 col-md-4">
                 <label class="form-label small fw-semibold mb-1 d-flex justify-content-between">
-                  <span>গ্রাহক (Customer)</span>
+                  <span>গ্রাহকের ধরন</span>
                   <button
                     type="button"
                     class="btn btn-link btn-xs p-0 text-success text-decoration-none"
@@ -104,39 +105,116 @@
                   </button>
                 </label>
                 <select
-                  v-model="form.customerId"
+                  v-model="form.customerType"
                   class="form-select form-select-sm search-input-unified"
-                  @change="onCustomerSelect">
-                  <option v-if="standardCustomers.length === 0 && registeredCustomers.length === 0" value="">
-                    ওয়াক-ইন কাস্টমার (Walk-in Customer)
-                  </option>
-                  <optgroup v-if="standardCustomers.length > 0" label="সাধারণ গ্রাহক ধরন">
-                    <option v-for="c in standardCustomers" :key="c.id" :value="c.id">
-                      {{ c.name }}
-                    </option>
-                  </optgroup>
-                  <optgroup v-if="registeredCustomers.length > 0" label="নিবন্ধিত গ্রাহক">
-                    <option v-for="c in registeredCustomers" :key="c.id" :value="c.id">
-                      {{ c.name }} {{ c.mobile ? `(${c.mobile})` : '' }} [{{ getCustomerTypeLabel(c.customerType) }}]
-                    </option>
-                  </optgroup>
+                  @change="onCustomerTypeChange">
+                  <option value="walk_in">ওয়াক-ইন কাস্টমার (Walk-in)</option>
+                  <option value="retail">খুচরা কাস্টমার (Retail)</option>
+                  <option value="wholesale">পাইকারি কাস্টমার (Wholesale)</option>
+                  <option value="corporate">কর্পোরেট কাস্টমার (Corporate)</option>
+                  
                 </select>
               </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label small fw-semibold mb-1">গ্রাহকের নাম</label>
-                <input
-                  v-model.trim="form.customerName"
-                  type="text"
-                  class="form-control form-control-sm search-input-unified"
-                  placeholder="গ্রাহকের নাম লিখুন..." />
+
+              <!-- ২. গ্রাহকের নাম (Customer Name with Dropdown & Quick Add) -->
+              <div class="col-12 col-md-5">
+                <label class="form-label small fw-semibold mb-1 d-flex justify-content-between">
+                  <span>
+                    গ্রাহকের নাম
+                    <span v-if="isCustomerMandatory" class="text-danger">*</span>
+                  </span>
+                  <button
+                    v-if="canQuickSaveCustomer"
+                    type="button"
+                    class="btn btn-link btn-xs p-0 text-primary text-decoration-none fw-semibold"
+                    :disabled="savingCustomer"
+                    @click="quickSaveCustomer">
+                    <i class="bi bi-person-plus-fill me-1"></i>
+                    <span v-if="savingCustomer">সংরক্ষণ হচ্ছে...</span>
+                    <span v-else>তালিকায় যোগ করুন</span>
+                  </button>
+                </label>
+                <div class="position-relative customer-dropdown-wrapper" ref="customerDropdownRef">
+                  <div class="input-group input-group-sm">
+                    <input
+                      ref="customerNameInputRef"
+                      v-model="form.customerName"
+                      type="text"
+                      class="form-control form-control-sm search-input-unified"
+                      :placeholder="isCustomerMandatory ? 'গ্রাহকের নাম আবশ্যক...' : 'গ্রাহকের নাম লিখুন বা তালিকা হতে খুঁজুন...'"
+                      :class="{ 'border-danger': isCustomerMandatory && (!form.customerName || form.customerName === 'ওয়াক-ইন কাস্টমার') }"
+                      autocomplete="off"
+                      @focus="openCustomerDropdown"
+                      @input="onCustomerNameInput" />
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm px-2"
+                      title="কাস্টমার ড্রপ-ডাউন তালিকা"
+                      @click="toggleCustomerDropdown">
+                      <i class="bi" :class="showCustomerDropdown ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                    </button>
+                  </div>
+
+                  <!-- কাস্টমার লিস্ট ড্রপ-ডাউন মেন্যু -->
+                  <div
+                    v-if="showCustomerDropdown"
+                    class="customer-dropdown-menu shadow-lg rounded border bg-white position-absolute w-100 mt-1 py-1"
+                    style="z-index: 1060; max-height: 260px; overflow-y: auto;">
+                    
+                    <!-- Quick Add Option if typed name is not in list -->
+                    <div
+                      v-if="canQuickSaveCustomer"
+                      class="customer-dropdown-item px-3 py-2 cursor-pointer bg-light border-bottom text-primary fw-semibold d-flex align-items-center justify-content-between"
+                      @click="quickSaveCustomer">
+                      <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-plus-fill text-primary"></i>
+                        <span>"{{ form.customerName }}" তালিকায় যোগ করুন</span>
+                      </div>
+                      <span class="badge bg-primary text-white">নতুন সংরক্ষণ</span>
+                    </div>
+
+                    <!-- Filtered List of Customers -->
+                    <div
+                      v-for="c in filteredDropdownCustomers"
+                      :key="c.id"
+                      class="customer-dropdown-item px-3 py-2 cursor-pointer d-flex justify-content-between align-items-center border-bottom border-light hover-bg"
+                      :class="{ 'bg-primary-subtle': String(form.customerId) === String(c.id) }"
+                      @click="selectCustomerFromDropdown(c)">
+                      <div>
+                        <div class="fw-semibold text-dark">{{ c.name }}</div>
+                        <div class="text-muted small font-monospace">
+                          <i class="bi bi-telephone me-1 text-secondary"></i>
+                          {{ c.mobile || 'মোবাইল নেই' }}
+                        </div>
+                      </div>
+                      <span class="badge" :class="getCustomerBadgeClass(c.customerType)">
+                        {{ getCustomerTypeLabel(c.customerType) }}
+                      </span>
+                    </div>
+
+                    <div
+                      v-if="filteredDropdownCustomers.length === 0 && !canQuickSaveCustomer"
+                      class="px-3 py-3 text-muted small text-center">
+                      কোনো গ্রাহক পাওয়া যায়নি
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              <!-- ৩. মোবাইল নম্বর (Mobile Number) -->
               <div class="col-12 col-md-3">
-                <label class="form-label small fw-semibold mb-1">মোবাইল নম্বর</label>
+                <label class="form-label small fw-semibold mb-1">
+                  মোবাইল নম্বর
+                  <span v-if="isCustomerMandatory" class="text-danger">*</span>
+                </label>
                 <input
-                  v-model.trim="form.customerMobile"
+                  ref="customerMobileInputRef"
+                  v-model="form.customerMobile"
                   type="text"
                   class="form-control form-control-sm search-input-unified font-monospace"
-                  placeholder="০১XXXXXXXXX" />
+                  :class="{ 'border-danger': isCustomerMandatory && !form.customerMobile }"
+                  placeholder="০১XXXXXXXXX"
+                  @input="onCustomerMobileInput" />
               </div>
             </div>
 
@@ -931,7 +1009,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { computed, inject, nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import { authUser } from "@/composables/useAuth";
@@ -1114,6 +1192,7 @@ const generatedInvoiceNumber = computed(() => {
 // Sales Form Model
 const form = reactive({
   customerId: "" as number | string,
+  customerType: "walk_in" as string,
   customerName: "ওয়াক-ইন কাস্টমার",
   customerMobile: "",
   discountValue: 0 as number,
@@ -1171,16 +1250,32 @@ function focusBarcodeInput() {
   });
 }
 
-// Standard customer types and helpers
-const standardOrder = ["walk_in", "retail", "wholesale", "corporate", "other"];
+// Customer references & Dropdown state
+const customerDropdownRef = ref<HTMLElement | null>(null);
+const customerNameInputRef = ref<HTMLInputElement | null>(null);
+const customerMobileInputRef = ref<HTMLInputElement | null>(null);
+const showCustomerDropdown = ref(false);
+const savingCustomer = ref(false);
 
-const standardTypeNames: Record<string, string> = {
-  walk_in: "ওয়াক-ইন কাস্টমার",
-  retail: "খুচরা কাস্টমার",
-  wholesale: "পাইকারি কাস্টমার",
-  corporate: "কর্পোরেট কাস্টমার",
-  other: "অন্যান্য কাস্টমার"
-};
+// Rule: পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে নাম ও মোবাইল বাধ্যতামূলক
+const isCustomerMandatory = computed(() => {
+  return form.customerType === "wholesale" || form.customerType === "corporate";
+});
+
+function getCustomerBadgeClass(type: string): string {
+  switch (type) {
+    case "walk_in":
+      return "bg-secondary text-white";
+    case "retail":
+      return "bg-info text-dark";
+    case "wholesale":
+      return "bg-warning text-dark";
+    case "corporate":
+      return "bg-primary text-white";
+    default:
+      return "bg-light text-dark border";
+  }
+}
 
 function getCustomerTypeLabel(type: string): string {
   switch (type) {
@@ -1197,49 +1292,145 @@ function getCustomerTypeLabel(type: string): string {
   }
 }
 
-const standardCustomers = computed(() => {
-  const std = customersList.value.filter((c) =>
-    Object.values(standardTypeNames).includes(c.name) ||
-    (!c.mobile && ["walk_in", "retail", "wholesale", "corporate", "other"].includes(c.customerType))
-  );
-
-  return std.sort((a, b) => {
-    const idxA = standardOrder.indexOf(a.customerType);
-    const idxB = standardOrder.indexOf(b.customerType);
-    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-  });
+const canQuickSaveCustomer = computed(() => {
+  const name = (form.customerName || "").trim();
+  if (!name || name === "ওয়াক-ইন কাস্টমার" || name === "ওয়াকিং কাস্টমার") return false;
+  return !customersList.value.some((c) => (c.name || "").trim().toLowerCase() === name.toLowerCase());
 });
 
-const registeredCustomers = computed(() => {
-  const stdIds = new Set(standardCustomers.value.map((c) => c.id));
-  return customersList.value.filter((c) => !stdIds.has(c.id));
+const filteredDropdownCustomers = computed(() => {
+  const q = (form.customerName || "").trim().toLowerCase();
+  let list = customersList.value.filter(
+    (c) => c.customerType !== "other" && c.name !== "অন্যান্য কাস্টমার"
+  );
+
+  if (q && q !== "ওয়াক-ইন কাস্টমার" && q !== "ওয়াকিং কাস্টমার") {
+    list = list.filter((c) => {
+      const name = (c.name || "").toLowerCase();
+      const mobile = (c.mobile || "").toLowerCase();
+      const type = getCustomerTypeLabel(c.customerType).toLowerCase();
+      return name.includes(q) || mobile.includes(q) || type.includes(q);
+    });
+  }
+
+  // Prioritize customers of current selected customerType
+  if (form.customerType && form.customerType !== "walk_in") {
+    return [...list].sort((a, b) => {
+      const matchA = a.customerType === form.customerType ? 0 : 1;
+      const matchB = b.customerType === form.customerType ? 0 : 1;
+      return matchA - matchB;
+    });
+  }
+
+  return list;
 });
 
-function resetToDefaultCustomer() {
-  const walkIn = customersList.value.find(
-    (c) => c.customerType === "walk_in" || c.name === "ওয়াক-ইন কাস্টমার" || c.name === "ওয়াকিং কাস্টমার"
+function openCustomerDropdown() {
+  showCustomerDropdown.value = true;
+}
+
+function toggleCustomerDropdown() {
+  showCustomerDropdown.value = !showCustomerDropdown.value;
+}
+
+function onCustomerNameInput() {
+  showCustomerDropdown.value = true;
+  const matched = customersList.value.find(
+    (c) => (c.name || "").trim().toLowerCase() === (form.customerName || "").trim().toLowerCase()
   );
-  if (walkIn) {
-    form.customerId = walkIn.id;
-    form.customerName = walkIn.name;
-    form.customerMobile = walkIn.mobile || "";
+  if (matched) {
+    form.customerId = matched.id;
+    if (!form.customerMobile && matched.mobile) {
+      form.customerMobile = matched.mobile;
+    }
   } else {
     form.customerId = "";
-    form.customerName = "ওয়াক-ইন কাস্টমার";
-    form.customerMobile = "";
   }
 }
 
-// On Customer Selected from Dropdown
-function onCustomerSelect() {
-  if (!form.customerId) {
+function onCustomerMobileInput(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const clean = target.value
+    .replace(/[০-৯]/g, (d) => String("০১২৩৪৫৬৭৮৯".indexOf(d)))
+    .replace(/[^\d+]/g, "");
+  form.customerMobile = clean;
+  target.value = clean;
+}
+
+function selectCustomerFromDropdown(c: any) {
+  form.customerId = c.id;
+  form.customerName = c.name || "";
+  form.customerMobile = c.mobile || "";
+  if (c.customerType && c.customerType !== "walk_in") {
+    form.customerType = c.customerType;
+  }
+  showCustomerDropdown.value = false;
+}
+
+function onCustomerTypeChange() {
+  if (form.customerType === "walk_in") {
     resetToDefaultCustomer();
+  } else {
+    if (form.customerName === "ওয়াক-ইন কাস্টমার" || form.customerName === "ওয়াকিং কাস্টমার") {
+      form.customerName = "";
+      form.customerMobile = "";
+      form.customerId = "";
+    }
+    showCustomerDropdown.value = true;
+  }
+}
+
+function resetToDefaultCustomer() {
+  form.customerType = "walk_in";
+  form.customerName = "ওয়াক-ইন কাস্টমার";
+  form.customerMobile = "";
+  const walkIn = customersList.value.find(
+    (c) => c.customerType === "walk_in" || c.name === "ওয়াক-ইন কাস্টমার" || c.name === "ওয়াকিং কাস্টমার"
+  );
+  form.customerId = walkIn ? walkIn.id : "";
+  showCustomerDropdown.value = false;
+}
+
+async function quickSaveCustomer() {
+  const name = (form.customerName || "").trim();
+  if (!name) {
+    showToast("গ্রাহকের নাম লিখুন", "warning");
+    customerNameInputRef.value?.focus();
     return;
   }
-  const cust = customersList.value.find((c) => String(c.id) === String(form.customerId));
-  if (cust) {
-    form.customerName = cust.name || "";
-    form.customerMobile = cust.mobile || "";
+
+  if (isCustomerMandatory.value && (!form.customerMobile || !form.customerMobile.trim())) {
+    showToast("পাইকারী ও কর্পোরেট কাস্টমারের জন্য মোবাইল নম্বর আবশ্যক", "warning");
+    customerMobileInputRef.value?.focus();
+    return;
+  }
+
+  savingCustomer.value = true;
+  try {
+    const res = await axios.post("/api/inventory/customers", {
+      name,
+      mobile: form.customerMobile?.trim() || null,
+      customerType: form.customerType || "retail",
+      address: "কাউন্টার সেল",
+      notes: "সেলস পিওএস কাউন্টার থেকে সরাসরি যুক্ত"
+    });
+    const created = res.data?.data;
+    if (created) {
+      customersList.value.unshift(created);
+      form.customerId = created.id;
+      showToast(`"${created.name}" কাস্টমার তালিকায় সফলভাবে যুক্ত হয়েছে!`, "success");
+    }
+    showCustomerDropdown.value = false;
+  } catch (err: any) {
+    showToast(err.response?.data?.message || "কাস্টমার যোগ করতে ব্যর্থ হয়েছে", "danger");
+  } finally {
+    savingCustomer.value = false;
+  }
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (customerDropdownRef.value && !customerDropdownRef.value.contains(event.target as Node)) {
+    showCustomerDropdown.value = false;
   }
 }
 
@@ -1512,6 +1703,22 @@ async function submitSale(printAfterSubmit: boolean) {
     return;
   }
 
+  // Mandatory check: পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে নাম ও মোবাইল বাধ্যতামূলক
+  if (isCustomerMandatory.value) {
+    const name = (form.customerName || "").trim();
+    if (!name || name === "ওয়াক-ইন কাস্টমার" || name === "ওয়াকিং কাস্টমার") {
+      showToast("পাইকারী ও কর্পোরেট কাস্টমারের জন্য গ্রাহকের নাম আবশ্যক", "warning");
+      customerNameInputRef.value?.focus();
+      return;
+    }
+    const mobile = (form.customerMobile || "").trim();
+    if (!mobile) {
+      showToast("পাইকারী ও কর্পোরেট কাস্টমারের জন্য মোবাইল নম্বর আবশ্যক", "warning");
+      customerMobileInputRef.value?.focus();
+      return;
+    }
+  }
+
   submitting.value = true;
   try {
     const isDraft = !printAfterSubmit;
@@ -1520,7 +1727,8 @@ async function submitSale(printAfterSubmit: boolean) {
       isDraft,
       status: isDraft ? "draft" : undefined,
       customerId: form.customerId || null,
-      customerName: form.customerName || "ওয়াকিং কাস্টমার",
+      customerType: form.customerType || "walk_in",
+      customerName: form.customerName || "ওয়াক-ইন কাস্টমার",
       customerMobile: form.customerMobile || "",
       cashierName: cashierDisplayName.value,
       invoiceNumber: generatedInvoiceNumber.value,
@@ -1764,8 +1972,13 @@ async function loadAllData() {
 }
 
 onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
   loadAllData();
   focusBarcodeInput();
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
 });
 </script>
 
@@ -1986,5 +2199,31 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.customer-dropdown-wrapper {
+  position: relative;
+}
+
+.customer-dropdown-menu {
+  top: 100%;
+  left: 0;
+  z-index: 1060;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+.customer-dropdown-item {
+  transition: background-color 0.15s ease-in-out;
+}
+
+.customer-dropdown-item:hover,
+.hover-bg:hover {
+  background-color: #f1f5f9;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>
