@@ -863,8 +863,8 @@
                 <div class="col-6">
                   <label class="form-label small fw-semibold mb-1">কাস্টমার ধরন</label>
                   <select v-model="customerForm.customerType" class="form-select form-select-sm">
-                    <option value="retail">খুচরা (Retail)</option>
-                    <option value="wholesale">পাইকারি (Wholesale)</option>
+                    <option value="retail">খুচরা কাস্টমার</option>
+                    <option value="wholesale">পাইকারি কাস্টমার</option>
                   </select>
                 </div>
               </div>

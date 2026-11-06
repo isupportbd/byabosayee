@@ -200,6 +200,7 @@ export async function ensureInventoryTables() {
       );
 
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_id" integer REFERENCES "customers"("id") ON DELETE SET NULL;
+      ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "customer_address" text;
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "cashier_name" varchar(255);
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "sale_date" varchar(50);
       ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "subtotal" numeric(12, 2) DEFAULT '0' NOT NULL;
@@ -2176,6 +2177,7 @@ export const createSale: Handler = async (c: any) => {
     const customerType = body.customerType || "walk_in";
     const customerName = (body.customerName || "ওয়াক-ইন কাস্টমার").trim();
     const customerMobile = (body.customerMobile || "").trim();
+    const customerAddress = (body.customerAddress || "").trim();
 
     // Wholesale & Corporate mandatory validation
     if (customerType === "wholesale" || customerType === "corporate") {
@@ -2211,7 +2213,7 @@ export const createSale: Handler = async (c: any) => {
               name: customerName,
               mobile: customerMobile || null,
               customerType,
-              address: "কাউন্টার সেল",
+              address: customerAddress || "কাউন্টার সেল",
               notes: "সেলস পিওএস থেকে স্বয়ংক্রিয়ভাবে সংরক্ষিত",
               isActive: true
             })
@@ -2247,6 +2249,7 @@ export const createSale: Handler = async (c: any) => {
         customerId,
         customerName,
         customerMobile,
+        customerAddress: customerAddress || null,
         cashierName,
         invoiceNumber,
         saleDate,

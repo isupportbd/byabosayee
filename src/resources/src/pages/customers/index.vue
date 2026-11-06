@@ -73,10 +73,10 @@
                 v-model="form.customerType"
                 class="form-select form-select-sm text-truncate"
                 required>
-                <option value="walk_in">ওয়াক-ইন কাস্টমার (Walk-in)</option>
-                <option value="retail">খুচরা কাস্টমার (Retail)</option>
-                <option value="wholesale">পাইকারি কাস্টমার (Wholesale)</option>
-                <option value="corporate">কর্পোরেট কাস্টমার (Corporate)</option>
+                <option value="walk_in">ওয়াক-ইন কাস্টমার</option>
+                <option value="retail">খুচরা কাস্টমার</option>
+                <option value="wholesale">পাইকারি কাস্টমার</option>
+                <option value="corporate">কর্পোরেট কাস্টমার</option>
                 
               </select>
             </div>

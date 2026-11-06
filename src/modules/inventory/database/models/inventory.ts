@@ -199,6 +199,7 @@ export const sales = pgTable("sales", {
   customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   customerName: varchar("customer_name", { length: 255 }),
   customerMobile: varchar("customer_mobile", { length: 50 }),
+  customerAddress: text("customer_address"),
   cashierName: varchar("cashier_name", { length: 255 }),
   invoiceNumber: varchar("invoice_number", { length: 100 }).notNull(),
   saleDate: varchar("sale_date", { length: 50 }),

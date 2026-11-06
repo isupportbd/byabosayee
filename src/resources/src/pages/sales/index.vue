@@ -75,26 +75,19 @@
                 <i class="bi bi-calendar-date me-1 text-muted"></i>{{ todayFormatted }}
               </span>
             </div>
-            <!-- ক্যাশিয়ার / ডাটা এন্ট্রি কারী তথ্য ও বিক্রয় তালিকা বাটন -->
+            <!-- ক্যাশিয়ার / ডাটা এন্ট্রি কারী তথ্য -->
             <div class="d-flex align-items-center gap-2">
               <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" title="ডাটা এন্ট্রি করছেন">
                 <i class="bi bi-person-badge me-1"></i>বিক্রেতা/ক্যাশিয়ার: <strong>{{ cashierDisplayName }}</strong>
               </span>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 py-1 px-2.5 shadow-sm fw-medium"
-                @click="switchView('list')">
-                <i class="bi bi-card-list"></i>
-                <span>বিক্রয় তালিকা</span>
-              </button>
             </div>
           </div>
 
           <div class="card-body p-3 d-flex flex-column h-100" style="min-height: 0;">
-            <!-- গ্রাহক নির্বাচন ও মোবাইল সার্চ ব্লক (রেগুলার ফর্ম রো) -->
+            <!-- গ্রাহক নির্বাচন ও তথ্য ব্লক (৪টি ফিল্ড: ধরন, নাম, মোবাইল ও ঠিকানা) -->
             <div class="row g-2 align-items-center mb-2 flex-shrink-0">
-              <!-- ১. গ্রাহকের ধরন (Customer Type) -->
-              <div class="col-12 col-md-4">
+              <!-- ১. গ্রাহকের ধরন -->
+              <div class="col-12 col-sm-6 col-lg-3">
                 <label class="form-label small fw-semibold mb-1 d-flex justify-content-between">
                   <span>গ্রাহকের ধরন</span>
                   <button
@@ -115,8 +108,8 @@
                   @change="onCustomerTypeChange" />
               </div>
 
-              <!-- ২. গ্রাহকের নাম (Customer Name) -->
-              <div class="col-12 col-md-5">
+              <!-- ২. গ্রাহকের নাম -->
+              <div class="col-12 col-sm-6 col-lg-3">
                 <label class="form-label small fw-semibold mb-1">
                   গ্রাহকের নাম
                   <span v-if="isCustomerMandatory" class="text-danger">*</span>
@@ -144,8 +137,8 @@
                 </Select>
               </div>
 
-              <!-- ৩. মোবাইল নম্বর (Mobile Number) -->
-              <div class="col-12 col-md-3">
+              <!-- ৩. মোবাইল নম্বর -->
+              <div class="col-12 col-sm-6 col-lg-3">
                 <label class="form-label small fw-semibold mb-1">
                   মোবাইল নম্বর
                   <span v-if="isCustomerMandatory" class="text-danger">*</span>
@@ -154,10 +147,22 @@
                   ref="customerMobileInputRef"
                   v-model.trim="form.customerMobile"
                   type="text"
-                  class="form-control form-control-sm search-input-unified font-monospace"
+                  class="form-control form-control-sm font-monospace"
                   :class="{ 'border-danger': isCustomerMandatory && !form.customerMobile }"
                   placeholder="০১XXXXXXXXX"
                   @input="onCustomerMobileInput" />
+              </div>
+
+              <!-- ৪. ঠিকানা -->
+              <div class="col-12 col-sm-6 col-lg-3">
+                <label class="form-label small fw-semibold mb-1">
+                  ঠিকানা
+                </label>
+                <input
+                  v-model.trim="form.customerAddress"
+                  type="text"
+                  class="form-control form-control-sm"
+                  placeholder="গ্রাহকের ঠিকানা..." />
               </div>
             </div>
 
@@ -279,10 +284,10 @@
 
                       <!-- পরিমাণ -->
                       <td class="text-center text-nowrap">
-                        <div class="d-inline-flex align-items-center justify-content-center flex-nowrap quantity-wrapper">
+                        <div class="input-group input-group-sm mx-auto" style="width: 100px;">
                           <button
                             type="button"
-                            class="btn btn-sm btn-outline-secondary qty-btn"
+                            class="btn btn-outline-secondary px-2"
                             title="পরিমাণ কমান"
                             @click="changeQty(row, -1)">
                             -
@@ -292,11 +297,11 @@
                             type="number"
                             min="1"
                             :max="row.availableStock"
-                            class="form-control form-control-sm text-center fw-bold qty-input mx-1"
+                            class="form-control text-center p-0 fw-bold"
                             @input="if (row.quantity > row.availableStock) { row.quantity = row.availableStock; showToast(`'${cleanItemName(row.name)}' এর সর্বোচ্চ উপলব্ধ স্টক ${row.availableStock} টি`, 'warning'); } recalculateLine(row)" />
                           <button
                             type="button"
-                            class="btn btn-sm btn-outline-secondary qty-btn"
+                            class="btn btn-outline-secondary px-2"
                             title="পরিমাণ বাড়ান"
                             @click="changeQty(row, 1)">
                             +
@@ -311,7 +316,8 @@
                           type="number"
                           min="0"
                           step="0.01"
-                          class="form-control form-control-sm text-end fw-semibold table-num-input"
+                          class="form-control form-control-sm text-end fw-semibold ms-auto"
+                          style="max-width: 95px;"
                           @input="recalculateLine(row)" />
                       </td>
 
@@ -322,19 +328,18 @@
 
                       <!-- ছাড় (% বা ৳) -->
                       <td class="text-center">
-                        <div class="input-group input-group-sm" style="width: 98px; margin: 0 auto;">
+                        <div class="input-group input-group-sm mx-auto" style="width: 100px;">
                           <input
                             v-model.number="row.discountValue"
                             type="number"
                             min="0"
                             step="any"
-                            class="form-control form-control-sm text-end table-num-input px-1"
+                            class="form-control text-end px-1"
                             placeholder="0"
                             @input="recalculateLine(row)" />
                           <button
                             type="button"
-                            class="btn btn-sm btn-outline-secondary px-1 text-nowrap fw-bold"
-                            style="font-size: 0.75rem; width: 28px; line-height: 1;"
+                            class="btn btn-outline-secondary px-2 fw-bold"
                             :title="row.discountType === 'fixed' ? 'টাকা (৳) - ক্লিক করলে শতাংশ (%) হবে' : 'শতাংশ (%) - ক্লিক করলে টাকা (৳) হবে'"
                             @click="row.discountType = (row.discountType === 'fixed' ? 'percent' : 'fixed'); recalculateLine(row)">
                             {{ row.discountType === 'fixed' ? '৳' : '%' }}
@@ -1139,6 +1144,7 @@ const form = reactive({
   customerType: "walk_in" as string,
   customerName: "ওয়াক-ইন কাস্টমার",
   customerMobile: "",
+  customerAddress: "",
   discountValue: 0 as number,
   discountType: "fixed" as "fixed" | "percent",
   paidAmount: 0 as number,
@@ -1198,10 +1204,10 @@ function focusBarcodeInput() {
 const customerMobileInputRef = ref<HTMLInputElement | null>(null);
 
 const customerTypeOptions = [
-  { label: "ওয়াক-ইন কাস্টমার (Walk-in)", value: "walk_in" },
-  { label: "খুচরা কাস্টমার (Retail)", value: "retail" },
-  { label: "পাইকারি কাস্টমার (Wholesale)", value: "wholesale" },
-  { label: "কর্পোরেট কাস্টমার (Corporate)", value: "corporate" }
+  { label: "ওয়াক-ইন কাস্টমার", value: "walk_in" },
+  { label: "খুচরা কাস্টমার", value: "retail" },
+  { label: "পাইকারি কাস্টমার", value: "wholesale" },
+  { label: "কর্পোরেট কাস্টমার", value: "corporate" }
 ];
 
 // Rule: পাইকারী ও কর্পোরেট কাস্টমারের ক্ষেত্রে নাম ও মোবাইল বাধ্যতামূলক
@@ -1281,6 +1287,9 @@ function onCustomerNameSelect(selected: any) {
     if (matched.mobile) {
       form.customerMobile = matched.mobile;
     }
+    if (matched.address) {
+      form.customerAddress = matched.address;
+    }
     if (matched.customerType && matched.customerType !== "walk_in") {
       form.customerType = matched.customerType;
     }
@@ -1311,6 +1320,7 @@ function onCustomerTypeChange() {
     if (form.customerName === "ওয়াক-ইন কাস্টমার" || form.customerName === "ওয়াকিং কাস্টমার") {
       form.customerName = "";
       form.customerMobile = "";
+      form.customerAddress = "";
       form.customerId = "";
     }
   }
@@ -1320,6 +1330,7 @@ function resetToDefaultCustomer() {
   form.customerType = "walk_in";
   form.customerName = "ওয়াক-ইন কাস্টমার";
   form.customerMobile = "";
+  form.customerAddress = "";
   const walkIn = customersList.value.find(
     (c) => c.customerType === "walk_in" || c.name === "ওয়াক-ইন কাস্টমার" || c.name === "ওয়াকিং কাস্টমার"
   );
@@ -1622,6 +1633,7 @@ async function submitSale(printAfterSubmit: boolean) {
       customerType: form.customerType || "walk_in",
       customerName: form.customerName || "ওয়াক-ইন কাস্টমার",
       customerMobile: form.customerMobile || "",
+      customerAddress: form.customerAddress || "",
       cashierName: cashierDisplayName.value,
       invoiceNumber: generatedInvoiceNumber.value,
       subtotal: summary.value.subtotal,
@@ -1716,6 +1728,7 @@ async function loadDraftIntoCart(draft: any) {
   form.customerId = draft.customerId || "";
   form.customerName = draft.customerName || "ওয়াকিং কাস্টমার";
   form.customerMobile = draft.customerMobile || "";
+  form.customerAddress = draft.customerAddress || "";
   form.notes = draft.notes || "";
   form.paymentMethod = draft.paymentMethod || "cash";
   form.transactionId = draft.transactionId || "";
@@ -1955,34 +1968,9 @@ onMounted(() => {
   background-color: rgba(25, 135, 84, 0.04);
 }
 
-.table-num-input {
-  height: 28px;
-  font-size: 0.82rem;
-  padding: 2px 6px;
-}
 
-.quantity-wrapper {
-  width: 96px;
-}
 
-.qty-btn {
-  width: 24px;
-  height: 28px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
-  line-height: 1;
-}
 
-.qty-input {
-  width: 44px;
-  height: 28px;
-  padding: 0 2px;
-  font-size: 0.85rem;
-}
 
 .table-num-input::-webkit-outer-spin-button,
 .table-num-input::-webkit-inner-spin-button,
