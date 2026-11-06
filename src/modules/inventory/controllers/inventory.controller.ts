@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, ne, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { broadcast, db, HttpStatusCodes } from "@/framework/facade.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
@@ -100,6 +100,7 @@ export async function ensureInventoryTables() {
       );
 
       ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "alt_mobile" varchar(50);
+      DELETE FROM "customers" WHERE "name" IN ('অন্যান্য কাস্টমার', 'কর্পোরেট কাস্টমার', 'পাইকারি কাস্টমার', 'খুচরা কাস্টমার') OR "customer_type" = 'other';
 
       CREATE TABLE IF NOT EXISTS "items" (
         "id" serial PRIMARY KEY NOT NULL,
@@ -904,48 +905,49 @@ export const listCustomers: Handler = async (c: any) => {
   const userId = getUserId(c);
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
-  // Ensure standard customer types exist for this user
+  // Delete any dummy demo customers or 'other' types immediately across database
   try {
-    const standardCustomerTypes = [
-      { name: "ওয়াক-ইন কাস্টমার", customerType: "walk_in", notes: "সিস্টেম ডিফল্ট ওয়াক-ইন গ্রাহক" },
-      { name: "খুচরা কাস্টমার", customerType: "retail", notes: "সিস্টেম ডিফল্ট খুচরা গ্রাহক" },
-      { name: "পাইকারি কাস্টমার", customerType: "wholesale", notes: "সিস্টেম ডিফল্ট পাইকারি গ্রাহক" },
-      { name: "কর্পোরেট কাস্টমার", customerType: "corporate", notes: "সিস্টেম ডিফল্ট কর্পোরেট গ্রাহক" },
-      
-    ];
-
-    const userCustomers = await db
-      .select({ id: customers.id, name: customers.name, customerType: customers.customerType })
-      .from(customers)
-      .where(eq(customers.userId, userId));
-
-    for (const dt of standardCustomerTypes) {
-      const exists = userCustomers.some(
-        (c: any) =>
-          c.name === dt.name ||
-          (dt.customerType === "walk_in" && (c.customerType === "walk_in" || c.name === "ওয়াকিং কাস্টমার"))
-      );
-
-      if (!exists) {
-        await db.insert(customers).values({
-          userId,
-          name: dt.name,
-          customerType: dt.customerType,
-          mobile: null,
-          address: "কাউন্টার সেল",
-          notes: dt.notes,
-          isActive: true
-        });
-      }
-    }
+    await db.execute(
+      sql`DELETE FROM "customers" WHERE "name" IN ('অন্যান্য কাস্টমার', 'কর্পোরেট কাস্টমার', 'পাইকারি কাস্টমার', 'খুচরা কাস্টমার') OR "customer_type" = 'other'`
+    );
   } catch (err) {
-    console.error("Error ensuring standard customer types:", err);
+    console.error("Cleanup demo customers error:", err);
   }
+
+  // Ensure default Walk-in customer exists for this user
+  try {
+    const walkInExists = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.userId, userId), or(eq(customers.customerType, "walk_in"), eq(customers.name, "ওয়াক-ইন কাস্টমার"))))
+      .limit(1);
+
+    if (!walkInExists || walkInExists.length === 0) {
+      await db.insert(customers).values({
+        userId,
+        name: "ওয়াক-ইন কাস্টমার",
+        customerType: "walk_in",
+        mobile: null,
+        address: "কাউন্টার সেল",
+        notes: "সিস্টেম ডিফল্ট ওয়াক-ইন গ্রাহক",
+        isActive: true
+      });
+    }
+  } catch {}
 
   const list = await db
     .select()
     .from(customers)
-    .where(eq(customers.userId, userId))
+    .where(
+      and(
+        eq(customers.userId, userId),
+        ne(customers.customerType, "other"),
+        ne(customers.name, "অন্যান্য কাস্টমার"),
+        ne(customers.name, "খুচরা কাস্টমার"),
+        ne(customers.name, "পাইকারি কাস্টমার"),
+        ne(customers.name, "কর্পোরেট কাস্টমার")
+      )
+    )
     .orderBy(desc(customers.id));
 
   return c.json({ message: "Success", data: list }, HttpStatusCodes.OK);

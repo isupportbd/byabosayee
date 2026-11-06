@@ -1274,11 +1274,20 @@ function getCustomerTypeLabel(type: string): string {
 
 const filteredDropdownCustomers = computed(() => {
   const q = (form.customerName || "").trim().toLowerCase();
+  // Only show real registered customers in dropdown (exclude generic walk-in)
   let list = customersList.value.filter(
-    (c) => c.customerType !== "other" && c.name !== "অন্যান্য কাস্টমার"
+    (c) =>
+      c.customerType !== "walk_in" &&
+      c.customerType !== "other" &&
+      c.name !== "ওয়াক-ইন কাস্টমার" &&
+      c.name !== "ওয়াকিং কাস্টমার" &&
+      c.name !== "খুচরা কাস্টমার" &&
+      c.name !== "পাইকারি কাস্টমার" &&
+      c.name !== "কর্পোরেট কাস্টমার" &&
+      c.name !== "অন্যান্য কাস্টমার"
   );
 
-  if (q && q !== "ওয়াক-ইন কাস্টমার" && q !== "ওয়াকিং কাস্টমার") {
+  if (q) {
     list = list.filter((c) => {
       const name = (c.name || "").toLowerCase();
       const mobile = (c.mobile || "").toLowerCase();

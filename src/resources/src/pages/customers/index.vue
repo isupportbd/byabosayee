@@ -77,7 +77,7 @@
                 <option value="retail">খুচরা কাস্টমার (Retail)</option>
                 <option value="wholesale">পাইকারি কাস্টমার (Wholesale)</option>
                 <option value="corporate">কর্পোরেট কাস্টমার (Corporate)</option>
-                <option value="other">অন্যান্য (Other)</option>
+                
               </select>
             </div>
 
@@ -729,7 +729,14 @@ async function fetchCustomers() {
   loading.value = true;
   try {
     const res = await axios.get("/api/inventory/customers");
-    const rawList = res.data?.data || [];
+    const rawList = (res.data?.data || []).filter(
+      (c: any) =>
+        c.customerType !== "other" &&
+        c.name !== "অন্যান্য কাস্টমার" &&
+        c.name !== "খুচরা কাস্টমার" &&
+        c.name !== "পাইকারি কাস্টমার" &&
+        c.name !== "কর্পোরেট কাস্টমার"
+    );
     customersList.value = rawList.map((c: any) => ({
       ...c,
       isActive: c.isActive !== false && c.is_active !== false,
