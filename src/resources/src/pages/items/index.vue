@@ -1637,11 +1637,12 @@ onBeforeUnmount(() => {
   line-height: 1.2;
 }
 
-/* Responsive layout for 7-column item creation row */
+/* Responsive layout for 11-column item creation row */
 @media (min-width: 992px) {
   .item-create-row {
     display: flex;
     flex-wrap: nowrap;
+    width: 100%;
     margin-left: -0.25rem;
     margin-right: -0.25rem;
   }
@@ -1649,34 +1650,34 @@ onBeforeUnmount(() => {
     padding-left: 0.25rem;
     padding-right: 0.25rem;
   }
-  /* ১১-কলাম বিশিষ্ট এন্ট্রি রো */
+  /* ১১-কলাম বিশিষ্ট এন্ট্রি রো (ডানের স্পেস অপটিমাইজড ও সাব-ক্যাটাগরি বর্ধিত) */
   .item-create-row .col-item-cat {
-    flex: 0 0 9%;
-    max-width: 9%;
-  }
-  .item-create-row .col-item-subcat {
-    flex: 0 0 9.5%;
-    max-width: 9.5%;
-  }
-  .item-create-row .col-item-type {
     flex: 0 0 8.5%;
     max-width: 8.5%;
+  }
+  .item-create-row .col-item-subcat {
+    flex: 0 0 14%;
+    max-width: 14%;
+  }
+  .item-create-row .col-item-type {
+    flex: 0 0 8%;
+    max-width: 8%;
   }
   .item-create-row .col-item-size {
     flex: 0 0 7%;
     max-width: 7%;
   }
   .item-create-row .col-item-brand {
-    flex: 0 0 8.5%;
-    max-width: 8.5%;
-  }
-  .item-create-row .col-item-name {
-    flex: 0 0 15%;
-    max-width: 15%;
-  }
-  .item-create-row .col-item-code {
     flex: 0 0 8%;
     max-width: 8%;
+  }
+  .item-create-row .col-item-name {
+    flex: 0 0 10%;
+    max-width: 10%;
+  }
+  .item-create-row .col-item-code {
+    flex: 0 0 7.5%;
+    max-width: 7.5%;
   }
   .item-create-row .col-item-unit {
     flex: 0 0 7%;
@@ -1687,12 +1688,13 @@ onBeforeUnmount(() => {
     max-width: 8%;
   }
   .item-create-row .col-item-stock {
-    flex: 0 0 6.5%;
-    max-width: 6.5%;
+    flex: 0 0 6%;
+    max-width: 6%;
   }
   .item-create-row .col-item-image {
-    flex: 0 0 11%;
-    max-width: 11%;
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 140px;
   }
 
   .item-create-row .col-item-size .form-select-sm,
@@ -1705,6 +1707,19 @@ onBeforeUnmount(() => {
     padding-left: 0.45rem;
     padding-right: 0.45rem;
     font-size: 0.82rem;
+  }
+
+  /* সাব-ক্যাটাগরি ও সিলেক্ট ড্রপডাউন মেনু স্পষ্ট প্রদর্শন (যাতে অপশনগুলো সংক্ষেপ/কেটে না যায়) */
+  .item-create-row :deep(.vs__dropdown-menu) {
+    min-width: 100% !important;
+    width: max-content !important;
+    max-width: 350px !important;
+    white-space: nowrap !important;
+    z-index: 1050 !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15) !important;
+  }
+  .item-create-row .col-item-subcat :deep(.vs__dropdown-menu) {
+    min-width: 220px !important;
   }
 }
 
