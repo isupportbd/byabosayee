@@ -281,6 +281,7 @@
                   :options="filteredBrandsList"
                   placeholder="ব্র্যান্ড *"
                   :searchable="true"
+                  :disabled="!!currentItem.itemId"
                   @change="onCurrentItemBrandChange" />
               </div>
 
@@ -348,6 +349,7 @@
                   v-model="currentItem.unitId"
                   :options="filteredUnitsList"
                   placeholder="-"
+                  :disabled="!!currentItem.itemId"
                   :searchable="true" />
               </div>
 
@@ -1682,12 +1684,27 @@ const currentItemPriceExclVat = currentItemPriceWithVat;
 
 // নির্বাচিত পণ্যের সাব-ক্যাটাগরি বা ক্যাটাগরি অনুযায়ী ফিল্টার করা ব্র্যান্ড তালিকা
 const filteredBrandsList = computed(() => {
+  // যদি পণ্য সিলেক্ট করা থাকে, তবে ব্র্যান্ড স্বয়ংক্রিয়ভাবে ঐ পণ্যের ব্র্যান্ডেই সীমাবদ্ধ থাকবে
+  if (currentItem.itemId) {
+    const selectedItem = itemsList.value.find((it) => Number(it.id) === Number(currentItem.itemId));
+    if (selectedItem) {
+      const bId = selectedItem.brandId || selectedItem.brand?.id;
+      const bObj = brandsList.value.find((b: any) => Number(b.id) === Number(bId)) || selectedItem.brand;
+      if (bObj) return [bObj];
+    }
+  }
+
   const subCatId = currentItem.subCategoryId;
   const catId = currentItem.categoryId;
 
   if (subCatId) {
+    const itemsInSubCat = itemsList.value.filter(
+      (it: any) => String(it.subCategoryId ?? it.sub_category_id ?? it.subCategory?.id ?? "") === String(subCatId)
+    );
+    const brandIdsInItems = new Set(itemsInSubCat.map((it: any) => Number(it.brandId || it.brand?.id)).filter(Boolean));
     const matched = brandsList.value.filter(
       (b: any) =>
+        brandIdsInItems.has(Number(b.id)) ||
         String(b.subCategoryId ?? b.sub_category_id ?? b.subCategory?.id ?? "") === String(subCatId)
     );
     if (matched.length > 0) {
@@ -1700,8 +1717,13 @@ const filteredBrandsList = computed(() => {
   }
 
   if (catId) {
+    const itemsInCat = itemsList.value.filter(
+      (it: any) => String(it.categoryId ?? it.category_id ?? it.category?.id ?? "") === String(catId)
+    );
+    const brandIdsInItems = new Set(itemsInCat.map((it: any) => Number(it.brandId || it.brand?.id)).filter(Boolean));
     const matched = brandsList.value.filter(
       (b: any) =>
+        brandIdsInItems.has(Number(b.id)) ||
         String(b.categoryId ?? b.category_id ?? b.category?.id ?? "") === String(catId)
     );
     if (matched.length > 0) {
@@ -1716,14 +1738,58 @@ const filteredBrandsList = computed(() => {
   return brandsList.value;
 });
 
-// নির্বাচিত পণ্যের সাব-ক্যাটাগরি বা ক্যাটাগরি অনুযায়ী ফিল্টার করা সাইজ তালিকা
+// নির্বাচিত পণ্যের সাব-ক্যাটাগরি বা ক্যাটাগরি অনুযায়ী ফিল্টার করা সাইজ তালিকা (শুধুমাত্র ঐ পণ্য পরিবারের বিদ্যমান সাইজসমূহ)
 const filteredSizesList = computed(() => {
+  if (currentItem.itemId) {
+    const selectedItem = itemsList.value.find((it) => Number(it.id) === Number(currentItem.itemId));
+    if (selectedItem) {
+      const baseName = cleanItemName(selectedItem.name || "").trim().toLowerCase();
+      const subCatId = Number(selectedItem.subCategoryId ?? selectedItem.sub_category_id ?? selectedItem.subCategory?.id);
+      const brandId = Number(selectedItem.brandId ?? selectedItem.brand_id ?? selectedItem.brand?.id);
+      const productTypeId = Number(selectedItem.productTypeId ?? selectedItem.product_type_id ?? selectedItem.productType?.id);
+
+      // Sibling items that belong to the SAME product design/family
+      const siblingItems = itemsList.value.filter((it: any) => {
+        const itSub = Number(it.subCategoryId ?? it.sub_category_id ?? it.subCategory?.id);
+        const itBrand = Number(it.brandId ?? it.brand_id ?? it.brand?.id);
+        const itType = Number(it.productTypeId ?? it.product_type_id ?? it.productType?.id);
+        const itName = cleanItemName(it.name || "").trim().toLowerCase();
+
+        // 1. Exact base name match with same subCategory and brand
+        if (itName && baseName && itName === baseName && (!subCatId || itSub === subCatId) && (!brandId || itBrand === brandId)) {
+          return true;
+        }
+        // 2. Subcategory + brand + productType match
+        if (subCatId && brandId && productTypeId && itSub === subCatId && itBrand === brandId && itType === productTypeId) {
+          return true;
+        }
+        return false;
+      });
+
+      const availableSizeIds = new Set(
+        siblingItems.map((it: any) => Number(it.sizeId ?? it.size_id ?? it.size?.id)).filter(Boolean)
+      );
+
+      // If sibling items found, ONLY return those sizes!
+      if (availableSizeIds.size > 0) {
+        const matched = sizesList.value.filter((s: any) => availableSizeIds.has(Number(s.id)));
+        if (matched.length > 0) return matched;
+      }
+    }
+  }
+
   const subCatId = currentItem.subCategoryId;
   const catId = currentItem.categoryId;
 
   if (subCatId) {
+    const itemsInSubCat = itemsList.value.filter(
+      (it: any) => String(it.subCategoryId ?? it.sub_category_id ?? it.subCategory?.id ?? "") === String(subCatId)
+    );
+    const sizeIdsInItems = new Set(itemsInSubCat.map((it: any) => Number(it.sizeId || it.size?.id)).filter(Boolean));
     const matched = sizesList.value.filter(
-      (s: any) => String(s.subCategoryId ?? s.sub_category_id ?? "") === String(subCatId)
+      (s: any) =>
+        sizeIdsInItems.has(Number(s.id)) ||
+        String(s.subCategoryId ?? s.sub_category_id ?? "") === String(subCatId)
     );
     if (matched.length > 0) {
       if (currentItem.sizeId && !matched.some((s: any) => Number(s.id) === Number(currentItem.sizeId))) {
@@ -1735,8 +1801,14 @@ const filteredSizesList = computed(() => {
   }
 
   if (catId) {
+    const itemsInCat = itemsList.value.filter(
+      (it: any) => String(it.categoryId ?? it.category_id ?? it.category?.id ?? "") === String(catId)
+    );
+    const sizeIdsInItems = new Set(itemsInCat.map((it: any) => Number(it.sizeId || it.size?.id)).filter(Boolean));
     const matched = sizesList.value.filter(
-      (s: any) => String(s.categoryId ?? s.category_id ?? "") === String(catId)
+      (s: any) =>
+        sizeIdsInItems.has(Number(s.id)) ||
+        String(s.categoryId ?? s.category_id ?? "") === String(catId)
     );
     if (matched.length > 0) {
       if (currentItem.sizeId && !matched.some((s: any) => Number(s.id) === Number(currentItem.sizeId))) {
@@ -1752,6 +1824,16 @@ const filteredSizesList = computed(() => {
 
 // নির্বাচিত পণ্যের সাব-ক্যাটাগরি বা ক্যাটাগরি অনুযায়ী ফিল্টার করা একক তালিকা
 const filteredUnitsList = computed(() => {
+  // পণ্য সিলেক্ট করা থাকলে একক স্বয়ংক্রিয়ভাবে ঐ পণ্যের এককেই সীমাবদ্ধ থাকবে
+  if (currentItem.itemId) {
+    const selectedItem = itemsList.value.find((it) => Number(it.id) === Number(currentItem.itemId));
+    if (selectedItem) {
+      const uId = selectedItem.unitId || selectedItem.unit?.id;
+      const uObj = unitsList.value.find((u: any) => Number(u.id) === Number(uId)) || selectedItem.unit;
+      if (uObj) return [uObj];
+    }
+  }
+
   const subCatId = currentItem.subCategoryId;
   const catId = currentItem.categoryId;
   let list: any[] = [];
@@ -2048,19 +2130,49 @@ function onCurrentItemBrandChange() {
 
 function onCurrentItemSizeChange() {
   const newSizeId = Number(currentItem.sizeId);
-  if (newSizeId && (currentItem.subCategoryId || currentItem.itemId)) {
-    const subCatId = currentItem.subCategoryId;
-    const brandId = currentItem.brandId;
-    const match = itemsList.value.find(
-      (it) =>
-        Number(it.sizeId || it.size?.id) === newSizeId &&
-        (subCatId ? Number(it.subCategoryId || it.subCategory?.id) === Number(subCatId) : true) &&
-        (brandId ? Number(it.brandId || it.brand?.id) === Number(brandId) : true)
-    );
+  if (newSizeId) {
+    const currentItemObj = itemsList.value.find((it) => Number(it.id) === Number(currentItem.itemId));
+    const baseName = cleanItemName(currentItemObj?.name || currentItem.name || "").trim().toLowerCase();
+    const subCatId = Number(currentItem.subCategoryId || (currentItemObj?.subCategoryId ?? currentItemObj?.sub_category_id ?? currentItemObj?.subCategory?.id));
+    const brandId = Number(currentItem.brandId || (currentItemObj?.brandId ?? currentItemObj?.brand_id ?? currentItemObj?.brand?.id));
+    const productTypeId = Number(currentItemObj?.productTypeId ?? currentItemObj?.product_type_id ?? currentItemObj?.productType?.id);
+
+    // 1. Match by clean base name and size
+    let match = itemsList.value.find((it: any) => {
+      const itSize = Number(it.sizeId ?? it.size_id ?? it.size?.id);
+      const itName = cleanItemName(it.name || "").trim().toLowerCase();
+      return itSize === newSizeId && itName === baseName;
+    });
+
+    // 2. Match by subCategoryId + brandId + productTypeId + size
+    if (!match && subCatId && brandId && productTypeId) {
+      match = itemsList.value.find((it: any) => {
+        const itSize = Number(it.sizeId ?? it.size_id ?? it.size?.id);
+        const itSub = Number(it.subCategoryId ?? it.sub_category_id ?? it.subCategory?.id);
+        const itBrand = Number(it.brandId ?? it.brand_id ?? it.brand?.id);
+        const itType = Number(it.productTypeId ?? it.product_type_id ?? it.productType?.id);
+        return itSize === newSizeId && itSub === subCatId && itBrand === brandId && itType === productTypeId;
+      });
+    }
+
+    // 3. Fallback match by subCategoryId + brandId + size
+    if (!match && subCatId && brandId) {
+      match = itemsList.value.find((it: any) => {
+        const itSize = Number(it.sizeId ?? it.size_id ?? it.size?.id);
+        const itSub = Number(it.subCategoryId ?? it.sub_category_id ?? it.subCategory?.id);
+        const itBrand = Number(it.brandId ?? it.brand_id ?? it.brand?.id);
+        return itSize === newSizeId && itSub === subCatId && itBrand === brandId;
+      });
+    }
+
     if (match) {
       currentItem.itemId = match.id;
       currentItem.name = match.name;
       currentItem.designCode = match.designCode || "";
+      currentItem.sizeId = match.sizeId ?? match.size_id ?? (match.size?.id ?? newSizeId);
+      if (match.unitId || match.unit?.id) {
+        currentItem.unitId = match.unitId ?? match.unit?.id;
+      }
       if (match.sellingPrice) {
         currentItem.sellingPrice = Number(match.sellingPrice) || 0;
       }

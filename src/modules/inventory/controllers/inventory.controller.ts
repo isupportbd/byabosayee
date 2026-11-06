@@ -154,8 +154,10 @@ export async function ensureInventoryTables() {
       FROM "items" i
       WHERE pi.size_id IS NOT NULL 
         AND pi.size_id = i.size_id 
-        AND pi.sub_category_id = i.sub_category_id 
-        AND pi.brand_id = i.brand_id 
+        AND (
+          (pi.sub_category_id = i.sub_category_id AND pi.brand_id = i.brand_id)
+          OR (TRIM(LOWER(pi.name)) = TRIM(LOWER(i.name)))
+        )
         AND pi.item_id != i.id;
 
       -- Step 2: Sync color_id to items table from purchase_items
