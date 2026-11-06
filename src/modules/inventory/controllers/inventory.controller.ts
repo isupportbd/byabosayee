@@ -17,7 +17,7 @@ import {
   suppliers
 } from "@/modules/inventory/database/models/inventory.js";
 import { companySettings } from "@/modules/company/database/models/company.js";
-import { challanTypes } from "@/modules/catalog/database/models/catalog.js";
+import { challanTypes, colors } from "@/modules/catalog/database/models/catalog.js";
 import { executeRawSql } from "@/framework/database/auto-init.js";
 
 let inventoryTablesEnsured = false;
@@ -148,6 +148,7 @@ export async function ensureInventoryTables() {
       ) pi
       WHERE i.id = pi.item_id AND pi.code IS NOT NULL AND pi.code != '';
 
+      -- Step 1: Re-link purchase_items to the correct item_id based on size_id
       UPDATE "purchase_items" pi
       SET "item_id" = i.id
       FROM "items" i
@@ -157,7 +158,18 @@ export async function ensureInventoryTables() {
         AND pi.brand_id = i.brand_id 
         AND pi.item_id != i.id;
 
-      -- Sync latest purchase unit_cost into items.purchase_price and items.barcode for all purchased items
+      -- Step 2: Sync color_id to items table from purchase_items
+      UPDATE "items" i
+      SET "color_id" = pi.color_id
+      FROM (
+        SELECT DISTINCT ON (item_id) item_id, color_id
+        FROM "purchase_items"
+        WHERE item_id IS NOT NULL AND color_id IS NOT NULL AND color_id > 0
+        ORDER BY item_id, id DESC
+      ) pi
+      WHERE i.id = pi.item_id AND (i.color_id IS NULL OR i.color_id = 0);
+
+      -- Step 3: Sync latest purchase unit_cost into items.purchase_price and items.barcode for all purchased items
       UPDATE "items" i
       SET "purchase_price" = pi.unit_cost,
           "barcode" = COALESCE(NULLIF(pi.code, ''), i.barcode)
@@ -168,6 +180,25 @@ export async function ensureInventoryTables() {
         ORDER BY item_id, id DESC
       ) pi
       WHERE i.id = pi.item_id;
+
+      -- Step 4: Recalculate stock_quantity for all items having purchase records so stock correctly reflects actual purchases
+      UPDATE "items" i
+      SET "stock_quantity" = (
+        COALESCE((
+          SELECT SUM(pi.quantity)::int 
+          FROM "purchase_items" pi 
+          JOIN "purchases" p ON p.id = pi.purchase_id
+          WHERE pi.item_id = i.id
+        ), 0)
+        -
+        COALESCE((
+          SELECT SUM(si.quantity)::int 
+          FROM "sale_items" si 
+          JOIN "sales" s ON s.id = si.sale_id
+          WHERE si.item_id = i.id AND s.status != 'draft'
+        ), 0)
+      )
+      WHERE i.id IN (SELECT DISTINCT item_id FROM "purchase_items" WHERE item_id IS NOT NULL);
 
       CREATE TABLE IF NOT EXISTS "purchases" (
         "id" serial PRIMARY KEY NOT NULL,
@@ -756,7 +787,8 @@ export const listItems: Handler = async (c: any) => {
             p.challan_number as "challanNumber",
             pi.unit_cost as "unitCost",
             pi.code as "barcode",
-            pi.vat_rate as "vatRate"
+            pi.vat_rate as "vatRate",
+            pi.color_id as "colorId"
           FROM "purchase_items" pi
           JOIN "purchases" p ON p.id = pi.purchase_id
           WHERE p.user_id = ${userId} AND pi.item_id IS NOT NULL
@@ -788,6 +820,12 @@ export const listItems: Handler = async (c: any) => {
       for (const pr of pRows) {
         const id = Number(pr.itemId ?? pr.itemid ?? pr.item_id);
         if (id) priceMap.set(id, pr);
+      }
+
+      const allColors = await db.query.colors.findMany();
+      const colorMap = new Map<number, any>();
+      for (const col of allColors) {
+        colorMap.set(Number(col.id), col);
       }
 
       enriched = list.map((it: any) => {
@@ -823,9 +861,18 @@ export const listItems: Handler = async (c: any) => {
         }
 
         const purchaseBarcode = lp?.barcode || lp?.code || fallbackBarcode || null;
+        let resolvedColor = it.color;
+        const colorIdCandidate = Number(it.colorId || lp?.colorId || lp?.color_id || 0);
+        if (!resolvedColor && colorIdCandidate && colorMap.has(colorIdCandidate)) {
+          const cObj = colorMap.get(colorIdCandidate);
+          resolvedColor = { id: cObj.id, name: cObj.name, code: cObj.code };
+        }
+
         return {
           ...it,
           code: it.code,
+          color: resolvedColor,
+          colorId: colorIdCandidate || it.colorId,
           barcode: purchaseBarcode,
           latestChallanDate: lp?.challanDate || lp?.challandate || lp?.challan_date || null,
           latestChallanNumber: lp?.challanNumber || lp?.challannumber || lp?.challan_number || null,

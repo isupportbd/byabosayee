@@ -228,7 +228,14 @@
                   </div>
                   <div class="d-flex align-items-center gap-1 text-nowrap mt-0.5">
                     <span class="text-muted">রং:</span>
-                    <span class="fw-medium text-secondary">{{ item.color?.name || '-' }}</span>
+                    <span v-if="item.color?.name" class="d-inline-flex align-items-center fw-medium text-dark">
+                      <span
+                        v-if="item.color?.code"
+                        class="d-inline-block rounded-circle border flex-shrink-0 me-1"
+                        :style="{ backgroundColor: item.color.code, width: '10px', height: '10px' }"></span>
+                      <span>{{ item.color.name }}</span>
+                    </span>
+                    <span v-else class="text-muted">-</span>
                   </div>
                 </td>
 
