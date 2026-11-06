@@ -249,25 +249,17 @@
                   :searchable="true"
                   @change="onCurrentItemSelect">
                   <template #selected-option="option">
-                    <div class="d-flex align-items-center gap-1.5 text-truncate" :title="cleanItemName(option.name)">
-                      <span class="text-truncate fw-medium">{{ cleanItemName(option.name) }}</span>
-                      <span v-if="option.code" class="badge bg-light text-dark border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ option.code }}</span>
-                      <span class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ option.designCode || 'DGN001' }}</span>
-                    </div>
+                    <span class="text-truncate" :title="cleanItemName(option.name)">
+                      {{ cleanItemName(option.name) }}
+                    </span>
                   </template>
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
                       <span class="fw-semibold text-truncate">{{ cleanItemName(option.name) }}</span>
-                      <div class="d-flex align-items-center gap-1 mt-0.5 flex-wrap">
-                        <span v-if="option.code" class="badge bg-light text-dark border font-monospace px-1 py-0" style="font-size: 0.68rem;">
-                          {{ option.code }}
-                        </span>
-                        <span class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">
-                          {{ option.designCode || 'DGN001' }}
-                        </span>
-                        <span v-if="option.size?.name" class="badge bg-secondary-subtle text-secondary border px-1 py-0" style="font-size: 0.68rem;">
-                          {{ option.size.name }}
-                        </span>
+                      <div class="d-flex align-items-center gap-1.5 mt-0.5">
+                        <small v-if="option.code" class="text-muted font-monospace" style="font-size: 0.72rem;">{{ option.code }}</small>
+                        <span v-if="option.code" class="text-muted" style="font-size: 0.7rem;">•</span>
+                        <small class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ option.designCode || 'DGN001' }}</small>
                       </div>
                     </div>
                   </template>
@@ -441,12 +433,6 @@
                       {{ cleanItemName(currentItem.name) || '(পণ্য নির্বাচন করুন)' }}
                     </strong>
                     <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                      <span v-if="currentItem.code" class="badge bg-light text-dark border font-monospace px-1.5 py-0.5">
-                        {{ currentItem.code }}
-                      </span>
-                      <span v-if="currentItem.name" class="badge bg-light text-primary border font-monospace px-1.5 py-0.5">
-                        {{ currentItem.designCode || 'DGN001' }}
-                      </span>
                       <span class="badge border" :class="vatMode === 'incl' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary'">
                         মোড: {{ vatMode === 'incl' ? 'ভ্যাট সহ' : 'ভ্যাট ছাড়া' }}
                       </span>
@@ -676,9 +662,7 @@
                             <div class="fw-semibold text-truncate" style="max-width: 200px;" :title="it.name">
                               {{ it.name }}
                             </div>
-                            <div class="d-flex align-items-center gap-1.5 mt-0.5 flex-wrap" style="font-size: 0.82rem;">
-                              <span v-if="it.code" class="badge bg-light text-dark border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ it.code }}</span>
-                              <span class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ it.designCode || 'DGN001' }}</span>
+                            <div class="d-flex align-items-center gap-1.5 mt-0.5" style="font-size: 0.82rem;">
                               <span class="fw-bold text-dark">
                                 {{ getSizeName(it.sizeId) }}
                               </span>
