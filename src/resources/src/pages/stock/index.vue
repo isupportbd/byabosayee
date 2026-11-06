@@ -180,8 +180,9 @@
             <thead class="table-light">
               <tr class="small text-muted text-uppercase">
                 <th style="width: 45px;" class="text-center">#</th>
-                <th style="width: 21%;">পণ্য ও কোড</th>
-                <th style="width: 16%;">ক্যাটাগরি ও ব্র্যান্ড</th>
+                <th style="width: 18%;">পণ্য ও কোড</th>
+                <th style="width: 10%;" class="text-center text-nowrap">ডিজাইন কোড</th>
+                <th style="width: 15%;">ক্যাটাগরি ও ব্র্যান্ড</th>
                 <th style="width: 12%;" class="text-nowrap">সাইজ ও রং</th>
                 <th style="width: 10%;" class="text-end text-nowrap">ক্রয়মূল্য</th>
                 <th style="width: 11%;" class="text-end text-nowrap">বিক্রয়মূল্য</th>
@@ -209,6 +210,13 @@
                       ({{ item.productType.name }})
                     </small>
                   </div>
+                </td>
+
+                <!-- ডিজাইন কোড -->
+                <td class="text-center">
+                  <span class="badge bg-light text-primary border font-monospace px-2 py-0.5 small">
+                    {{ item.designCode || 'DGN001' }}
+                  </span>
                 </td>
 
                 <!-- ক্যাটাগরি ও ব্র্যান্ড (এক কলামে নিচে নিচে) -->
