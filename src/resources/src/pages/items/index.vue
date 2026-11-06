@@ -674,14 +674,17 @@
               </div>
               <div v-else class="text-muted py-3">
                 <i class="bi bi-image text-secondary fs-1 d-block mb-1"></i>
-                <span class="small">কোনো ছবি নেই। নিচের অপশন থেকে ছবি আপলোড বা লিংক দিন।</span>
+                <span class="small">
+                  {{ mediaConfig.uploadMode === 'google_drive' ? 'কোনো ছবি নেই। নিচে গুগল ড্রাইভ বা ইমেজ লিংক দিন।' : (mediaConfig.uploadMode === 'direct_upload' ? 'কোনো ছবি নেই। নিচে ডিভাইস থেকে ছবি আপলোড করুন।' : 'কোনো ছবি নেই। নিচের অপশন থেকে ছবি আপলোড বা লিংক দিন।') }}
+                </span>
               </div>
             </div>
 
-            <!-- অপশন ১: সরাসরি ফাইল আপলোড -->
-            <div class="mb-3">
+            <!-- সুপার এডমিন পলিসি অনুযায়ী অপশন প্রদর্শন -->
+            <!-- কেস ১: শুধুমাত্র সরাসরি ফাইল আপলোড (direct_upload) -->
+            <div v-if="mediaConfig.uploadMode === 'direct_upload'">
               <label class="form-label small fw-semibold mb-1 d-flex align-items-center justify-content-between">
-                <span>১. ডিভাইস থেকে ছবি আপলোড করুন</span>
+                <span>ডিভাইস থেকে ছবি আপলোড করুন</span>
                 <span class="text-muted small">(সর্বোচ্চ {{ mediaConfig.maxFileSizeMb }}MB)</span>
               </label>
               <div class="input-group input-group-sm">
@@ -697,19 +700,52 @@
               </div>
             </div>
 
-            <div class="text-center text-muted small my-2 fw-semibold">অথবা</div>
-
-            <!-- অপশন ২: গুগল ড্রাইভ / ইমেজ লিংক -->
-            <div>
+            <!-- কেস ২: শুধুমাত্র গুগল ড্রাইভ বা ইমেজ লিংক (google_drive) -->
+            <div v-else-if="mediaConfig.uploadMode === 'google_drive'">
               <label class="form-label small fw-semibold mb-1">
-                ২. গুগল ড্রাইভ বা সরাসরি ইমেজ লিংক পেস্ট করুন
+                গুগল ড্রাইভ বা ইমেজ লিংক পেস্ট করুন
               </label>
               <input
                 v-model.trim="editImageUrl"
                 type="text"
-                class="form-control form-control-sm"
-                placeholder="https://drive.google.com/... বা ছবির সরাসরি লিংক"
+                class="form-control form-control-sm font-monospace"
+                placeholder="গুগল ড্রাইভ বা ইমেজ লিংক পেস্ট করুন"
                 :disabled="savingImage" />
+            </div>
+
+            <!-- কেস ৩: উভয় অপশন অনুমোদিত (both) -->
+            <div v-else>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold mb-1 d-flex align-items-center justify-content-between">
+                  <span>১. ডিভাইস থেকে ছবি আপলোড করুন</span>
+                  <span class="text-muted small">(সর্বোচ্চ {{ mediaConfig.maxFileSizeMb }}MB)</span>
+                </label>
+                <div class="input-group input-group-sm">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="form-control"
+                    :disabled="uploadingModalImage || savingImage"
+                    @change="handleModalFileUpload" />
+                  <span v-if="uploadingModalImage" class="input-group-text bg-white">
+                    <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-center text-muted small my-2 fw-semibold">অথবা</div>
+
+              <div>
+                <label class="form-label small fw-semibold mb-1">
+                  ২. গুগল ড্রাইভ বা সরাসরি ইমেজ লিংক পেস্ট করুন
+                </label>
+                <input
+                  v-model.trim="editImageUrl"
+                  type="text"
+                  class="form-control form-control-sm font-monospace"
+                  placeholder="https://drive.google.com/... বা ছবির সরাসরি লিংক"
+                  :disabled="savingImage" />
+              </div>
             </div>
           </div>
           <div class="modal-footer py-2 px-3 border-top d-flex justify-content-between align-items-center bg-light">
