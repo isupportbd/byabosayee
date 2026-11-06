@@ -326,22 +326,19 @@ function formatAmount(val: number): string {
   return Number(val || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Display Product Name without Size suffix
+// Display Product Name cleanly without Design Code or Size suffix
 function displayName(item: any): string {
   if (!item?.name) return "-";
-  let name = item.name;
-  if (item.size?.name) {
-    const sName = String(item.size.name).trim();
-    // Strip trailing _size or -size
-    if (name.toLowerCase().endsWith("_" + sName.toLowerCase())) {
-      name = name.slice(0, -(sName.length + 1));
-    } else if (name.toLowerCase().endsWith("-" + sName.toLowerCase())) {
-      name = name.slice(0, -(sName.length + 1));
-    } else if (name.toLowerCase().endsWith(" " + sName.toLowerCase())) {
-      name = name.slice(0, -(sName.length + 1));
-    }
-  }
-  return name.trim() || item.name;
+  return (
+    item.name
+      .replace(/\s*DGN\d+\b/gi, "")
+      .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
+      .replace(/\s*(?:সাইজ|size)[\s\-:—].*$/i, "")
+      .replace(/\s*(?:সাইজ|size)\s*[-:—]?\s*.*$/i, "")
+      .replace(/\s*(?:সাইজ|size)\b/gi, "")
+      .replace(/[\-_]\s*$/g, "")
+      .trim() || item.name
+  );
 }
 
 // State

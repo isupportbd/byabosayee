@@ -366,10 +366,10 @@
             </thead>
             <tbody>
               <tr
-                v-for="(item, index) in filteredItems"
+                v-for="(item, index) in paginatedItems"
                 :key="item.id"
                 :class="{ 'item-row-inactive': !item.isActive }">
-                <td class="text-center item-index-cell small">{{ index + 1 }}</td>
+                <td class="text-center item-index-cell small">{{ (currentPage - 1) * perPage + index + 1 }}</td>
 
                 <!-- ১. ক্যাটাগরি (রেগুলার ফন্ট) -->
                 <td>
@@ -455,7 +455,7 @@
                     <ul
                       v-if="openActionMenuId === item.id"
                       class="dropdown-menu dropdown-menu-end show shadow-sm py-1 border position-absolute"
-                      style="min-width: 140px; z-index: 1050; right: 4px; top: 100%;">
+                      :style="index >= Math.max(0, paginatedItems.length - 2) ? 'min-width: 140px; z-index: 1050; right: 4px; bottom: 100%; margin-bottom: 4px;' : 'min-width: 140px; z-index: 1050; right: 4px; top: 100%;'">
                       <li>
                         <button
                           type="button"
@@ -482,6 +482,14 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div v-if="filteredItems.length > perPage" class="card-footer bg-transparent border-top py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="text-muted small">
+          দেখাচ্ছে {{ toBengaliNumber((currentPage - 1) * perPage + 1) }} থেকে {{ toBengaliNumber(Math.min(currentPage * perPage, filteredItems.length)) }} (মোট {{ toBengaliNumber(filteredItems.length) }} টি)
+        </div>
+        <Pagination :data="paginationData" variant="secondary" />
       </div>
     </div>
     <!-- ভিউ ইমেইজ পপআপ মডাল -->
@@ -536,6 +544,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
 import Select from "@/components/Select.vue";
+import Pagination from "@/components/datatable/Pagination.vue";
 import { notifyCatalogUpdated, onCatalogUpdated } from "@/helpers/catalog-sync";
 
 // Bengali Number Formatter
@@ -969,6 +978,59 @@ const filteredItems = computed(() => {
   }
 
   return list;
+});
+
+// Pagination State (স্ক্রলবার পরিহার করতে প্রতি পেজে নির্দিষ্ট সংখ্যক আইটেম)
+const perPage = ref(7);
+const currentPage = ref(1);
+
+// ফিল্টার বা সার্চ পরিবর্তন হলে প্রথম পেজে ফেরত যাওয়া
+watch([categoryFilter, subCategoryFilter, sizeFilter, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredItems.value.slice(start, start + perPage.value);
+});
+
+const paginationData = computed(() => {
+  const total = filteredItems.value.length;
+  const lastPage = Math.max(1, Math.ceil(total / perPage.value));
+  return {
+    current_page: currentPage.value,
+    last_page: lastPage,
+    per_page: perPage.value,
+    total,
+    from: total === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1,
+    to: Math.min(currentPage.value * perPage.value, total),
+    links: [
+      {
+        url: currentPage.value > 1 ? `#page-${currentPage.value - 1}` : null,
+        label: "&laquo; পূর্ববর্তী",
+        active: false,
+        onClick: () => {
+          if (currentPage.value > 1) currentPage.value--;
+        }
+      },
+      ...Array.from({ length: lastPage }, (_, i) => ({
+        url: `#page-${i + 1}`,
+        label: toBengaliNumber(i + 1),
+        active: currentPage.value === i + 1,
+        onClick: () => {
+          currentPage.value = i + 1;
+        }
+      })),
+      {
+        url: currentPage.value < lastPage ? `#page-${currentPage.value + 1}` : null,
+        label: "পরবর্তী &raquo;",
+        active: false,
+        onClick: () => {
+          if (currentPage.value < lastPage) currentPage.value++;
+        }
+      }
+    ]
+  };
 });
 
 // Toggle Status
