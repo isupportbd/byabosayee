@@ -533,7 +533,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
 import Select from "@/components/Select.vue";
 import { notifyCatalogUpdated, onCatalogUpdated } from "@/helpers/catalog-sync";
