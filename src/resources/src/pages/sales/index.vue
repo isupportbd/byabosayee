@@ -99,18 +99,27 @@
                   <button
                     type="button"
                     class="btn btn-link btn-xs p-0 text-success text-decoration-none"
-                    @click="form.customerId = ''; form.customerName = 'ওয়াকিং কাস্টমার'; form.customerMobile = ''">
-                    <i class="bi bi-arrow-counterclockwise"></i> ডিফল্ট ওয়াকিং
+                    @click="resetToDefaultCustomer">
+                    <i class="bi bi-arrow-counterclockwise"></i> ডিফল্ট ওয়াক-ইন
                   </button>
                 </label>
                 <select
                   v-model="form.customerId"
                   class="form-select form-select-sm search-input-unified"
                   @change="onCustomerSelect">
-                  <option value="">ওয়াকিং কাস্টমার (Walk-in Customer)</option>
-                  <option v-for="c in customersList" :key="c.id" :value="c.id">
-                    {{ c.name }} {{ c.phone ? `(${c.phone})` : '' }}
+                  <option v-if="standardCustomers.length === 0 && registeredCustomers.length === 0" value="">
+                    ওয়াক-ইন কাস্টমার (Walk-in Customer)
                   </option>
+                  <optgroup v-if="standardCustomers.length > 0" label="সাধারণ গ্রাহক ধরন">
+                    <option v-for="c in standardCustomers" :key="c.id" :value="c.id">
+                      {{ c.name }}
+                    </option>
+                  </optgroup>
+                  <optgroup v-if="registeredCustomers.length > 0" label="নিবন্ধিত গ্রাহক">
+                    <option v-for="c in registeredCustomers" :key="c.id" :value="c.id">
+                      {{ c.name }} {{ c.mobile ? `(${c.mobile})` : '' }} [{{ getCustomerTypeLabel(c.customerType) }}]
+                    </option>
+                  </optgroup>
                 </select>
               </div>
               <div class="col-12 col-md-4">
@@ -1105,7 +1114,7 @@ const generatedInvoiceNumber = computed(() => {
 // Sales Form Model
 const form = reactive({
   customerId: "" as number | string,
-  customerName: "ওয়াকিং কাস্টমার",
+  customerName: "ওয়াক-ইন কাস্টমার",
   customerMobile: "",
   discountValue: 0 as number,
   discountType: "fixed" as "fixed" | "percent",
@@ -1162,17 +1171,75 @@ function focusBarcodeInput() {
   });
 }
 
+// Standard customer types and helpers
+const standardOrder = ["walk_in", "retail", "wholesale", "corporate", "other"];
+
+const standardTypeNames: Record<string, string> = {
+  walk_in: "ওয়াক-ইন কাস্টমার",
+  retail: "খুচরা কাস্টমার",
+  wholesale: "পাইকারি কাস্টমার",
+  corporate: "কর্পোরেট কাস্টমার",
+  other: "অন্যান্য কাস্টমার"
+};
+
+function getCustomerTypeLabel(type: string): string {
+  switch (type) {
+    case "walk_in":
+      return "ওয়াক-ইন";
+    case "retail":
+      return "খুচরা";
+    case "wholesale":
+      return "পাইকারি";
+    case "corporate":
+      return "কর্পোরেট";
+    default:
+      return "অন্যান্য";
+  }
+}
+
+const standardCustomers = computed(() => {
+  const std = customersList.value.filter((c) =>
+    Object.values(standardTypeNames).includes(c.name) ||
+    (!c.mobile && ["walk_in", "retail", "wholesale", "corporate", "other"].includes(c.customerType))
+  );
+
+  return std.sort((a, b) => {
+    const idxA = standardOrder.indexOf(a.customerType);
+    const idxB = standardOrder.indexOf(b.customerType);
+    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+  });
+});
+
+const registeredCustomers = computed(() => {
+  const stdIds = new Set(standardCustomers.value.map((c) => c.id));
+  return customersList.value.filter((c) => !stdIds.has(c.id));
+});
+
+function resetToDefaultCustomer() {
+  const walkIn = customersList.value.find(
+    (c) => c.customerType === "walk_in" || c.name === "ওয়াক-ইন কাস্টমার" || c.name === "ওয়াকিং কাস্টমার"
+  );
+  if (walkIn) {
+    form.customerId = walkIn.id;
+    form.customerName = walkIn.name;
+    form.customerMobile = walkIn.mobile || "";
+  } else {
+    form.customerId = "";
+    form.customerName = "ওয়াক-ইন কাস্টমার";
+    form.customerMobile = "";
+  }
+}
+
 // On Customer Selected from Dropdown
 function onCustomerSelect() {
   if (!form.customerId) {
-    form.customerName = "ওয়াকিং কাস্টমার";
-    form.customerMobile = "";
+    resetToDefaultCustomer();
     return;
   }
-  const cust = customersList.value.find((c) => Number(c.id) === Number(form.customerId));
+  const cust = customersList.value.find((c) => String(c.id) === String(form.customerId));
   if (cust) {
     form.customerName = cust.name || "";
-    form.customerMobile = cust.phone || "";
+    form.customerMobile = cust.mobile || "";
   }
 }
 
@@ -1685,6 +1752,10 @@ async function loadAllData() {
     customersList.value = custRes.data?.data || [];
     salesList.value = salesRes.data?.data || [];
     companyInfo.value = compRes.data?.data || {};
+
+    if (!form.customerId) {
+      resetToDefaultCustomer();
+    }
   } catch (err: any) {
     showToast("ডাটা লোড করতে ব্যর্থ হয়েছে", "danger");
   } finally {

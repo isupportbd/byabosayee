@@ -904,26 +904,43 @@ export const listCustomers: Handler = async (c: any) => {
   const userId = getUserId(c);
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
-  // Ensure default Walk-in customer exists for this user
+  // Ensure standard customer types exist for this user
   try {
-    const walkInExists = await db
-      .select({ id: customers.id })
-      .from(customers)
-      .where(and(eq(customers.userId, userId), or(eq(customers.customerType, "walk_in"), eq(customers.name, "ওয়াক-ইন কাস্টমার"))))
-      .limit(1);
+    const standardCustomerTypes = [
+      { name: "ওয়াক-ইন কাস্টমার", customerType: "walk_in", notes: "সিস্টেম ডিফল্ট ওয়াক-ইন গ্রাহক" },
+      { name: "খুচরা কাস্টমার", customerType: "retail", notes: "সিস্টেম ডিফল্ট খুচরা গ্রাহক" },
+      { name: "পাইকারি কাস্টমার", customerType: "wholesale", notes: "সিস্টেম ডিফল্ট পাইকারি গ্রাহক" },
+      { name: "কর্পোরেট কাস্টমার", customerType: "corporate", notes: "সিস্টেম ডিফল্ট কর্পোরেট গ্রাহক" },
+      { name: "অন্যান্য কাস্টমার", customerType: "other", notes: "সিস্টেম ডিফল্ট অন্যান্য গ্রাহক" }
+    ];
 
-    if (!walkInExists || walkInExists.length === 0) {
-      await db.insert(customers).values({
-        userId,
-        name: "ওয়াক-ইন কাস্টমার",
-        customerType: "walk_in",
-        mobile: null,
-        address: "কাউন্টার সেল",
-        notes: "সিস্টেম ডিফল্ট ওয়াক-ইন গ্রাহক",
-        isActive: true
-      });
+    const userCustomers = await db
+      .select({ id: customers.id, name: customers.name, customerType: customers.customerType })
+      .from(customers)
+      .where(eq(customers.userId, userId));
+
+    for (const dt of standardCustomerTypes) {
+      const exists = userCustomers.some(
+        (c: any) =>
+          c.name === dt.name ||
+          (dt.customerType === "walk_in" && (c.customerType === "walk_in" || c.name === "ওয়াকিং কাস্টমার"))
+      );
+
+      if (!exists) {
+        await db.insert(customers).values({
+          userId,
+          name: dt.name,
+          customerType: dt.customerType,
+          mobile: null,
+          address: "কাউন্টার সেল",
+          notes: dt.notes,
+          isActive: true
+        });
+      }
     }
-  } catch {}
+  } catch (err) {
+    console.error("Error ensuring standard customer types:", err);
+  }
 
   const list = await db
     .select()
