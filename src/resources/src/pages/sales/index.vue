@@ -42,6 +42,15 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <button
+          v-if="completedSalesList.length > 0"
+          type="button"
+          class="btn btn-sm btn-warning shadow-sm fw-semibold d-inline-flex align-items-center gap-1.5"
+          title="সর্বশেষ সম্পন্ন বিক্রয়টি কার্টে নিয়ে এডিট করুন"
+          @click="editLastSale">
+          <i class="bi bi-pencil-square"></i>
+          <span>লাস্ট বিক্রয় এডিট</span>
+        </button>
+        <button
           type="button"
           class="btn btn-sm"
           :class="activeView === 'pos' ? 'btn-success text-white shadow-sm' : 'btn-outline-success'"
@@ -67,13 +76,24 @@
         <div class="card border shadow-sm sales-form-card h-100 d-flex flex-column">
           <!-- কার্ড হেডার: ইনভয়েস নং, তারিখ ও ক্যাশিয়ার তথ্য -->
           <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 flex-shrink-0">
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace px-2 py-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span v-if="editingSaleId" class="badge bg-warning text-dark border border-warning font-monospace px-2 py-1">
+                <i class="bi bi-pencil-square me-1"></i>এডিট মোড: {{ editingInvoiceNumber }}
+              </span>
+              <span v-else class="badge bg-success-subtle text-success border border-success-subtle font-monospace px-2 py-1">
                 ইনভয়েস: {{ generatedInvoiceNumber }}
               </span>
               <span class="badge bg-light text-dark border">
                 <i class="bi bi-calendar-date me-1 text-muted"></i>{{ todayFormatted }}
               </span>
+              <button
+                v-if="editingSaleId"
+                type="button"
+                class="btn btn-xs btn-outline-danger py-0 px-2"
+                title="এডিট মোড বন্ধ করে নতুন বিক্রয় শুরু করুন"
+                @click="cancelEditSale">
+                <i class="bi bi-x-circle me-1"></i>এডিট বাতিল
+              </button>
             </div>
             <!-- ক্যাশিয়ার / ডাটা এন্ট্রি কারী তথ্য -->
             <div class="d-flex align-items-center gap-2">
@@ -561,7 +581,7 @@
                   :disabled="submitting || cartItems.length === 0"
                   @click="submitSale(false)">
                   <i class="bi bi-file-earmark-check me-1"></i>
-                  <span>সেইভ ড্রাফট</span>
+                  <span>{{ editingSaleId ? 'ড্রাফট আপডেট' : 'সেইভ ড্রাফট' }}</span>
                 </button>
               </div>
 
@@ -573,7 +593,7 @@
                   @click="submitSale(true)">
                   <span v-if="submitting" class="spinner-border spinner-border-sm me-1" role="status"></span>
                   <i v-else class="bi bi-printer-fill me-1"></i>
-                  <span>সম্পন্ন ও প্রিন্ট</span>
+                  <span>{{ editingSaleId ? 'আপডেট ও প্রিন্ট' : 'সম্পন্ন ও প্রিন্ট' }}</span>
                 </button>
               </div>
             </div>
@@ -610,7 +630,7 @@
                   <th style="width: 160px;" class="text-start">ইনভয়েস নং</th>
                   <th style="width: 120px;" class="text-center">তারিখ</th>
                   <th style="min-width: 160px;" class="text-start">গ্রাহক</th>
-                  <th style="width: 120px;" class="text-center">পণ্য সংখ্যা</th>
+                  <th style="width: 120px;" class="text-center">পরিমাণ ও পণ্য</th>
                   <th style="width: 140px;" class="text-end">মোট মূল্য (৳)</th>
                   <th style="width: 160px;" class="text-center">একশন</th>
                 </tr>
@@ -624,8 +644,9 @@
                     <span class="fw-medium">{{ draft.customerName || 'ওয়াকিং কাস্টমার' }}</span>
                     <span v-if="draft.customerMobile" class="text-muted d-block font-monospace" style="font-size: 0.72rem;">{{ draft.customerMobile }}</span>
                   </td>
-                  <td class="text-center">
-                    <span class="badge bg-light text-dark border">{{ draft.items?.length || 0 }} টি</span>
+                  <td class="text-center text-nowrap">
+                    <div class="fw-bold text-dark font-monospace">{{ getSaleTotalQty(draft) }} পিস</div>
+                    <div class="text-muted" style="font-size: 0.74rem;">({{ draft.items?.length || 0 }} টি পণ্য)</div>
                   </td>
                   <td class="text-end fw-bold text-success font-monospace">৳{{ Number(draft.totalAmount || 0).toFixed(2) }}</td>
                   <td class="text-center">
@@ -718,7 +739,7 @@
                 <th style="width: 170px;" class="text-start">ইনভয়েস ও তারিখ</th>
                 <th style="min-width: 250px;" class="text-start">গ্রাহক</th>
                 <th style="width: 130px;" class="text-center">ক্যাশিয়ার</th>
-                <th style="width: 90px;" class="text-center">পণ্য সংখ্যা</th>
+                <th style="width: 110px;" class="text-center">পরিমাণ ও পণ্য</th>
                 <th style="width: 130px;" class="text-end">মোট বিল (৳)</th>
                 <th style="width: 120px;" class="text-end">পরিশোধ (৳)</th>
                 <th style="width: 100px;" class="text-center">মাধ্যম</th>
@@ -748,10 +769,9 @@
                     {{ sale.cashierName || '-' }}
                   </span>
                 </td>
-                <td class="text-center">
-                  <span class="badge bg-secondary-subtle text-secondary">
-                    {{ sale.items?.length || 0 }} টি
-                  </span>
+                <td class="text-center text-nowrap">
+                  <div class="fw-bold text-dark font-monospace fs-6">{{ getSaleTotalQty(sale) }} পিস</div>
+                  <div class="text-muted" style="font-size: 0.74rem;">({{ sale.items?.length || 0 }} টি পণ্য)</div>
                 </td>
                 <td class="text-end fw-bold font-monospace text-dark text-nowrap">
                   <span class="currency-symbol text-muted me-0.5">৳</span>{{ Number(sale.totalAmount || 0).toFixed(2) }}
@@ -775,6 +795,13 @@
                   </span>
                 </td>
                 <td class="text-center text-nowrap">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary p-1 px-2 me-1 action-btn"
+                    title="বিক্রয় এডিট করুন"
+                    @click="editSale(sale)">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-success p-1 px-2 me-1 action-btn"
@@ -1552,6 +1579,81 @@ function removeFromCart(index: number) {
 }
 
 // Clear all cart
+
+function getSaleTotalQty(sale: any): number {
+  if (!sale || !Array.isArray(sale.items)) return 0;
+  return sale.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0);
+}
+
+const editingSaleId = ref<number | null>(null);
+const editingInvoiceNumber = ref<string>("");
+
+function editSale(sale: any) {
+  if (!sale) return;
+  if (cartItems.value.length > 0 && editingSaleId.value !== sale.id) {
+    if (!confirm("বর্তমান কার্টের তথ্য পরিবর্তন করে এই বিক্রয় চালানটি এডিট করতে চান?")) {
+      return;
+    }
+  }
+
+  editingSaleId.value = sale.id;
+  editingInvoiceNumber.value = sale.invoiceNumber || "";
+
+  cartItems.value = (sale.items || []).map((item: any) => {
+    const orig = itemsList.value.find((it) => it.id === item.itemId) || {};
+    return {
+      itemId: item.itemId,
+      barcode: item.barcode || orig.code || orig.barcode || "",
+      name: item.name || orig.name || "নামহীন পণ্য",
+      categoryName: item.categoryName || orig.category?.name || "",
+      brandName: item.brandName || orig.brand?.name || "",
+      sizeName: item.sizeName || orig.size?.name || "",
+      colorName: item.colorName || orig.color?.name || "",
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      unitCost: Number(item.unitCost) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      vatRate: Number(item.vatRate) || 0,
+      vatAmount: Number(item.vatAmount) || 0,
+      vatType: "inclusive",
+      discountAmount: Number(item.discountAmount) || 0,
+      totalPrice: Number(item.totalPrice) || (Number(item.unitPrice || 0) * (Number(item.quantity) || 1)),
+      stockQuantity: orig.stockQuantity ?? 999
+    };
+  });
+
+  form.customerId = sale.customerId || "";
+  form.customerName = sale.customerName || "ওয়াক-ইন কাস্টমার";
+  form.customerMobile = sale.customerMobile || "";
+  form.customerAddress = sale.customerAddress || "";
+  form.notes = sale.notes || "";
+  form.paymentMethod = sale.paymentMethod || "cash";
+  form.transactionId = sale.transactionId || "";
+  form.discountValue = Number(sale.discountAmount) || 0;
+  form.discountType = "fixed";
+  isPaidAmountCustom.value = true;
+  form.paidAmount = Number(sale.paidAmount) || 0;
+
+  activeView.value = "pos";
+  showToast(`চালান ${sale.invoiceNumber} এডিট মোডে লোড হয়েছে`, "info");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function editLastSale() {
+  if (completedSalesList.value.length === 0) {
+    showToast("এডিট করার মতো কোনো সম্পন্ন বিক্রয় পাওয়া যায়নি", "warning");
+    return;
+  }
+  const lastSale = completedSalesList.value[0];
+  editSale(lastSale);
+}
+
+function cancelEditSale() {
+  editingSaleId.value = null;
+  editingInvoiceNumber.value = "";
+  clearCart();
+  showToast("এডিট মোড বাতিল করা হয়েছে", "secondary");
+}
+
 function clearCart() {
   cartItems.value = [];
   form.discountValue = 0;
@@ -1707,8 +1809,20 @@ async function submitSale(printAfterSubmit: boolean) {
       }))
     };
 
-    const res = await axios.post("/api/inventory/sales", payload);
-    const created = res.data?.data;
+    let created: any = null;
+    if (editingSaleId.value) {
+      const res = await axios.put(`/api/inventory/sales/${editingSaleId.value}`, payload);
+      created = res.data?.data;
+      showToast("বিক্রয় চালান সফলভাবে আপডেট করা হয়েছে!", "success");
+    } else {
+      const res = await axios.post("/api/inventory/sales", payload);
+      created = res.data?.data;
+      if (isDraft) {
+        showToast("বিক্রয় চালান ড্রাফট হিসেবে সংরক্ষিত হয়েছে!", "info");
+      } else {
+        showToast("পণ্য বিক্রয় সফলভাবে সম্পন্ন হয়েছে!", "success");
+      }
+    }
 
     // Clear Form & Cart
     clearCart();
@@ -1716,11 +1830,7 @@ async function submitSale(printAfterSubmit: boolean) {
     // Reload Data to refresh inventory stock and sales list
     await loadAllData();
 
-    if (isDraft) {
-      showToast("বিক্রয় চালান ড্রাফট হিসেবে সংরক্ষিত হয়েছে!", "info");
-      // Remain on POS view so cashier can see draft in table below
-    } else {
-      showToast("পণ্য বিক্রয় সফলভাবে সম্পন্ন হয়েছে!", "success");
+    if (!isDraft) {
       if (printAfterSubmit && created) {
         activeReceiptSale.value = created;
         showPrintModal.value = true;

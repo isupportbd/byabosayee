@@ -35,6 +35,7 @@ import {
   listSales,
   getSaleById,
   createSale,
+  updateSale,
   deleteSale
 } from "@/modules/inventory/controllers/inventory.controller.js";
 
@@ -96,6 +97,7 @@ router.delete("/pricings/:id", deleteItemPricing);
 router.get("/sales", listSales);
 router.get("/sales/:id", getSaleById);
 router.post("/sales", createSale);
+router.put("/sales/:id", updateSale);
 router.delete("/sales/:id", deleteSale);
 
 export default router;
