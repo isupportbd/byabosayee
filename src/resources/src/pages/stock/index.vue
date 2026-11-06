@@ -180,15 +180,14 @@
             <thead class="table-light">
               <tr class="small text-muted text-uppercase">
                 <th style="width: 45px;" class="text-center">#</th>
-                <th style="width: 18%;">পণ্য ও কোড</th>
-                <th style="width: 10%;" class="text-center text-nowrap">ডিজাইন কোড</th>
-                <th style="width: 15%;">ক্যাটাগরি ও ব্র্যান্ড</th>
-                <th style="width: 12%;" class="text-nowrap">সাইজ ও রং</th>
+                <th style="width: 26%;">পণ্য ও কোড</th>
+                <th style="width: 11%;" class="text-center text-nowrap">ডিজাইন কোড</th>
+                <th style="width: 13%;" class="text-nowrap">সাইজ ও রং</th>
                 <th style="width: 10%;" class="text-end text-nowrap">ক্রয়মূল্য</th>
                 <th style="width: 11%;" class="text-end text-nowrap">বিক্রয়মূল্য</th>
                 <th style="width: 10%;" class="text-center text-nowrap">বর্তমান মজুদ</th>
                 <th style="width: 12%;" class="text-end text-nowrap">মোট স্টক মূল্য</th>
-                <th style="width: 85px;" class="text-center text-nowrap">অবস্থা</th>
+                <th style="width: 70px;" class="text-center text-nowrap">অবস্থা</th>
               </tr>
             </thead>
             <tbody>
@@ -219,18 +218,7 @@
                   </span>
                 </td>
 
-                <!-- ক্যাটাগরি ও ব্র্যান্ড (এক কলামে নিচে নিচে) -->
-                <td>
-                  <div class="fw-semibold text-dark text-truncate" :title="item.category?.name || '-'">
-                    {{ item.category?.name || '-' }}
-                  </div>
-                  <small class="text-muted d-block text-truncate">
-                    <span v-if="item.brand?.name" class="fw-medium text-secondary" :title="item.brand.name">
-                      {{ item.brand.name }}
-                    </span>
-                    <span v-else class="text-muted">-</span>
-                  </small>
-                </td>
+                
 
                 <!-- সাইজ ও রং (নিচে নিচে: সাইজ: ..., রং: ...) -->
                 <td class="small">
