@@ -256,11 +256,11 @@
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
                       <span class="fw-semibold text-truncate">{{ cleanItemName(option.name) }}</span>
-                      <div class="d-flex align-items-center gap-1.5 mt-0.5">
-                        <small v-if="option.code" class="text-muted font-monospace" style="font-size: 0.72rem;">{{ option.code }}</small>
-                        <span v-if="option.code" class="text-muted" style="font-size: 0.7rem;">•</span>
-                        <small class="badge bg-light text-primary border font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ option.designCode || 'DGN001' }}</small>
-                      </div>
+                      <small class="opacity-75 font-monospace mt-0.5" style="font-size: 0.75rem;">
+                        <span v-if="option.code">{{ option.code }}</span>
+                        <span v-if="option.code && (option.designCode || 'DGN001')" class="mx-1.5 opacity-50">|</span>
+                        <span>{{ option.designCode || 'DGN001' }}</span>
+                      </small>
                     </div>
                   </template>
                 </Select>
