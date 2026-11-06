@@ -14,22 +14,22 @@ const isProd = env.APP_ENV === "production";
 const csp = isProd
   ? [
       "default-src 'self'",
-      "script-src 'self' https://cdn.jsdelivr.net",         // Scalar UI loads its bundle from jsdelivr CDN
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com",
       "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'",
       "img-src 'self' data: blob: https://cdn.jsdelivr.net",
       "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.scalar.com https://fonts.gstatic.com",
-      "connect-src 'self' https://cdn.jsdelivr.net https://api.scalar.com https://fonts.googleapis.com https://fonts.gstatic.com",
+      "connect-src 'self' https://cdn.jsdelivr.net https://api.scalar.com https://fonts.googleapis.com https://fonts.gstatic.com https://cloudflareinsights.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'"
     ].join("; ")
   : [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://cdn.jsdelivr.net",
       "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.scalar.com https://fonts.gstatic.com",
-      "connect-src 'self' ws: wss: https://cdn.jsdelivr.net https://api.scalar.com https://fonts.googleapis.com https://fonts.gstatic.com",   // HMR websocket + Scalar
+      "connect-src 'self' ws: wss: https://cdn.jsdelivr.net https://api.scalar.com https://fonts.googleapis.com https://fonts.gstatic.com https://cloudflareinsights.com",   // HMR websocket + Scalar
       "frame-ancestors 'none'"
     ].join("; ");
 
