@@ -1397,8 +1397,8 @@ function getItemMemoLines(it: any, index?: number) {
   // Row 2: ব্র্যান্ড, সাইজ ও কালার
   const row2Parts: string[] = [];
   if (brand) row2Parts.push(brand);
-  if (it.sizeName) row2Parts.push(`সাইজ: ${it.sizeName}`);
-  if (it.colorName) row2Parts.push(`কালার: ${it.colorName}`);
+  if (it.sizeName) row2Parts.push(it.sizeName);
+  if (it.colorName) row2Parts.push(it.colorName);
 
   const line2 = row2Parts.join(" | ");
 
