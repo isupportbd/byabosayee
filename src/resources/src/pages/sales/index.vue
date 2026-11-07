@@ -189,19 +189,20 @@
             <!-- গ্রাহক তথ্য ও পণ্য স্ক্যানারের মধ্যবর্তী বিভাজক লাইন -->
             <hr class="colorful-divider my-2 flex-shrink-0" />
 
-            <!-- ফাস্ট বারকোড স্ক্যানার ও পণ্য সার্চ ইনপুট (রেগুলার রো) -->
+            <!-- ফাস্ট বারকোড স্ক্যানার, সাব-ক্যাটাগরি ফিল্টার ও সার্চেবল পণ্য নির্বাচন -->
             <div class="row g-2 align-items-center mb-2 flex-shrink-0">
-              <div class="col-12 col-md-5">
+              <!-- কম্প্যাক্ট বারকোড ইনপুট -->
+              <div class="col-12 col-md-3">
                 <div class="position-relative">
                   <input
                     ref="barcodeInputRef"
                     v-model="scannerQuery"
                     type="text"
-                    class="form-control form-control-sm ps-5 search-input-unified"
-                    placeholder="বারকোড স্ক্যান করুন বা এন্টার চাপুন..."
+                    class="form-control form-control-sm ps-4 search-input-unified"
+                    placeholder="বারকোড স্ক্যান..."
                     autofocus
                     @keydown.enter.prevent="handleBarcodeScan" />
-                  <i class="bi bi-upc-scan position-absolute top-50 start-0 translate-middle-y ms-3 text-muted fs-6 pe-none"></i>
+                  <i class="bi bi-upc-scan position-absolute top-50 start-0 translate-middle-y ms-2 text-muted fs-6 pe-none"></i>
                   <button
                     v-if="scannerQuery"
                     type="button"
@@ -211,20 +212,55 @@
                   </button>
                 </div>
               </div>
-              <div class="col-12 col-md-7">
-                <!-- ড্রপডাউন থেকে পণ্য যোগ করার সুবিধা (মূল্যের বদলে স্টক দেখানো হচ্ছে) -->
-                <select
-                  v-model="selectedDropdownItemId"
-                  class="form-select form-select-sm search-input-unified w-100"
-                  @change="handleDropdownProductSelect">
-                  <option value="">বা তালিকা থেকে পণ্য নির্বাচন করুন...</option>
-                  <option
-                    v-for="it in availableItems"
-                    :key="it.id"
-                    :value="it.id">
-                    {{ cleanItemName(it.name) }} [{{ it.size?.name || '-' }}] - স্টক: {{ it.stockQuantity ?? 0 }} টি
-                  </option>
-                </select>
+
+              <!-- সাব-ক্যাটাগরি ফিল্টার -->
+              <div class="col-12 col-md-3">
+                <Select
+                  v-model="selectedSubCategoryId"
+                  :options="subCategoryFilterOptions"
+                  placeholder="সকল সাব-ক্যাটাগরি"
+                  size="sm"
+                  :clearable="true"
+                  :searchable="true"
+                  value-key="id"
+                  label="name"
+                  parentclass="mb-0"
+                  no-options-text="কোনো সাব-ক্যাটাগরি নেই" />
+              </div>
+
+              <!-- টাইপেবল / সার্চেবল পণ্য ড্রপডাউন কম্পোনেন্ট -->
+              <div class="col-12 col-md-6">
+                <Select
+                  v-model="selectedDropdownItem"
+                  :options="posItemOptions"
+                  :filter-by="filterPosItem"
+                  :reset-key="selectResetKey"
+                  placeholder="পণ্য খুঁজুন বা তালিকা থেকে নির্বাচন করুন..."
+                  size="sm"
+                  :clearable="true"
+                  :searchable="true"
+                  label="displayName"
+                  parentclass="mb-0"
+                  no-options-text="কোনো পণ্য পাওয়া যায়নি"
+                  @update:model-value="handleDropdownProductSelect">
+                  <template #option="option">
+                    <div class="d-flex align-items-center justify-content-between w-100 py-0.5">
+                      <div class="text-truncate me-2">
+                        <span class="fw-medium text-dark">{{ option.cleanName || cleanItemName(option.name) }}</span>
+                        <span v-if="option.sizeName" class="badge bg-light text-dark border ms-1.5 px-1.5 py-0.5" style="font-size: 0.72rem;">
+                          {{ option.sizeName }}
+                        </span>
+                        <span v-if="option.colorName" class="badge bg-light text-dark border ms-1 px-1.5 py-0.5 d-inline-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                          <span v-if="option.colorCode" class="d-inline-block rounded-circle border" :style="{ backgroundColor: option.colorCode, width: '8px', height: '8px' }"></span>
+                          {{ option.colorName }}
+                        </span>
+                      </div>
+                      <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap" style="font-size: 0.75rem;">
+                        ({{ option.stockQtyBn || toBengaliNumber(option.stockQuantity ?? 0) }})
+                      </span>
+                    </div>
+                  </template>
+                </Select>
               </div>
             </div>
 
@@ -292,13 +328,18 @@
                       class="cart-row">
                       <td class="text-center text-muted">{{ idx + 1 }}</td>
                       
-                      <!-- পণ্যের নাম ও বিবরণ: উপরে নাম, নিচে সাইজ -->
+                      <!-- পণ্যের নাম ও বিবরণ: উপরে নাম, নিচে সাইজ ও কালার -->
                       <td class="text-start">
                         <div class="fw-semibold text-truncate" :title="row.name">
                           {{ cleanItemName(row.name) }}
                         </div>
-                        <div v-if="row.sizeName" class="text-muted mt-0.5" style="font-size: 0.78rem;">
-                          সাইজ: {{ row.sizeName }}
+                        <div v-if="row.sizeName || row.colorName" class="text-muted mt-0.5 d-flex align-items-center gap-1.5 flex-wrap" style="font-size: 0.78rem;">
+                          <span v-if="row.sizeName">সাইজ: {{ row.sizeName }}</span>
+                          <span v-if="row.sizeName && row.colorName" class="opacity-50">|</span>
+                          <span v-if="row.colorName" class="d-inline-flex align-items-center gap-1">
+                            <span v-if="row.colorCode" class="d-inline-block rounded-circle border" :style="{ backgroundColor: row.colorCode, width: '8px', height: '8px' }"></span>
+                            কালার: {{ row.colorName }}
+                          </span>
                         </div>
                       </td>
 
@@ -883,7 +924,11 @@
                   <tr v-for="it in activeReceiptSale?.items || []" :key="it.id">
                     <td class="p-1">
                       <div class="fw-semibold">{{ cleanItemName(it.name) }}</div>
-                      <small v-if="it.sizeName" class="text-muted">সাইজ: {{ it.sizeName }}</small>
+                      <small v-if="it.sizeName || it.colorName" class="text-muted d-block" style="font-size: 0.72rem;">
+                        <span v-if="it.sizeName">সাইজ: {{ it.sizeName }}</span>
+                        <span v-if="it.sizeName && it.colorName"> | </span>
+                        <span v-if="it.colorName">কালার: {{ it.colorName }}</span>
+                      </small>
                     </td>
                     <td class="text-center p-1 font-monospace">{{ it.quantity }}</td>
                     <td class="text-end p-1 font-monospace">{{ Number(it.unitPrice).toFixed(2) }}</td>
@@ -1050,7 +1095,9 @@ const companyInfo = ref<any>(null);
 // Scanner & Product Selection
 const barcodeInputRef = ref<HTMLInputElement | null>(null);
 const scannerQuery = ref("");
-const selectedDropdownItemId = ref<number | string>("");
+const selectedDropdownItem = ref<any>(null);
+const selectedSubCategoryId = ref<number | string | null>("");
+const selectResetKey = ref(0);
 
 // Cashier Name logic
 // User Requirement: "বিক্রেতা/ক্যাশিয়ার (Salesperson / Cashier): যে ডাটা এন্ট্রি করছে তার নাম বসবে।"
@@ -1164,6 +1211,7 @@ interface CartItem {
   brandName: string;
   sizeName: string;
   colorName: string;
+  colorCode?: string;
   quantity: number;
   availableStock: number;
   unitCost: number;
@@ -1179,21 +1227,93 @@ interface CartItem {
 
 const cartItems = ref<CartItem[]>([]);
 
-// Filtered Available Items for search & dropdown (ইউজারের নির্দেশনা: স্টক নেই এমন পণ্য তালিকায় আসবে না)
-const availableItems = computed(() => {
-  return itemsList.value.filter((it) => Number(it.stockQuantity || 0) > 0);
-});
+// Bengali Number Formatter
+function toBengaliNumber(num: number | string | null | undefined): string {
+  if (num === null || num === undefined || num === "") return "০";
+  const bengaliDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+  return String(num).replace(/[0-9]/g, (w) => bengaliDigits[+w]);
+}
 
-// Clean Item Name helper (strips size suffix like _S, _38 as already verified)
+// Clean Item Name helper (strips design suffix like _DGN005 and size suffixes)
 function cleanItemName(name: string): string {
   if (!name) return "";
-  // Strip only legacy size suffix if present, preserve 'সাবক্যাটাগরি_ব্রান্ড_ডিজাইন কোড'
   return name
+    .replace(/_DGN\d+.*$/i, "")
+    .replace(/\s*DGN\d+\b/gi, "")
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
     .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
+    .replace(/[\-_]\s*$/g, "")
     .trim();
 }
 
+// Sub-Category Filter Options (User Requirement: পণ্য নামের আগে সাব ক্যাটাগরি ফিল্ড দিয়ে ফিল্টার করার সুবিধা)
+const subCategoryFilterOptions = computed(() => {
+  const map = new Map<number, string>();
+  for (const it of itemsList.value) {
+    if (Number(it.stockQuantity || 0) > 0) {
+      const subId = Number(it.subCategoryId || it.subCategory?.id);
+      const subName = it.subCategory?.name;
+      if (subId && subName && !map.has(subId)) {
+        map.set(subId, subName);
+      }
+    }
+  }
+  return [
+    { id: "", name: "সকল সাব-ক্যাটাগরি" },
+    ...Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+  ];
+});
+
+// Filtered Available Items for search & dropdown (ইউজারের নির্দেশনা: স্টক নেই এমন পণ্য তালিকায় আসবে না)
+const availableItems = computed(() => {
+  let list = itemsList.value.filter((it) => Number(it.stockQuantity || 0) > 0);
+  if (selectedSubCategoryId.value) {
+    list = list.filter(
+      (it) => Number(it.subCategoryId || it.subCategory?.id) === Number(selectedSubCategoryId.value)
+    );
+  }
+  return list;
+});
+
+// POS Product Options for Searchable Select Component
+const posItemOptions = computed(() => {
+  return availableItems.value.map((it: any) => {
+    const cleanName = cleanItemName(it.name);
+    const sizeName = it.size?.name || "";
+    const colorName = it.color?.name || "";
+    const specs = [sizeName, colorName].filter(Boolean).join(", ");
+    const specsPart = specs ? ` [${specs}]` : "";
+    const stockQty = toBengaliNumber(it.stockQuantity ?? 0);
+    // User Requirement: "স্টক শুধু ব্রাকেটে দিলে স্পেস কম নিবে যেমন (২), স্টক শব্দ ব্যবহার প্রয়োজন নেই"
+    const displayName = `${cleanName}${specsPart} (${stockQty})`;
+    return {
+      ...it,
+      displayName,
+      cleanName,
+      sizeName,
+      colorName,
+      colorCode: it.color?.code || "",
+      stockQtyBn: stockQty
+    };
+  });
+});
+
+// Comprehensive search filter for POS items
+function filterPosItem(option: any, label: string, search: string): boolean {
+  if (!search) return true;
+  const q = search.trim().toLowerCase();
+  if (label && String(label).toLowerCase().includes(q)) return true;
+  if (option.displayName && String(option.displayName).toLowerCase().includes(q)) return true;
+  if (option.name && String(option.name).toLowerCase().includes(q)) return true;
+  if (option.cleanName && String(option.cleanName).toLowerCase().includes(q)) return true;
+  if (option.code && String(option.code).toLowerCase().includes(q)) return true;
+  if (option.barcode && String(option.barcode).toLowerCase().includes(q)) return true;
+  if (option.latestBarcode && String(option.latestBarcode).toLowerCase().includes(q)) return true;
+  if (option.sizeName && String(option.sizeName).toLowerCase().includes(q)) return true;
+  if (option.colorName && String(option.colorName).toLowerCase().includes(q)) return true;
+  if (option.subCategory?.name && String(option.subCategory.name).toLowerCase().includes(q)) return true;
+  return false;
+}
 
 // Send WhatsApp Receipt
 function sendWhatsAppReceipt() {
@@ -1219,11 +1339,12 @@ function sendWhatsAppReceipt() {
   let itemsListText = "";
   (sale.items || []).forEach((it: any, i: number) => {
     const itName = cleanItemName(it.name);
-    const size = it.sizeName ? ` (${it.sizeName})` : "";
+    const specs = [it.sizeName ? `সাইজ: ${it.sizeName}` : "", it.colorName ? `কালার: ${it.colorName}` : ""].filter(Boolean).join(", ");
+    const specsStr = specs ? ` (${specs})` : "";
     const qty = it.quantity;
     const price = Number(it.unitPrice).toFixed(2);
     const lineTotal = Number(it.totalPrice).toFixed(2);
-    itemsListText += `${i + 1}. ${itName}${size} - ${qty} x ৳${price} = ৳${lineTotal}\n`;
+    itemsListText += `${i + 1}. ${itName}${specsStr} - ${qty} x ৳${price} = ৳${lineTotal}\n`;
   });
 
   let msg = `*${compName}*\n`;
@@ -1469,6 +1590,7 @@ function addItemToCart(item: any) {
     brandName: item.brand?.name || "",
     sizeName: item.size?.name || "",
     colorName: item.color?.name || "",
+    colorCode: item.color?.code || "",
     quantity: qty,
     availableStock,
     unitCost,
@@ -1526,14 +1648,19 @@ function handleBarcodeScan() {
 }
 
 // Dropdown Product Select
-function handleDropdownProductSelect() {
-  if (!selectedDropdownItemId.value) return;
-  const item = itemsList.value.find((it) => Number(it.id) === Number(selectedDropdownItemId.value));
+function handleDropdownProductSelect(val?: any) {
+  if (!val) return;
+  const itemId = typeof val === "object" ? val.id : val;
+  if (!itemId) return;
+  const item = itemsList.value.find((it) => Number(it.id) === Number(itemId));
   if (item) {
     addItemToCart(item);
   }
-  selectedDropdownItemId.value = "";
-  focusBarcodeInput();
+  selectedDropdownItem.value = null;
+  selectResetKey.value++;
+  nextTick(() => {
+    focusBarcodeInput();
+  });
 }
 
 // Change Quantity (+ / -)
@@ -1609,6 +1736,7 @@ function editSale(sale: any) {
       brandName: item.brandName || orig.brand?.name || "",
       sizeName: item.sizeName || orig.size?.name || "",
       colorName: item.colorName || orig.color?.name || "",
+      colorCode: orig.color?.code || "",
       quantity: Math.max(1, Number(item.quantity) || 1),
       unitCost: Number(item.unitCost) || 0,
       unitPrice: Number(item.unitPrice) || 0,
@@ -1864,6 +1992,7 @@ async function loadDraftIntoCart(draft: any) {
       brandName: item.brandName || orig.brand?.name || "",
       sizeName: item.sizeName || orig.size?.name || "",
       colorName: item.colorName || orig.color?.name || "",
+      colorCode: orig.color?.code || "",
       quantity: Math.max(1, Number(item.quantity) || 1),
       unitCost: Number(item.unitCost) || 0,
       unitPrice: Number(item.unitPrice) || 0,
