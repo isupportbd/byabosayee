@@ -565,7 +565,7 @@
         <div class="text-muted small">
           দেখাচ্ছে {{ toBengaliNumber((currentPage - 1) * perPage + 1) }} থেকে {{ toBengaliNumber(Math.min(currentPage * perPage, filteredItems.length)) }} (মোট {{ toBengaliNumber(filteredItems.length) }} টি)
         </div>
-        <Pagination :data="paginationData" variant="secondary" />
+        <Pagination :data="paginationData" variant="secondary" :hide-details="true" @change="(p) => currentPage = p" />
       </div>
     </div>
     <!-- ভিউ ইমেইজ পপআপ মডাল -->
@@ -1409,9 +1409,13 @@ const paginationData = computed(() => {
     total,
     from: total === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1,
     to: Math.min(currentPage.value * perPage.value, total),
+    onPageChange: (p: number) => {
+      currentPage.value = p;
+    },
     links: [
       {
         url: currentPage.value > 1 ? `#page-${currentPage.value - 1}` : null,
+        page: Math.max(1, currentPage.value - 1),
         label: "&laquo; পূর্ববর্তী",
         active: false,
         onClick: () => {
@@ -1420,6 +1424,7 @@ const paginationData = computed(() => {
       },
       ...Array.from({ length: lastPage }, (_, i) => ({
         url: `#page-${i + 1}`,
+        page: i + 1,
         label: toBengaliNumber(i + 1),
         active: currentPage.value === i + 1,
         onClick: () => {
@@ -1428,6 +1433,7 @@ const paginationData = computed(() => {
       })),
       {
         url: currentPage.value < lastPage ? `#page-${currentPage.value + 1}` : null,
+        page: Math.min(lastPage, currentPage.value + 1),
         label: "পরবর্তী &raquo;",
         active: false,
         onClick: () => {

@@ -240,12 +240,12 @@
                 </td>
 
                 <!-- ক্রয়মূল্য -->
-                <td class="text-end text-muted font-monospace text-nowrap">
+                <td class="text-end text-muted text-nowrap">
                   ৳ {{ toBengaliNumber(formatAmount(Number(item.purchasePrice || 0))) }}
                 </td>
 
                 <!-- বিক্রয়মূল্য -->
-                <td class="text-end fw-semibold text-dark font-monospace text-nowrap">
+                <td class="text-end fw-semibold text-dark text-nowrap">
                   ৳ {{ toBengaliNumber(formatAmount(Number(item.sellingPrice || 0))) }}
                 </td>
 
@@ -263,7 +263,7 @@
                 </td>
 
                 <!-- মোট স্টক মূল্য -->
-                <td class="text-end fw-bold font-monospace text-primary text-nowrap">
+                <td class="text-end fw-bold text-primary text-nowrap">
                   ৳ {{ toBengaliNumber(formatAmount(Number(item.stockQuantity || 0) * Number(item.purchasePrice || 0))) }}
                 </td>
 
@@ -296,7 +296,7 @@
         <div class="text-muted small">
           দেখাচ্ছে {{ toBengaliNumber((currentPage - 1) * perPage + 1) }} থেকে {{ toBengaliNumber(Math.min(currentPage * perPage, filteredItems.length)) }} (মোট {{ toBengaliNumber(filteredItems.length) }} টি)
         </div>
-        <Pagination :data="paginationData" variant="info" />
+        <Pagination :data="paginationData" variant="info" :hide-details="true" @change="(p) => currentPage = p" />
       </div>
     </div>
   </div>
@@ -442,9 +442,13 @@ const paginationData = computed(() => {
     total,
     from: total === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1,
     to: Math.min(currentPage.value * perPage.value, total),
+    onPageChange: (p: number) => {
+      currentPage.value = p;
+    },
     links: [
       {
         url: currentPage.value > 1 ? `#page-${currentPage.value - 1}` : null,
+        page: Math.max(1, currentPage.value - 1),
         label: "&laquo; পূর্ববর্তী",
         active: false,
         onClick: () => {
@@ -453,6 +457,7 @@ const paginationData = computed(() => {
       },
       ...Array.from({ length: lastPage }, (_, i) => ({
         url: `#page-${i + 1}`,
+        page: i + 1,
         label: toBengaliNumber(i + 1),
         active: currentPage.value === i + 1,
         onClick: () => {
@@ -461,6 +466,7 @@ const paginationData = computed(() => {
       })),
       {
         url: currentPage.value < lastPage ? `#page-${currentPage.value + 1}` : null,
+        page: Math.min(lastPage, currentPage.value + 1),
         label: "পরবর্তী &raquo;",
         active: false,
         onClick: () => {

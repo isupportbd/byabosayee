@@ -316,7 +316,7 @@
                   <span>{{ row.size?.name || '-' }}</span>
                   <span v-if="row.color?.name" class="text-muted ms-1">/ {{ row.color.name }}</span>
                 </td>
-                <td class="text-end text-muted font-monospace text-nowrap">
+                <td class="text-end text-muted text-nowrap">
                   {{ formatNumber(Number(row.purchasePrice || 0).toFixed(2)) }}
                 </td>
                 <td class="text-end fw-bold text-nowrap">
@@ -363,7 +363,7 @@
 
       <!-- পেজিনেশন কম্পোনেন্ট (Framework Standard Pagination Component) -->
       <div v-if="filteredPricingRecords.length > 0" class="card-footer bg-transparent border-top py-2 px-3">
-        <Pagination :data="paginationData" variant="secondary" />
+        <Pagination :data="paginationData" variant="secondary" :hide-details="true" @change="(p) => currentPage = p" />
       </div>
     </div>
   </div>
