@@ -237,6 +237,7 @@
                   :options="posItemOptions"
                   :filter-by="filterPosItem"
                   :reset-key="selectResetKey"
+                  :selectable="(opt: any) => Number(opt.sellingPrice) > 0"
                   placeholder="পণ্য খুঁজুন বা তালিকা থেকে নির্বাচন করুন..."
                   size="sm"
                   :clearable="true"
@@ -264,9 +265,14 @@
                             {{ option.sizeName }}
                           </span>
                         </div>
-                        <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap flex-shrink-0 ms-3 px-2 py-0.5" style="font-size: 0.75rem;">
-                          ({{ option.stockQtyBn || toBengaliNumber(option.stockQuantity ?? 0) }})
-                        </span>
+                        <div class="d-flex align-items-center flex-shrink-0 ms-2">
+                          <span v-if="!option.hasSellingPrice" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold px-2 py-0.5 me-2 text-nowrap" style="font-size: 0.70rem;">
+                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>মূল্য নির্ধারণ বাকি
+                          </span>
+                          <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap px-2 py-0.5" style="font-size: 0.75rem;">
+                            ({{ option.stockQtyBn || toBengaliNumber(option.stockQuantity ?? 0) }})
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </template>
@@ -1353,7 +1359,8 @@ const posItemOptions = computed(() => {
       sizeName,
       colorName,
       colorCode: it.color?.code || "",
-      stockQtyBn: stockQty
+      stockQtyBn: stockQty,
+      hasSellingPrice: Number(it.sellingPrice) > 0
     };
   });
 
@@ -1667,6 +1674,10 @@ function addItemToCart(item: any) {
 
   // Get Latest VAT Rate, VAT Type, Discount, and Selling Price from Item Pricing (as enriched by backend)
   const unitPrice = Number(item.sellingPrice) || 0;
+  if (unitPrice <= 0) {
+    showToast(`"${cleanItemName(item.name)}" পণ্যটির বিক্রয় মূল্য নির্ধারণ বাকি থাকায় বিক্রয়ে যুক্ত করা যাবে না`, "warning");
+    return;
+  }
   const vatRate = item.latestVatRate !== undefined ? Number(item.latestVatRate) : 0;
   const vatType: "inclusive" | "exclusive" = item.latestVatType === "exclusive" ? "exclusive" : "inclusive";
   const unitCost = Number(item.latestUnitCost || item.purchasePrice || 0);
@@ -1764,6 +1775,11 @@ function handleBarcodeScan() {
       scannerQuery.value = "";
       return;
     }
+    if (!Number(found.sellingPrice) || Number(found.sellingPrice) <= 0) {
+      showToast(`"${cleanItemName(found.name)}" পণ্যটির বিক্রয় মূল্য নির্ধারণ বাকি থাকায় বিক্রয়ে যুক্ত করা যাবে না`, "warning");
+      scannerQuery.value = "";
+      return;
+    }
     addItemToCart(found);
     scannerQuery.value = "";
     focusBarcodeInput();
@@ -1778,11 +1794,16 @@ function handleBarcodeScan() {
     });
     if (nameMatch) {
       if (Number(nameMatch.stockQuantity || 0) <= 0) {
-        showToast(`"${cleanItemName(nameMatch.name)}" পণ্যটির পর্যাপ্ত স্টক নেই (স্টক: ০)`, "warning");
-        scannerQuery.value = "";
-        return;
-      }
-      addItemToCart(nameMatch);
+      showToast(`"${cleanItemName(nameMatch.name)}" পণ্যটির পর্যাপ্ত স্টক নেই (স্টক: ০)`, "warning");
+      scannerQuery.value = "";
+      return;
+    }
+    if (!Number(nameMatch.sellingPrice) || Number(nameMatch.sellingPrice) <= 0) {
+      showToast(`"${cleanItemName(nameMatch.name)}" পণ্যটির বিক্রয় মূল্য নির্ধারণ বাকি থাকায় বিক্রয়ে যুক্ত করা যাবে না`, "warning");
+      scannerQuery.value = "";
+      return;
+    }
+    addItemToCart(nameMatch);
       scannerQuery.value = "";
       focusBarcodeInput();
     } else {
@@ -1798,6 +1819,12 @@ function handleDropdownProductSelect(val?: any) {
   if (!itemId) return;
   const item = itemsList.value.find((it) => Number(it.id) === Number(itemId));
   if (item) {
+    if (!Number(item.sellingPrice) || Number(item.sellingPrice) <= 0) {
+      showToast(`"${cleanItemName(item.name)}" পণ্যটির বিক্রয় মূল্য নির্ধারণ বাকি থাকায় বিক্রয়ে যুক্ত করা যাবে না`, "warning");
+      selectedDropdownItem.value = null;
+      selectResetKey.value++;
+      return;
+    }
     addItemToCart(item);
   }
   selectedDropdownItem.value = null;
@@ -2532,6 +2559,16 @@ onMounted(() => {
   white-space: normal !important;
   word-break: break-word;
   padding: 6px 10px;
+}
+:deep(.pos-product-select .vs__dropdown-option--disabled) {
+  background-color: var(--bs-light, #f8f9fa) !important;
+  color: var(--bs-secondary, #6c757d) !important;
+  cursor: not-allowed !important;
+  opacity: 0.75;
+}
+:deep(.pos-product-select .vs__dropdown-option--disabled:hover) {
+  background-color: #f1f3f5 !important;
+  cursor: not-allowed !important;
 }
 
 </style>

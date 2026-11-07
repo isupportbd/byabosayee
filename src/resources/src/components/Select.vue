@@ -44,6 +44,7 @@ interface SelectProps {
   resetKey?: string | number | boolean | AnyRecord | null;
   fetched?: (payload: Record<string, any>) => any;
   filterBy?: (option: any, label: string, search: string) => boolean;
+  selectable?: (option: any) => boolean;
   noOptionsText?: string;
 }
 
@@ -443,6 +444,7 @@ const parentClass = computed(() => {
       :options="effectiveOptions"
       :filterable="props.filterable"
       :filter-by="props.filterBy || defaultFilterBy"
+      :selectable="props.selectable"
       :placeholder="props.placeholder"
       :searchable="props.searchable"
       :clearable="props.clearable"
