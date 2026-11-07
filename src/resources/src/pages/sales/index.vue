@@ -1372,21 +1372,64 @@ const posItemOptions = computed(() => {
   });
 });
 
-// Comprehensive search filter for POS items
+function normalizeDigitEn(str: string): string {
+  const bnToEn: Record<string, string> = {
+    '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+    '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+  };
+  return (str || "").replace(/[০-৯]/g, (d) => bnToEn[d] || d);
+}
+
+function normalizeDigitBn(str: string): string {
+  const enToBn: Record<string, string> = {
+    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+  };
+  return (str || "").replace(/[0-9]/g, (d) => enToBn[d] || d);
+}
+
+// Comprehensive search filter for POS items (মাল্টি-ওয়ার্ড ও প্রতিটি শব্দ/অংশ অনুযায়ী সার্চ)
 function filterPosItem(option: any, label: string, search: string): boolean {
   if (!search) return true;
-  const q = search.trim().toLowerCase();
-  if (label && String(label).toLowerCase().includes(q)) return true;
-  if (option.displayName && String(option.displayName).toLowerCase().includes(q)) return true;
-  if (option.name && String(option.name).toLowerCase().includes(q)) return true;
-  if (option.cleanName && String(option.cleanName).toLowerCase().includes(q)) return true;
-  if (option.code && String(option.code).toLowerCase().includes(q)) return true;
-  if (option.barcode && String(option.barcode).toLowerCase().includes(q)) return true;
-  if (option.latestBarcode && String(option.latestBarcode).toLowerCase().includes(q)) return true;
-  if (option.sizeName && String(option.sizeName).toLowerCase().includes(q)) return true;
-  if (option.colorName && String(option.colorName).toLowerCase().includes(q)) return true;
-  if (option.subCategory?.name && String(option.subCategory.name).toLowerCase().includes(q)) return true;
-  return false;
+  const rawQ = search.trim().toLowerCase();
+  if (!rawQ) return true;
+
+  // Build a consolidated search target including Name, Clean Name, Specs, Brand, Size, Color, Barcode, etc.
+  const targetParts = [
+    label || "",
+    option.displayName || "",
+    option.name || "",
+    option.cleanName || "",
+    option.code || "",
+    option.barcode || "",
+    option.latestBarcode || "",
+    option.sizeName || "",
+    option.colorName || "",
+    option.brand?.name || "",
+    option.brandName || "",
+    option.subCategory?.name || "",
+    option.category?.name || ""
+  ];
+  const combinedTarget = targetParts.join(" ").toLowerCase();
+  const targetBn = normalizeDigitBn(combinedTarget);
+  const targetEn = normalizeDigitEn(combinedTarget);
+
+  // Split search query into individual words/tokens
+  const tokens = rawQ.split(/\s+/).filter(Boolean);
+
+  // Every word typed must match somewhere in the product info (with Bengali/English digit and hyphen tolerance)
+  return tokens.every((token) => {
+    const tokenClean = token.replace(/[-_]/g, "");
+    const tokenBn = normalizeDigitBn(token);
+    const tokenEn = normalizeDigitEn(token);
+
+    return (
+      combinedTarget.includes(token) ||
+      targetBn.includes(tokenBn) ||
+      targetEn.includes(tokenEn) ||
+      (tokenClean && combinedTarget.replace(/[-_]/g, "").includes(tokenClean))
+    );
+  });
 }
 
 // Send WhatsApp Receipt
