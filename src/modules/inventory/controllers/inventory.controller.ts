@@ -167,7 +167,7 @@ export async function ensureInventoryTables() {
         pi.size_id,
         pi.color_id,
         pi.unit_id,
-        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
+        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || LPAD(COALESCE(pi.color_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
         pi.unit_cost,
         '0.00',
         0,
@@ -188,6 +188,11 @@ export async function ensureInventoryTables() {
         pi.size_id, 
         pi.color_id,
         pi.id DESC;
+
+      -- Step 0b: Auto-generate standard PRD code for any items where code is null or empty
+      UPDATE "items"
+      SET "code" = 'PRD-' || "id"
+      WHERE "code" IS NULL OR "code" = '';
 
       -- Step 1: Re-link purchase_items to the correct item_id based on base product name, size_id, AND color_id
       UPDATE "purchase_items" pi
@@ -422,7 +427,7 @@ export async function syncInventoryStockAndItems(userId: number, force = false) 
         pi.size_id,
         pi.color_id,
         pi.unit_id,
-        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
+        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || LPAD(COALESCE(pi.color_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
         pi.unit_cost,
         '0.00',
         0,
@@ -444,6 +449,21 @@ export async function syncInventoryStockAndItems(userId: number, force = false) 
         pi.size_id, 
         pi.color_id,
         pi.id DESC;
+
+      -- Step 0b: Auto-assign item code (PRD-<id>) for any items where code is null or empty
+      UPDATE "items"
+      SET "code" = 'PRD-' || "id"
+      WHERE "user_id" = ${userId} AND ("code" IS NULL OR "code" = '');
+
+      -- Upgrade 12-digit barcodes to 14-digit barcodes with color_id
+      UPDATE "purchase_items" pi
+      SET "code" = SUBSTRING(pi.code, 1, 6) || LPAD(COALESCE(pi.color_id, 0)::text, 2, '0') || SUBSTRING(pi.code, 7)
+      FROM "purchases" p
+      WHERE pi.purchase_id = p.id AND p.user_id = ${userId} AND pi.code IS NOT NULL AND LENGTH(pi.code) = 12;
+
+      UPDATE "items"
+      SET "barcode" = SUBSTRING("barcode", 1, 6) || LPAD(COALESCE("color_id", 0)::text, 2, '0') || SUBSTRING("barcode", 7)
+      WHERE "user_id" = ${userId} AND "barcode" IS NOT NULL AND LENGTH("barcode") = 12;
 
       -- Step 1: Re-link purchase_items to correct item based on base product name, size_id, AND color_id
       UPDATE "purchase_items" pi
@@ -510,9 +530,9 @@ export async function syncInventoryStockAndItems(userId: number, force = false) 
       ) pi
       WHERE i.id = pi.item_id AND i.user_id = ${userId} AND (i.color_id IS NULL OR i.color_id = 0);
 
-      -- Step 5: Auto generate standard 12-digit barcode for all items if null or empty
+      -- Step 5: Auto generate standard 14-digit barcode for all items if null or empty
       UPDATE "items"
-      SET "barcode" = LPAD("id"::text, 4, '0') || LPAD(COALESCE("size_id", 0)::text, 2, '0') || to_char("created_at", 'YYMM') || '01'
+      SET "barcode" = LPAD("id"::text, 4, '0') || LPAD(COALESCE("size_id", 0)::text, 2, '0') || LPAD(COALESCE("color_id", 0)::text, 2, '0') || to_char("created_at", 'YYMM') || '01'
       WHERE "user_id" = ${userId} AND ("barcode" IS NULL OR "barcode" = '');
     `);
   } catch (err) {
@@ -1051,19 +1071,21 @@ export const listItems: Handler = async (c: any) => {
           ? String(Number(pricingSellingPrice).toFixed(2))
           : String(Number(it.sellingPrice || 0).toFixed(2));
 
-        // 12-digit standard barcode formula: ItemId(4) + SizeId(2) + YYMM(4) + Batch(2) = 12 digits
+        // 14-digit standard barcode formula: ItemId(4) + SizeId(2) + ColorId(2) + YYMM(4) + Batch(2) = 14 digits
         let fallbackBarcode = "";
         const itemIdNum = Number(it.id || 0);
         if (itemIdNum > 0) {
           const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
           const sizeNum = Number(it.sizeId || it.size_id || it.size?.id || 0);
           const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
+          const colorNum = Number(it.colorId || it.color_id || it.color?.id || 0);
+          const colorStr = String(colorNum).padStart(2, "0").slice(-2);
           let d = it.createdAt ? new Date(it.createdAt) : new Date();
           if (isNaN(d.getTime())) d = new Date();
           const yy = String(d.getFullYear()).slice(-2);
           const mm = String(d.getMonth() + 1).padStart(2, "0");
           const yymm = `${yy}${mm}`;
-          fallbackBarcode = `${itemStr}${sizeStr}${yymm}01`;
+          fallbackBarcode = `${itemStr}${sizeStr}${colorStr}${yymm}01`;
         }
 
         const purchaseBarcode = lp?.barcode || lp?.code || fallbackBarcode || null;
@@ -1082,7 +1104,7 @@ export const listItems: Handler = async (c: any) => {
           ...it,
           purchasePrice: actualPurchasePrice,
           stockQuantity: calculatedStock,
-          code: it.code,
+          code: it.code || `PRD-${it.id}`,
           color: resolvedColor,
           colorId: colorIdCandidate || it.colorId,
           barcode: purchaseBarcode,
@@ -1162,15 +1184,17 @@ export const createItem: Handler = async (c: any) => {
     })
     .returning();
 
-  // Auto-generate standard 12-digit barcode if not provided
+  // Auto-generate standard 14-digit barcode if not provided
   if (!created.barcode) {
     const itemStr = String(created.id).padStart(4, "0").slice(-4);
     const sizeNum = Number(created.sizeId || 0);
     const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
+    const colorNum = Number(created.colorId || 0);
+    const colorStr = String(colorNum).padStart(2, "0").slice(-2);
     const now = new Date();
     const yy = String(now.getFullYear()).slice(-2);
     const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const generatedBarcode = `${itemStr}${sizeStr}${yy}${mm}01`;
+    const generatedBarcode = `${itemStr}${sizeStr}${colorStr}${yy}${mm}01`;
     await db
       .update(items)
       .set({ barcode: generatedBarcode, updatedAt: new Date() })
@@ -1554,22 +1578,24 @@ export const createPurchase: Handler = async (c: any) => {
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
 
-      // Barcode: Item ID(4) + Size ID(2) + YYMM(4) + Batch(2) = 12 digits (কালার আইডি বাদ)
+      // Barcode: Item ID(4) + Size ID(2) + Color ID(2) + YYMM(4) + Batch(2) = 14 digits
       let code = (item.code || "").trim();
       if (!code) {
         const itemStr = String(item.itemId || 0).padStart(4, "0").slice(-4);
         const sizeStr = String(sizeId || 0).padStart(2, "0").slice(-2);
+        const colorStr = String(colorId || 0).padStart(2, "0").slice(-2);
 
         const existingCountRes = await db.execute(sql`
           SELECT count(*)::int as count 
           FROM "purchase_items" 
           WHERE "item_id" = ${item.itemId ? Number(item.itemId) : null}
             AND "size_id" IS NOT DISTINCT FROM ${sizeId}
+            AND "color_id" IS NOT DISTINCT FROM ${colorId}
             AND "code" LIKE ${`%${yymm}%`}
         `);
         const existingCount = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
         const batchSerial = String(existingCount + 1).padStart(2, "0").slice(-2);
-        code = `${itemStr}${sizeStr}${yymm}${batchSerial}`;
+        code = `${itemStr}${sizeStr}${colorStr}${yymm}${batchSerial}`;
       }
 
       // Create or update item in items table to increment stock and set purchase price
@@ -1624,7 +1650,7 @@ export const createPurchase: Handler = async (c: any) => {
           .values({
             userId,
             name: itemName,
-            code,
+            code: null,
             barcode: code,
             categoryId,
             subCategoryId,
@@ -1641,6 +1667,7 @@ export const createPurchase: Handler = async (c: any) => {
           })
           .returning();
         itemId = newItem.id;
+        await db.update(items).set({ code: `PRD-${newItem.id}` }).where(eq(items.id, newItem.id));
       }
 
       // Insert purchase item record with all 21 audit/accounting fields

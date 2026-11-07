@@ -113,8 +113,7 @@
 
                 <!-- ৩. আইটেম কোড -->
                 <td class="text-start">
-                  <span v-if="it.code" class="font-monospace fw-semibold">{{ it.code }}</span>
-                  <span v-else class="text-muted small">-</span>
+                  <span class="font-monospace fw-semibold">{{ it.code || ('PRD-' + it.id) }}</span>
                 </td>
 
                 <!-- ৪. আইটেমের নাম -->
