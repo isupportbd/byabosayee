@@ -14,10 +14,14 @@ let autoInitDone = false;
  * in a single prepared statement (Extended Query Protocol error: cannot insert multiple commands into a prepared statement).
  */
 export async function executeRawSql(sqlBlock: string): Promise<void> {
-  const rawStatements = sqlBlock
-    .split(/;\s*(?:\r?\n|$)/)
+  const cleanedBlock = sqlBlock
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/--.*$/gm, "");
+
+  const rawStatements = cleanedBlock
+    .split(";")
     .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith("--"));
+    .filter((s) => s.length > 0);
 
   for (const statement of rawStatements) {
     if (!statement || statement.length < 5) continue;

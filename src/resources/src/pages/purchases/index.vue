@@ -1567,13 +1567,14 @@ function formatPaymentMethodName(pm: any): string {
   return name;
 }
 
-// পণ্যের নাম থেকে সাইজের অংশ বাদ দেওয়ার ফাংশন (যেহেতু পাশে আলাদা সাইজ ফিল্ড রয়েছে)
+// পণ্যের নাম থেকে সাইজের অংশ এবং ডিজাইন কোড বাদ দেওয়ার ফাংশন (যেহেতু পাশে আলাদা সাইজ ফিল্ড রয়েছে)
 function cleanItemName(name: string): string {
   if (!name) return "";
-  // Strip only legacy size suffix if present (e.g. ' সাইজ-ফ্রি'), preserve 'সাবক্যাটাগরি_ব্রান্ড_ডিজাইন কোড'
+  // Strip legacy size suffix (e.g. ' সাইজ-ফ্রি') and design codes (e.g. '_DGN001') to get pure product family name
   return name
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
     .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
+    .replace(/_DGN\d+.*$/i, "")
     .trim();
 }
 
@@ -2614,13 +2615,15 @@ function editPurchase(p: any) {
   // Populate items
   form.items = (p.items || []).map((it: any) => {
     let matchedItemId = it.itemId || "";
-    if (it.sizeId && (it.subCategoryId || it.brandId)) {
-      const match = itemsList.value.find(
-        (item: any) =>
+    if (it.sizeId) {
+      const itBaseName = cleanItemName(it.name || "").trim().toLowerCase();
+      const match = itemsList.value.find((item: any) => {
+        const itemBaseName = cleanItemName(item.name || "").trim().toLowerCase();
+        return (
           Number(item.sizeId || item.size?.id) === Number(it.sizeId) &&
-          (it.subCategoryId ? Number(item.subCategoryId || item.subCategory?.id) === Number(it.subCategoryId) : true) &&
-          (it.brandId ? Number(item.brandId || item.brand?.id) === Number(it.brandId) : true)
-      );
+          (itBaseName ? itemBaseName === itemBaseName : true)
+        );
+      });
       if (match) {
         matchedItemId = match.id;
       }

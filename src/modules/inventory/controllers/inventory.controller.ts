@@ -148,17 +148,26 @@ export async function ensureInventoryTables() {
       ) pi
       WHERE i.id = pi.item_id AND pi.code IS NOT NULL AND pi.code != '';
 
-      -- Step 1: Re-link purchase_items to the correct item_id based on size_id
+      -- Step 1: Re-link purchase_items to the correct item_id based on size_id and matching base product name
       UPDATE "purchase_items" pi
       SET "item_id" = i.id
       FROM "items" i
       WHERE pi.size_id IS NOT NULL 
         AND pi.size_id = i.size_id 
-        AND (
-          (pi.sub_category_id = i.sub_category_id AND pi.brand_id = i.brand_id)
-          OR (TRIM(LOWER(pi.name)) = TRIM(LOWER(i.name)))
-        )
-        AND pi.item_id != i.id;
+        AND TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(i.name, '_DGN\\d+.*', '', 'i')))
+        AND (pi.item_id IS NULL OR pi.item_id != i.id);
+
+      -- Step 1b: If pi.item_id pointed to a sibling or different item with wrong size, re-link to correct item of same base name
+      UPDATE "purchase_items" pi
+      SET "item_id" = correct_item.id
+      FROM "items" orig_item, "items" correct_item
+      WHERE pi.item_id = orig_item.id
+        AND pi.size_id IS NOT NULL
+        AND (orig_item.size_id IS NULL OR orig_item.size_id != pi.size_id)
+        AND correct_item.user_id = orig_item.user_id
+        AND correct_item.size_id = pi.size_id
+        AND TRIM(LOWER(REGEXP_REPLACE(correct_item.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(orig_item.name, '_DGN\\d+.*', '', 'i')))
+        AND pi.item_id != correct_item.id;
 
       -- Step 2: Sync color_id to items table from purchase_items
       UPDATE "items" i
@@ -355,31 +364,32 @@ export async function syncInventoryStockAndItems(userId: number) {
   if (!userId) return;
   try {
     await executeRawSql(`
-      -- Step 1: Re-link purchase_items to sibling item of matching size in same product line
+      -- Step 1: Re-link purchase_items to correct item based on matching base product name and size_id
       UPDATE "purchase_items" pi
       SET "item_id" = correct_item.id
-      FROM "items" orig_item
-      JOIN "items" correct_item ON 
-        correct_item.user_id = orig_item.user_id
-        AND correct_item.size_id = pi.size_id
-        AND (
-          (correct_item.sub_category_id IS NOT DISTINCT FROM orig_item.sub_category_id AND correct_item.brand_id IS NOT DISTINCT FROM orig_item.brand_id AND correct_item.product_type_id IS NOT DISTINCT FROM orig_item.product_type_id)
-          OR (TRIM(REGEXP_REPLACE(correct_item.name, '_DGN\\d+', '', 'i')) = TRIM(REGEXP_REPLACE(orig_item.name, '_DGN\\d+', '', 'i')))
-        )
-      WHERE pi.item_id = orig_item.id
-        AND pi.size_id IS NOT NULL
-        AND (orig_item.size_id IS NULL OR orig_item.size_id != pi.size_id)
-        AND orig_item.user_id = ${userId};
-
-      -- Step 1b: Fallback re-link by name and size_id if item_id was pointing elsewhere
-      UPDATE "purchase_items" pi
-      SET "item_id" = correct_item.id
-      FROM "items" correct_item
-      WHERE pi.size_id IS NOT NULL
+      FROM "items" correct_item, "purchases" p
+      WHERE pi.purchase_id = p.id
+        AND p.user_id = ${userId}
         AND correct_item.user_id = ${userId}
+        AND pi.size_id IS NOT NULL
         AND correct_item.size_id = pi.size_id
-        AND TRIM(REGEXP_REPLACE(correct_item.name, '_DGN\\d+', '', 'i')) = TRIM(REGEXP_REPLACE(pi.name, '_DGN\\d+', '', 'i'))
+        AND TRIM(LOWER(REGEXP_REPLACE(correct_item.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i')))
         AND (pi.item_id IS NULL OR pi.item_id != correct_item.id);
+
+      -- Step 1b: Re-link purchase_items where orig_item and correct_item have matching base name and matching size
+      UPDATE "purchase_items" pi
+      SET "item_id" = correct_item.id
+      FROM "items" orig_item, "items" correct_item, "purchases" p
+      WHERE pi.purchase_id = p.id
+        AND p.user_id = ${userId}
+        AND pi.item_id = orig_item.id
+        AND orig_item.user_id = ${userId}
+        AND correct_item.user_id = ${userId}
+        AND pi.size_id IS NOT NULL
+        AND correct_item.size_id = pi.size_id
+        AND (orig_item.size_id IS NULL OR orig_item.size_id != pi.size_id)
+        AND TRIM(LOWER(REGEXP_REPLACE(correct_item.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(orig_item.name, '_DGN\\d+.*', '', 'i')))
+        AND pi.item_id != correct_item.id;
 
       -- Step 2: Recalculate stock_quantity for ALL items of this user based on actual purchase_items and sale_items
       UPDATE "items" i
@@ -1491,18 +1501,9 @@ export const createPurchase: Handler = async (c: any) => {
         let actualItemId = itemId;
         const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
         if (existingItem && existingItem.sizeId !== sizeId && sizeId) {
-          const [matchingItem] = await db
-            .select()
-            .from(items)
-            .where(
-              and(
-                eq(items.userId, userId),
-                eq(items.subCategoryId, subCategoryId),
-                eq(items.brandId, brandId),
-                eq(items.sizeId, sizeId)
-              )
-            )
-            .limit(1);
+          const existingBaseName = (existingItem.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase();
+          const userItems = await db.select().from(items).where(and(eq(items.userId, userId), eq(items.sizeId, sizeId)));
+          const matchingItem = userItems.find((ui) => (ui.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase() === existingBaseName);
           if (matchingItem) {
             actualItemId = matchingItem.id;
           }
@@ -1796,18 +1797,9 @@ export const updatePurchase: Handler = async (c: any) => {
         let actualItemId = itemId;
         const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
         if (existingItem && existingItem.sizeId !== sizeId && sizeId) {
-          const [matchingItem] = await db
-            .select()
-            .from(items)
-            .where(
-              and(
-                eq(items.userId, userId),
-                eq(items.subCategoryId, subCategoryId),
-                eq(items.brandId, brandId),
-                eq(items.sizeId, sizeId)
-              )
-            )
-            .limit(1);
+          const existingBaseName = (existingItem.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase();
+          const userItems = await db.select().from(items).where(and(eq(items.userId, userId), eq(items.sizeId, sizeId)));
+          const matchingItem = userItems.find((ui) => (ui.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase() === existingBaseName);
           if (matchingItem) {
             actualItemId = matchingItem.id;
           }
