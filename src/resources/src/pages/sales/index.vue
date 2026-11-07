@@ -246,21 +246,28 @@
                   no-options-text="কোনো পণ্য পাওয়া যায়নি"
                   @update:model-value="handleDropdownProductSelect">
                   <template #option="option">
-                    <div class="d-flex align-items-center justify-content-between w-100 py-1" style="white-space: normal; line-height: 1.35;">
-                      <div class="d-flex align-items-center flex-wrap me-2" style="white-space: normal; word-break: break-word;">
+                    <div class="d-flex flex-column w-100 py-1" style="white-space: normal; line-height: 1.35;">
+                      <!-- উপরের রো: শুধু পণ্যের নাম -->
+                      <div class="d-flex align-items-center w-100" style="white-space: normal; word-break: break-word;">
                         <span class="text-primary me-1.5 flex-shrink-0" style="font-size: 0.75rem;">●</span>
                         <span class="fw-medium text-dark">{{ option.cleanName || cleanItemName(option.name) }}</span>
-                        <span v-if="option.sizeName" class="badge bg-light text-dark border ms-1.5 px-1.5 py-0.5" style="font-size: 0.72rem;">
-                          {{ option.sizeName }}
-                        </span>
-                        <span v-if="option.colorName" class="badge bg-light text-dark border ms-1 px-1.5 py-0.5 d-inline-flex align-items-center gap-1" style="font-size: 0.72rem;">
-                          <span v-if="option.colorCode" class="d-inline-block rounded-circle border" :style="{ backgroundColor: option.colorCode, width: '8px', height: '8px' }"></span>
-                          {{ option.colorName }}
+                      </div>
+
+                      <!-- নিচের রো: কালার, সাইজ ও স্টক -->
+                      <div class="d-flex align-items-center justify-content-between w-100 mt-1 ps-2.5">
+                        <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                          <span v-if="option.colorName" class="badge bg-white text-dark border px-1.5 py-0.5 d-inline-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                            <span v-if="option.colorCode" class="d-inline-block rounded-circle border flex-shrink-0" :style="{ backgroundColor: option.colorCode, width: '8px', height: '8px' }"></span>
+                            {{ option.colorName }}
+                          </span>
+                          <span v-if="option.sizeName" class="badge bg-white text-dark border px-1.5 py-0.5" style="font-size: 0.72rem;">
+                            {{ option.sizeName }}
+                          </span>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap flex-shrink-0 ms-2" style="font-size: 0.75rem;">
+                          ({{ option.stockQtyBn || toBengaliNumber(option.stockQuantity ?? 0) }})
                         </span>
                       </div>
-                      <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap flex-shrink-0" style="font-size: 0.75rem;">
-                        ({{ option.stockQtyBn || toBengaliNumber(option.stockQuantity ?? 0) }})
-                      </span>
                     </div>
                   </template>
                 </Select>
