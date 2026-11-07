@@ -1161,12 +1161,58 @@ const cashierDisplayName = computed(() => {
   return (authUser.value as any)?.name || (authUser.value as any)?.fullName || "অ্যাডমিন ক্যাশিয়ার";
 });
 
-// Company Display Info
+// Company Display Info (Synced with Company Settings)
 const companyDisplayName = computed(() => {
-  return companyInfo.value?.name || (authUser.value as any)?.companyName || "ফ্যাশন হাউজ";
+  return companyInfo.value?.companyName || companyInfo.value?.name || (authUser.value as any)?.companyName || "রুপকার আর্ট";
+});
+const companyTagline = computed(() => {
+  return companyInfo.value?.tagline || "রুচিশীল মানুষের প্রথম পছন্দ";
+});
+const companyAddress = computed(() => {
+  return companyInfo.value?.address || "দোকান নং- ২৪৯, ২৫০, ২৫১, লালদিঘীরপার নিউ মার্কেট, সিলেট";
 });
 const companyPhone = computed(() => {
-  return companyInfo.value?.phone || "০১৭০০০০০০০০";
+  return companyInfo.value?.mobile || companyInfo.value?.phone || "01711971224";
+});
+const companyVatBin = computed(() => {
+  return companyInfo.value?.vatBin || "";
+});
+
+// Barcode Raw String & Bars for Receipt
+const receiptBarcodeRawText = computed(() => {
+  const memo = (activeReceiptSale.value?.invoiceNumber || "INV-26-00001").trim();
+  const dateStr = activeReceiptSale.value?.saleDate || todayFormatted.value;
+  const amountStr = `${Math.round(Number(activeReceiptSale.value?.totalAmount || 0))} Tk`;
+  return `${memo} | ${dateStr} | ${amountStr}`;
+});
+
+const receiptBarcodeBars = computed(() => {
+  return generateBarcodeBars(receiptBarcodeRawText.value);
+});
+
+// Terms lines from Company Settings
+const formattedTermsLines = computed(() => {
+  const terms = (companyInfo.value?.invoiceTerms || "").trim();
+  if (!terms) {
+    return [
+      "* পণ্য বুঝে নেয়ার পর কোনো অভিযোগ গ্রহণযোগ্য নয়।",
+      "* বিক্রিত পণ্য ফেরতযোগ্য নয়।"
+    ];
+  }
+  const rawLines = terms.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+  const result: string[] = [];
+  for (const line of rawLines) {
+    if (line.includes("*") && (line.match(/\*/g) || []).length > 1) {
+      const parts = line.split(/(?=\*)/).map((p: string) => p.trim()).filter(Boolean);
+      result.push(...parts);
+    } else {
+      result.push(line);
+    }
+  }
+  return result.length ? result : [
+    "* পণ্য বুঝে নেয়ার পর কোনো অভিযোগ গ্রহণযোগ্য নয়।",
+    "* বিক্রিত পণ্য ফেরতযোগ্য নয়।"
+  ];
 });
 
 // Today Date formatting
@@ -2501,9 +2547,19 @@ function printReceipt() {
   win.document.close();
 }
 
-function previewAndPrintSale(sale: any) {
+async function previewAndPrintSale(sale: any) {
   activeReceiptSale.value = sale;
   showPrintModal.value = true;
+  if (!sale.items || sale.items.length === 0) {
+    try {
+      const res = await axios.get(`/api/inventory/sales/${sale.id}`);
+      if (res.data?.data) {
+        activeReceiptSale.value = res.data.data;
+      }
+    } catch {
+      // keep current sale
+    }
+  }
 }
 
 // Delete Sale Confirmation
