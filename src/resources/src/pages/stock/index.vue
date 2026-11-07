@@ -270,7 +270,12 @@
                 <!-- অবস্থা / স্টেটাস -->
                 <td class="text-center">
                   <span
-                    v-if="Number(item.stockQuantity || 0) <= 0"
+                    v-if="Number(item.stockQuantity || 0) <= 0 && (!item.purchasePrice || Number(item.purchasePrice) <= 0)"
+                    class="badge bg-secondary-subtle text-secondary border border-secondary-subtle small">
+                    অক্রয়কৃত
+                  </span>
+                  <span
+                    v-else-if="Number(item.stockQuantity || 0) <= 0"
                     class="badge bg-danger-subtle text-danger border border-danger-subtle small">
                     স্টক শেষ
                   </span>

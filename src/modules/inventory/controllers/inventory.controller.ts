@@ -192,6 +192,15 @@ export async function ensureInventoryTables() {
       ) pi
       WHERE i.id = pi.item_id;
 
+      -- Step 3b: Reset purchase_price to 0 for items that have no purchase history
+      UPDATE "items" i
+      SET "purchase_price" = 0
+      WHERE i.id NOT IN (
+        SELECT DISTINCT item_id 
+        FROM "purchase_items" 
+        WHERE item_id IS NOT NULL
+      );
+
       -- Step 4: Recalculate stock_quantity for all items having purchase records so stock correctly reflects actual purchases
       UPDATE "items" i
       SET "stock_quantity" = (
@@ -421,6 +430,17 @@ export async function syncInventoryStockAndItems(userId: number) {
         ORDER BY item_id, id DESC
       ) pi
       WHERE i.id = pi.item_id AND i.user_id = ${userId};
+
+      -- Step 3b: Reset purchase_price to 0 for items that have no purchase history
+      UPDATE "items" i
+      SET "purchase_price" = 0
+      WHERE i.user_id = ${userId}
+        AND i.id NOT IN (
+          SELECT DISTINCT pi.item_id 
+          FROM "purchase_items" pi
+          JOIN "purchases" p ON p.id = pi.purchase_id
+          WHERE p.user_id = ${userId} AND pi.item_id IS NOT NULL
+        );
 
       -- Step 4: Sync color_id to items table from purchase_items
       UPDATE "items" i
@@ -997,8 +1017,13 @@ export const listItems: Handler = async (c: any) => {
           resolvedColor = { id: cObj.id, name: cObj.name, code: cObj.code };
         }
 
+        const actualPurchasePrice = hasPurchases
+          ? (unitCostVal !== undefined && unitCostVal !== null ? String(Number(unitCostVal).toFixed(2)) : String(Number(it.purchasePrice || 0).toFixed(2)))
+          : "0.00";
+
         return {
           ...it,
+          purchasePrice: actualPurchasePrice,
           stockQuantity: calculatedStock,
           code: it.code,
           color: resolvedColor,
@@ -1006,7 +1031,7 @@ export const listItems: Handler = async (c: any) => {
           barcode: purchaseBarcode,
           latestChallanDate: lp?.challanDate || lp?.challandate || lp?.challan_date || null,
           latestChallanNumber: lp?.challanNumber || lp?.challannumber || lp?.challan_number || null,
-          latestUnitCost: unitCostVal !== undefined && unitCostVal !== null ? Number(unitCostVal) : Number(it.purchasePrice || 0),
+          latestUnitCost: hasPurchases ? (unitCostVal !== undefined && unitCostVal !== null ? Number(unitCostVal) : Number(it.purchasePrice || 0)) : 0,
           latestBarcode: purchaseBarcode,
           sellingPrice: finalSellingPrice,
           latestVatRate: finalVatRate,
