@@ -976,7 +976,7 @@ export const listItems: Handler = async (c: any) => {
       supplier: { columns: { id: true, name: true } },
       manufacturer: { columns: { id: true, name: true } },
       color: { columns: { id: true, name: true, code: true } },
-      size: { columns: { id: true, name: true } },
+      size: { columns: { id: true, name: true, sortOrder: true } },
       unit: { columns: { id: true, name: true, shortName: true } }
     }
   });

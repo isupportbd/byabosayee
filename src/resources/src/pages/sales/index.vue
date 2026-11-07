@@ -1282,9 +1282,62 @@ const availableItems = computed(() => {
   return list;
 });
 
-// POS Product Options for Searchable Select Component
+const standardSizeOrder: Record<string, number> = {
+  free: 0,
+  fs: 0,
+  "free size": 0,
+  xs: 1,
+  s: 2,
+  m: 3,
+  l: 4,
+  xl: 5,
+  xxl: 6,
+  "2xl": 6,
+  xxxl: 7,
+  "3xl": 7,
+  "4xl": 8,
+  "5xl": 9,
+  "6xl": 10
+};
+
+function compareSizes(aSize: any, bSize: any, aName: string = "", bName: string = ""): number {
+  const aClean = (aName || aSize?.name || "").trim().toLowerCase();
+  const bClean = (bName || bSize?.name || "").trim().toLowerCase();
+
+  if (aClean === bClean) return 0;
+  if (!aClean) return 1;
+  if (!bClean) return -1;
+
+  // 1. Check sortOrder from catalog database if configured
+  const aOrder = Number(aSize?.sortOrder || 0);
+  const bOrder = Number(bSize?.sortOrder || 0);
+  if (aOrder > 0 && bOrder > 0 && aOrder !== bOrder) {
+    return aOrder - bOrder;
+  }
+
+  // 2. Check standard letter sizes (XS, S, M, L, XL, XXL, etc.)
+  const aRank = standardSizeOrder[aClean];
+  const bRank = standardSizeOrder[bClean];
+  if (aRank !== undefined && bRank !== undefined) {
+    return aRank - bRank;
+  }
+  if (aRank !== undefined) return -1;
+  if (bRank !== undefined) return 1;
+
+  // 3. Check numeric sizes (e.g. 28, 30, 32, 34, 36...)
+  const aNum = parseFloat(aClean);
+  const bNum = parseFloat(bClean);
+  if (!isNaN(aNum) && !isNaN(bNum) && aNum !== bNum) {
+    return aNum - bNum;
+  }
+
+  // 4. Default natural string comparison
+  return aClean.localeCompare(bClean, "bn", { numeric: true, sensitivity: "base" });
+}
+
+// POS Product Options for Searchable Select Component (সর্টিং: পণ্যের নাম -> সাইজ -> কালার)
 const posItemOptions = computed(() => {
-  return availableItems.value.map((it: any) => {
+  const options = availableItems.value.map((it: any) => {
     const cleanName = cleanItemName(it.name);
     const sizeName = it.size?.name || "";
     const colorName = it.color?.name || "";
@@ -1302,6 +1355,20 @@ const posItemOptions = computed(() => {
       colorCode: it.color?.code || "",
       stockQtyBn: stockQty
     };
+  });
+
+  // User Requirement: "পণ্যের নাম, সাইজ, কালার এভাবে সর্টিং হবে"
+  return options.sort((a, b) => {
+    // ১. পণ্যের নাম (A-Z / ক-খ)
+    const nameDiff = a.cleanName.localeCompare(b.cleanName, "bn", { sensitivity: "base" });
+    if (nameDiff !== 0) return nameDiff;
+
+    // ২. সাইজ (S, M, L, XL, XXL বা ২৮, ৩০, ৩২...)
+    const sizeDiff = compareSizes(a.size, b.size, a.sizeName, b.sizeName);
+    if (sizeDiff !== 0) return sizeDiff;
+
+    // ৩. কালার (বর্ণানুক্রমিক)
+    return (a.colorName || "").localeCompare(b.colorName || "", "bn", { sensitivity: "base" });
   });
 });
 
