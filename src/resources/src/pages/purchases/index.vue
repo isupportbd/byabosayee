@@ -604,18 +604,27 @@
 
                     <!-- পরিশোধিত টাকা -->
                     <div class="mb-2">
-                      <label class="form-label small fw-semibold mb-1">
-                        পরিশোধিত টাকা (৳) <span class="text-danger">*</span>
+                      <label class="form-label small fw-semibold mb-1 d-flex align-items-center justify-content-between">
+                        <span>পরিশোধিত টাকা (৳) <span class="text-danger">*</span></span>
                       </label>
-                      <input
-                        v-model.number="form.paidAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="form-control form-control-sm fw-semibold text-success"
-                        placeholder="0.00"
-                        required
-                        @input="onPaidAmountInput" />
+                      <div class="input-group input-group-sm">
+                        <input
+                          v-model.number="form.paidAmount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          class="form-control fw-semibold text-success"
+                          placeholder="0.00"
+                          required
+                          @input="onPaidAmountInput" />
+                        <button
+                          type="button"
+                          class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center px-2.5 shadow-2xs"
+                          title="পণ্যের মোট চালান মূল্য অটো বসান (সিংক)"
+                          @click="syncFullPaidAmount">
+                          <i class="bi bi-arrow-repeat fs-6"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2576,6 +2585,17 @@ function onPaidAmountInput() {
   if (Number(form.paidAmount) > 0 && !form.paymentMethod && activePaymentMethods.value.length > 0) {
     form.paymentMethod = activePaymentMethods.value[0].code || activePaymentMethods.value[0].name;
   }
+}
+
+function syncFullPaidAmount() {
+  const targetAmount = finalTotalAmount.value > 0 ? Number(finalTotalAmount.value.toFixed(2)) : Number(itemsSubtotal.value.toFixed(2));
+  if (targetAmount <= 0) {
+    showToast("অনুগ্রহ করে প্রথমে চালানে পণ্য যোগ করুন", "warning");
+    return;
+  }
+  form.paidAmount = targetAmount;
+  onPaidAmountInput();
+  showToast(`পরিশোধিত টাকা ৳ ${toBengaliNumber(targetAmount.toFixed(2))} স্বয়ংক্রিয়ভাবে বসানো হয়েছে`, "success");
 }
 
 function editPurchase(p: any) {

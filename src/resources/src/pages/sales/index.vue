@@ -256,9 +256,9 @@
                       <!-- নিচের রো: সুন্দর দূরত্বসহ কালার, সাইজ ও স্টক -->
                       <div class="d-flex align-items-center justify-content-between w-100 mt-0.5 ps-3">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                          <span v-if="option.colorName" class="badge bg-white text-dark border px-2 py-0.5 d-inline-flex align-items-center gap-1.5 shadow-xs" style="font-size: 0.72rem;">
-                            <span v-if="option.colorCode" class="d-inline-block rounded-circle border flex-shrink-0" :style="{ backgroundColor: option.colorCode, width: '9px', height: '9px' }"></span>
-                            {{ option.colorName }}
+                          <span v-if="option.colorName" class="badge bg-white text-dark border px-2 py-0.5 d-inline-flex align-items-center shadow-xs" style="font-size: 0.72rem;">
+                            <span v-if="option.colorCode" class="d-inline-block rounded-circle border flex-shrink-0" :style="{ backgroundColor: option.colorCode, width: '9px', height: '9px', marginRight: '6px' }"></span>
+                            <span>{{ option.colorName }}</span>
                           </span>
                           <span v-if="option.sizeName" class="badge bg-white text-dark border px-2 py-0.5 shadow-xs" style="font-size: 0.72rem;">
                             {{ option.sizeName }}
