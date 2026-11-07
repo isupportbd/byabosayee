@@ -961,7 +961,7 @@
           </div>
         </div>
 
-        <!-- পণ্যের তালিকা ও ১৪ ডিজিটের বারকোড -->
+        <!-- পণ্যের তালিকা ও ১২ ডিজিটের বারকোড -->
         <h6 class="fw-bold mb-2 text-dark d-flex align-items-center justify-content-between">
           <span>
             <i class="bi bi-upc-scan text-primary me-1"></i>
@@ -977,7 +977,7 @@
             <thead class="table-light small text-nowrap">
               <tr>
                 <th class="text-center" style="width: 35px;">#</th>
-                <th>১৪-ডিজিট বারকোড</th>
+                <th>১২-ডিজিট বারকোড</th>
                 <th>পণ্যের নাম</th>
                 <th>ব্র্যান্ড</th>
                 <th>সাইজ / কালার</th>
