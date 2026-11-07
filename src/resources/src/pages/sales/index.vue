@@ -905,95 +905,135 @@
               @click="showPrintModal = false"></button>
           </div>
 
-          <div class="modal-body p-3">
-            <!-- Thermal Receipt Printable Layout -->
-            <div id="thermal-receipt" class="receipt-container p-3 bg-white border rounded">
-              <div class="text-center pb-2 border-bottom mb-2">
-                <h5 class="fw-bold m-0 fs-5">{{ companyDisplayName }}</h5>
-                <p v-if="companySlogan" class="small text-muted mb-0">{{ companySlogan }}</p>
-                <p class="small text-muted mb-0">মোবাইল: {{ companyPhone }}</p>
-              </div>
+          <div class="modal-body p-3 d-flex justify-content-center" style="background-color: #f4f6f8; overflow-y: auto; max-height: 80vh;">
+            <!-- POS THERMAL RECEIPT (Exactly matching Company Settings) -->
+            <div class="pos-paper-wrapper d-flex justify-content-center py-2">
+              <div
+                id="thermal-receipt"
+                class="actual-pos-paper"
+                style="width: 280px; max-width: 280px;">
+                <!-- POS Header -->
+                <div class="text-center pb-1">
+                  <div class="pos-header-title fw-bold text-uppercase">{{ companyDisplayName }}</div>
+                  <div v-if="companyTagline" class="pos-text-muted" style="font-size: 10.5px;">{{ companyTagline }}</div>
+                  <div v-if="companyAddress" class="pos-text-muted" style="font-size: 10px;">{{ companyAddress }}</div>
+                  <div class="pos-text-muted" style="font-size: 10px;">মোবাইল: {{ companyPhone }}</div>
+                  <div v-if="companyVatBin" class="pos-text-muted" style="font-size: 10px;">BIN: {{ companyVatBin }}</div>
+                </div>
 
-              <!-- চালান মেটা তথ্য -->
-              <div class="receipt-meta small pb-2 border-bottom mb-2">
-                <div class="d-flex justify-content-between">
-                  <span>ইনভয়েস: <strong>{{ activeReceiptSale?.invoiceNumber }}</strong></span>
-                  <span>তারিখ: {{ formatDate(activeReceiptSale?.saleDate) }}</span>
-                </div>
-                <div class="d-flex justify-content-between">
-                  <span>গ্রাহক: {{ activeReceiptSale?.customerName || 'ওয়াকিং কাস্টমার' }}</span>
-                  <span>ক্যাশিয়ার: <strong>{{ activeReceiptSale?.cashierName || cashierDisplayName }}</strong></span>
-                </div>
-              </div>
+                <!-- Rule -->
+                <div class="pos-rule my-1.5"></div>
 
-              <!-- আইটেম টেবিল -->
-              <table class="table table-sm table-borderless small mb-2">
-                <thead class="border-bottom">
-                  <tr>
-                    <th class="text-start p-1">পণ্য</th>
-                    <th class="text-center p-1">পরিমাণ</th>
-                    <th class="text-end p-1">দর</th>
-                    <th class="text-end p-1">মোট</th>
-                  </tr>
-                </thead>
-                <tbody class="border-bottom">
-                  <tr v-for="it in activeReceiptSale?.items || []" :key="it.id">
-                    <td class="p-1">
-                      <div class="fw-semibold">{{ cleanItemName(it.name) }}</div>
-                      <small v-if="it.sizeName || it.colorName" class="text-muted d-block" style="font-size: 0.72rem;">
-                        <span v-if="it.sizeName">সাইজ: {{ it.sizeName }}</span>
-                        <span v-if="it.sizeName && it.colorName"> | </span>
-                        <span v-if="it.colorName">কালার: {{ it.colorName }}</span>
-                      </small>
-                    </td>
-                    <td class="text-center p-1 font-monospace">{{ it.quantity }}</td>
-                    <td class="text-end p-1 font-monospace">{{ Number(it.unitPrice).toFixed(2) }}</td>
-                    <td class="text-end p-1 font-monospace">{{ Number(it.totalPrice).toFixed(2) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+                <!-- Meta Info -->
+                <div class="d-flex justify-content-between font-monospace" style="font-size: 10.5px;">
+                  <span>মেমো: <strong>{{ activeReceiptSale?.invoiceNumber }}</strong></span>
+                  <span>তারিখ: {{ formatBengaliReceiptDate(activeReceiptSale?.saleDate || activeReceiptSale?.createdAt) }}</span>
+                </div>
+                <div class="d-flex justify-content-between pos-text-muted font-monospace" style="font-size: 9.5px;">
+                  <span>সময়: {{ formatBengaliReceiptTime(activeReceiptSale?.createdAt || activeReceiptSale?.saleDate) }}</span>
+                  <span>কাউন্টার: #০১</span>
+                </div>
 
-              <!-- সারসংক্ষেপ হিসাব -->
-              <div class="receipt-totals small pb-2 border-bottom mb-2">
-                <div class="d-flex justify-content-between">
-                  <span>সাবটোটাল:</span>
-                  <span class="font-monospace"><span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.subtotal || 0).toFixed(2) }}</span>
-                </div>
-                <div v-if="Number(activeReceiptSale?.discountAmount || 0) > 0" class="d-flex justify-content-between text-danger">
-                  <span>ছাড়:</span>
-                  <span class="font-monospace">- <span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.discountAmount).toFixed(2) }}</span>
-                </div>
-                <div v-if="Number(activeReceiptSale?.vatAmount || 0) > 0" class="d-flex justify-content-between text-muted">
-                  <span>{{ activeReceiptSale?.vatMode === 'inclusive' ? 'ভ্যাট (অন্তর্ভুক্ত)' : 'ভ্যাট' }}:</span>
-                  <span class="font-monospace"><span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.vatAmount).toFixed(2) }}</span>
-                </div>
-                <div class="d-flex justify-content-between fw-bold fs-6 pt-1 border-top mt-1">
-                  <span>সর্বমোট প্রদেয়:</span>
-                  <span class="font-monospace text-success"><span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.totalAmount || 0).toFixed(2) }}</span>
-                </div>
-                <div class="d-flex justify-content-between pt-1">
-                  <span>
-                    পরিশোধিত ({{ activeReceiptSale?.paymentMethod || 'ক্যাশ' }}):
-                    <small v-if="activeReceiptSale?.transactionId" class="text-muted d-block font-monospace" style="font-size: 0.7rem;">
-                      TrxID: {{ activeReceiptSale.transactionId }}
-                    </small>
-                  </span>
-                  <span class="font-monospace"><span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.paidAmount || 0).toFixed(2) }}</span>
-                </div>
-                <div v-if="Number(activeReceiptSale?.changeAmount || 0) > 0" class="d-flex justify-content-between text-primary">
-                  <span>ফেরত দেওয়া হয়েছে:</span>
-                  <span class="font-monospace"><span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.changeAmount).toFixed(2) }}</span>
-                </div>
-                <div v-if="Number(activeReceiptSale?.dueAmount || 0) > 0" class="d-flex justify-content-between text-danger fw-semibold">
-                  <span>বকেয়া:</span>
-                  <span class="font-monospace"><span class="currency-symbol me-0.5">৳</span>{{ Number(activeReceiptSale?.dueAmount).toFixed(2) }}</span>
-                </div>
-              </div>
+                <!-- Rule -->
+                <div class="pos-rule my-1.5"></div>
 
-              <!-- ফুটার বার্তা -->
-              <div class="text-center pt-1 small text-muted" style="font-size: 0.72rem;">
-                <p class="mb-0">ধন্যবাদ, আবার আসবেন!</p>
-                <p class="mb-0">ক্রয়কৃত পণ্য ৭ দিনের মধ্যে ক্যাশ মেমোসহ পরিবর্তনযোগ্য।</p>
+                <!-- Items Table -->
+                <table class="w-100 pos-table font-monospace" style="font-size: 10.5px;">
+                  <thead>
+                    <tr class="border-bottom border-dark border-opacity-25">
+                      <th class="text-start pb-1">আইটেম</th>
+                      <th class="text-center pb-1" style="width: 45px;">পরিমাণ</th>
+                      <th class="text-end pb-1" style="width: 65px;">টাকা</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(it, idx) in activeReceiptSale?.items || []" :key="it.id || idx" class="align-top">
+                      <td class="text-start py-1 pe-1">
+                        <!-- রো ১: সাব-ক্যাটাগরি ও ধরন -->
+                        <div class="fw-semibold" style="line-height: 1.3;">{{ getItemMemoLines(it, idx).title }}</div>
+                        <!-- রো ২: ব্রান্ড, সাইজ ও কালার -->
+                        <div v-if="getItemMemoLines(it, idx).subtitle" class="pos-text-muted" style="font-size: 9.5px; line-height: 1.25; margin-top: 2px;">
+                          {{ getItemMemoLines(it, idx).subtitle }}
+                        </div>
+                      </td>
+                      <td class="text-center py-1 font-monospace" style="white-space: nowrap;">
+                        {{ toBengaliNumber(it.quantity) }}
+                      </td>
+                      <td class="text-end py-1 font-monospace" style="white-space: nowrap;">
+                        {{ formatBengaliCurrency(it.totalPrice) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <!-- Rule -->
+                <div class="pos-rule my-1.5"></div>
+
+                <!-- Totals -->
+                <div class="font-monospace" style="font-size: 11px;">
+                  <div class="d-flex justify-content-between py-0.5">
+                    <span>{{ Number(activeReceiptSale?.discountAmount || 0) > 0 ? 'সাবটোটাল:' : 'মোট বিল:' }}</span>
+                    <strong>{{ formatBengaliCurrency(activeReceiptSale?.subtotal || activeReceiptSale?.totalAmount) }}৳</strong>
+                  </div>
+                  <div v-if="Number(activeReceiptSale?.discountAmount || 0) > 0" class="d-flex justify-content-between py-0.5 text-danger">
+                    <span>ছাড়:</span>
+                    <strong>- {{ formatBengaliCurrency(activeReceiptSale?.discountAmount) }}৳</strong>
+                  </div>
+                  <div v-if="Number(activeReceiptSale?.vatAmount || 0) > 0" class="d-flex justify-content-between py-0.5 pos-text-muted">
+                    <span>ভ্যাট:</span>
+                    <span>+ {{ formatBengaliCurrency(activeReceiptSale?.vatAmount) }}৳</span>
+                  </div>
+                  <div v-if="Number(activeReceiptSale?.discountAmount || 0) > 0 || Number(activeReceiptSale?.vatAmount || 0) > 0" class="d-flex justify-content-between py-0.5 border-top border-dark border-opacity-10 mt-0.5">
+                    <span>সর্বমোট প্রদেয়:</span>
+                    <strong>{{ formatBengaliCurrency(activeReceiptSale?.totalAmount) }}৳</strong>
+                  </div>
+                  <div class="d-flex justify-content-between py-0.5">
+                    <span>পরিশোধ ({{ activeReceiptSale?.paymentMethod === 'cash' || !activeReceiptSale?.paymentMethod ? 'নগদ' : activeReceiptSale?.paymentMethod }}):</span>
+                    <strong>{{ formatBengaliCurrency(activeReceiptSale?.paidAmount) }}৳</strong>
+                  </div>
+                  <div class="d-flex justify-content-between py-0.5 pos-text-muted">
+                    <span>বকেয়া:</span>
+                    <span>{{ formatBengaliCurrency(activeReceiptSale?.dueAmount || 0) }}৳</span>
+                  </div>
+                  <div class="py-0.5">&nbsp;</div>
+                </div>
+
+                <!-- Terms Section -->
+                <div class="pos-rule my-1.5"></div>
+                <div class="pos-terms-box text-start px-1" style="font-size: 8.5px; line-height: 1.4;">
+                  <div class="fw-bold mb-1" style="font-size: 9px;">শর্তাবলী ও রিটার্ন পলিসি:</div>
+                  <div
+                    v-for="(term, idx) in formattedTermsLines"
+                    :key="idx"
+                    class="pos-text-muted py-0.5 d-flex align-items-start gap-1">
+                    <span>{{ term }}</span>
+                  </div>
+                </div>
+
+                <!-- Greetings & Dynamic Barcode -->
+                <div class="pos-rule my-1.5"></div>
+                <div class="text-center pt-1">
+                  <div class="fw-bold" style="font-size: 11px;">ধন্যবাদ, আবার আসবেন!</div>
+                  <!-- Real Dynamic Code 128 Barcode with Memo No, Date & Amount in English -->
+                  <div class="pos-barcode-container d-flex flex-column align-items-center mt-1.5">
+                    <svg
+                      class="barcode-svg"
+                      :viewBox="`0 0 ${receiptBarcodeBars.totalWidth} 40`"
+                      style="width: 100%; max-width: 240px; height: 38px;"
+                      shape-rendering="crispEdges">
+                      <rect width="100%" height="100%" fill="#ffffff" />
+                      <rect
+                        v-for="(bar, bIdx) in receiptBarcodeBars.bars"
+                        :key="bIdx"
+                        :x="bar.x"
+                        y="0"
+                        :width="bar.w"
+                        height="40"
+                        fill="#000000" />
+                    </svg>
+                  </div>
+                  <div class="pos-text-muted mt-1.5" style="font-size: 8px;">* ক্যাশ কাউন্টার মেমো কপি *</div>
+                </div>
               </div>
             </div>
           </div>
@@ -1248,6 +1288,124 @@ function toBengaliNumber(num: number | string | null | undefined): string {
   if (num === null || num === undefined || num === "") return "০";
   const bengaliDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
   return String(num).replace(/[0-9]/g, (w) => bengaliDigits[+w]);
+}
+
+
+// Standard GS1 Code 128 (Subtype B) Barcode Patterns
+const CODE128_PATTERNS = [
+  "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+  "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+  "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+  "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+  "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+  "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+  "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+  "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+  "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+  "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+  "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+];
+
+function generateBarcodeBars(text: string) {
+  if (!text) return { bars: [] as { x: number; w: number }[], totalWidth: 100 };
+  const indices: number[] = [104];
+  let checksum = 104;
+
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i) - 32;
+    if (code < 0 || code > 95) continue;
+    indices.push(code);
+    checksum += code * (i + 1);
+  }
+
+  const checkDigit = checksum % 103;
+  indices.push(checkDigit);
+  indices.push(106); // Stop code
+
+  const quietZone = 20;
+  let currentX = quietZone;
+  const bars: { x: number; w: number }[] = [];
+
+  for (const idx of indices) {
+    const pattern = CODE128_PATTERNS[idx];
+    if (!pattern) continue;
+    for (let p = 0; p < pattern.length; p++) {
+      const width = parseInt(pattern[p], 10);
+      if (p % 2 === 0) {
+        bars.push({ x: currentX, w: width });
+      }
+      currentX += width;
+    }
+  }
+
+  return { bars, totalWidth: currentX + quietZone };
+}
+
+// Bengali Currency Formatter (e.g. 2600 -> ২,৬০০)
+function formatBengaliCurrency(val: number | string | null | undefined): string {
+  const num = Number(val) || 0;
+  const formatted = num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return toBengaliNumber(formatted);
+}
+
+// Format Bengali Date for Receipt (e.g. 07/11/2026 -> ৭/১১/২০২৬)
+function formatBengaliReceiptDate(dateStr?: string | Date): string {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d.getTime())) return String(dateStr || "");
+  const day = toBengaliNumber(d.getDate());
+  const month = toBengaliNumber(d.getMonth() + 1);
+  const year = toBengaliNumber(d.getFullYear());
+  return `${day}/${month}/${year}`;
+}
+
+// Format Bengali Time for Receipt (e.g. 06:00 PM -> ০৬:০০ PM)
+function formatBengaliReceiptTime(dateStr?: string | Date): string {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d.getTime())) return "০৬:০০ PM";
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const hoursStr = String(hours).padStart(2, "0");
+  return `${toBengaliNumber(hoursStr)}:${toBengaliNumber(minutes)} ${ampm}`;
+}
+
+// Memo Item decomposition: Row 1 = Subcategory - Type, Row 2 = Brand | Size | Color
+function getItemMemoLines(it: any, index?: number) {
+  const numPrefix = index !== undefined ? `${toBengaliNumber(index + 1)}. ` : "";
+  const raw = cleanItemName(it.name || "");
+  const parts = raw.split("_").map((p: string) => p.trim()).filter(Boolean);
+
+  let line1 = "";
+  let brand = (it.brandName || "").trim();
+
+  if (parts.length >= 3) {
+    // parts[0] = সাব-ক্যাটাগরি, parts[1] = ধরন, parts[2] = ব্র্যান্ড
+    line1 = `${parts[0]} - ${parts[1]}`;
+    if (!brand) brand = parts[2];
+  } else if (parts.length === 2) {
+    if (brand && parts[1].toLowerCase() === brand.toLowerCase()) {
+      line1 = parts[0];
+    } else {
+      line1 = `${parts[0]} - ${parts[1]}`;
+    }
+  } else {
+    line1 = raw || "পণ্য";
+  }
+
+  // Row 2: ব্র্যান্ড, সাইজ ও কালার
+  const row2Parts: string[] = [];
+  if (brand) row2Parts.push(brand);
+  if (it.sizeName) row2Parts.push(`সাইজ: ${it.sizeName}`);
+  if (it.colorName) row2Parts.push(`কালার: ${it.colorName}`);
+
+  const line2 = row2Parts.join(" | ");
+
+  return {
+    title: `${numPrefix}${line1}`,
+    subtitle: line2
+  };
 }
 
 // Clean Item Name helper (strips design suffix like _DGN005 and size suffixes)
@@ -2207,45 +2365,136 @@ async function loadDraftIntoCart(draft: any) {
 
 // Print Receipt Trigger
 function printReceipt() {
-  const printContents = document.getElementById("thermal-receipt")?.innerHTML;
-  if (!printContents) return;
+  const receiptEl = document.getElementById("thermal-receipt");
+  if (!receiptEl) return;
+  const printContents = receiptEl.innerHTML;
 
-  const win = window.open("", "_blank", "width=600,height=700");
+  const win = window.open("", "_blank", "width=600,height=750");
   if (!win) return;
 
   win.document.write(`
     <!DOCTYPE html>
     <html>
       <head>
-        <title>বিক্রয় রসিদ - ${activeReceiptSale.value?.invoiceNumber || ""}</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+        <meta charset="utf-8" />
+        <title>ক্যাশ মেমো - ${activeReceiptSale.value?.invoiceNumber || ""}</title>
         <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 10px;
-            color: #000;
+            padding: 0;
           }
-          .receipt-container {
-            max-width: 320px;
-            margin: auto;
+          @page {
+            size: auto;
+            margin: 0;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Bengali", sans-serif;
+            background: #fff;
+            color: #000;
+            margin: 0;
+            padding: 10px 8px;
+            font-size: 10.5px;
+            line-height: 1.35;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .actual-pos-paper {
+            width: 280px;
+            max-width: 280px;
+            margin: 0 auto;
+            padding: 4px 6px;
+            background: #fff;
+          }
+          .pos-rule {
+            border-top: 1px dashed #666666;
+            width: 100%;
+            margin: 6px 0;
+          }
+          .pos-header-title {
+            color: #000000 !important;
+            font-size: 14.5px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-align: center;
+          }
+          .pos-text-muted {
+            color: #555555 !important;
+          }
+          .text-center { text-align: center; }
+          .text-start { text-align: left; }
+          .text-end { text-align: right; }
+          .fw-bold { font-weight: bold; }
+          .fw-semibold { font-weight: 600; }
+          .text-uppercase { text-transform: uppercase; }
+          .d-flex { display: flex; }
+          .justify-content-between { justify-content: space-between; }
+          .justify-content-center { justify-content: center; }
+          .align-items-center { align-items: center; }
+          .align-items-start { align-items: flex-start; }
+          .flex-column { flex-direction: column; }
+          .w-100 { width: 100%; }
+          .pb-1 { padding-bottom: 3px; }
+          .pt-1 { padding-top: 3px; }
+          .py-0\\.5 { padding-top: 1.5px; padding-bottom: 1.5px; }
+          .py-1 { padding-top: 3px; padding-bottom: 3px; }
+          .my-1\\.5 { margin-top: 5px; margin-bottom: 5px; }
+          .mt-0\\.5 { margin-top: 2px; }
+          .mt-1\\.5 { margin-top: 5px; }
+          .px-1 { padding-left: 3px; padding-right: 3px; }
+          .pe-1 { padding-right: 4px; }
+          .border-bottom { border-bottom: 1px solid rgba(0,0,0,0.25); }
+          .border-top { border-top: 1px solid rgba(0,0,0,0.25); }
+          .text-danger { color: #dc3545 !important; }
+          .pos-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5px;
+          }
+          .pos-table th {
+            font-weight: 600;
+            color: #222222;
+          }
+          .pos-table td {
+            color: #111111;
+          }
+          .pos-barcode-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 4px;
+          }
+          .barcode-svg {
+            width: 100%;
+            max-width: 240px;
+            height: 38px;
           }
           @media print {
-            body { padding: 0; }
-            .receipt-container { max-width: 100%; border: none !important; }
+            body {
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            .actual-pos-paper {
+              width: 100% !important;
+              max-width: 100% !important;
+              padding: 2px 4px !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="receipt-container">
+        <div class="actual-pos-paper">
           ${printContents}
         </div>
         <script>
           window.onload = function() {
+            window.focus();
             window.print();
             setTimeout(function() { window.close(); }, 500);
           };
-        <\/script>
+        <\\/script>
       </body>
     </html>
   `);
