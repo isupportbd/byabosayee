@@ -543,23 +543,33 @@ function cleanItemName(name: string | null | undefined, item?: any): string {
   if (!name) return "";
   let n = String(name).trim();
 
-  // ১. পণ্যের সাথে সাইজ অবজেক্ট থাকলে নামের শেষ থেকে হুবহু সেই সাইজটি বাদ দেওয়া
+  // ১. নামের মধ্যে ডিজাইন কোড থাকলে বাদ দেওয়া
+  n = n.replace(/_DGN\d+.*$/i, "").replace(/\s*DGN\d+\b/gi, "");
+
+  // ২. ব্র্যান্ড অবজেক্ট থাকলে নামের ভেতর বা শেষ থেকে ব্র্যান্ডের নাম বাদ দেওয়া (ডুপ্লিকেশন রোধে)
+  const brandName = item?.brand?.name || item?.brandName;
+  if (brandName) {
+    const escBrand = String(brandName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    n = n.replace(new RegExp("([_\\-\\s]+)" + escBrand + "(?:$|[_\\-\\s])", "gi"), " ");
+  }
+
+  // ৩. পণ্যের সাথে সাইজ অবজেক্ট থাকলে নামের শেষ থেকে হুবহু সেই সাইজটি বাদ দেওয়া
   const sizeName = item?.size?.name;
   if (sizeName) {
     const esc = String(sizeName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    n = n.replace(new RegExp(`[_\\-\\s]+${esc}$`, "i"), "");
+    n = n.replace(new RegExp("([_\\-\\s]+)" + esc + "$", "i"), "");
   }
 
-  // ২. নামের মধ্যে সাধারণ ব্র্যাকেট বা সাইজ টেক্সট থাকলে বাদ দেওয়া (যেমন: (সাইজ: S) বা Size: 38)
+  // ৪. নামের মধ্যে সাধারণ ব্র্যাকেট বা সাইজ টেক্সট থাকলে বাদ দেওয়া (যেমন: (সাইজ: S) বা Size: 38)
   n = n
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:-].*?\)/i, "")
     .replace(/\s*(?:সাইজ|size)[\s\-:-].*$/i, "");
 
-  // ৩. নামের শেষে আন্ডারস্কোর যুক্ত সাইজ সাফিক্স থাকলে বাদ দেওয়া (যেমন: _S, _M, _L, _XL, _38, _40 ইত্যাদি)
+  // ৫. নামের শেষে আন্ডারস্কোর যুক্ত সাইজ সাফিক্স থাকলে বাদ দেওয়া (যেমন: _S, _M, _L, _XL, _38, _40 ইত্যাদি)
   n = n.replace(/_[A-Za-z0-9]+$/, "");
 
-  // ৪. শুরুর বা শেষের অতিরিক্ত আন্ডারস্কোর/হাইফেন/স্পেস ট্রিম করা
-  return n.replace(/^[_\\-\\s]+|[_\\-\\s]+$/g, "").trim();
+  // ৬. শুরুর বা শেষের অতিরিক্ত আন্ডারস্কোর/হাইফেন/স্পেস ট্রিম করা
+  return n.replace(/^[_\\-\s]+|[_\\-\s]+$/g, "").trim();
 }
 
 function applyGlobalCopies(count: number) {

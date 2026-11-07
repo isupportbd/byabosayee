@@ -1245,15 +1245,27 @@ function toBengaliNumber(num: number | string | null | undefined): string {
 }
 
 // Clean Item Name helper (strips design suffix like _DGN005 and size suffixes)
-function cleanItemName(name: string): string {
+function cleanItemName(name: string, item?: any): string {
   if (!name) return "";
-  return name
+  let n = name
     .replace(/_DGN\d+.*$/i, "")
     .replace(/\s*DGN\d+\b/gi, "")
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:—].*?\)/i, "")
-    .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "")
-    .replace(/[\-_]\s*$/g, "")
-    .trim();
+    .replace(/\s+(?:সাইজ|size)[\s\-:—].*$/i, "");
+
+  const brandName = item?.brand?.name || item?.brandName;
+  if (brandName) {
+    const escBrand = String(brandName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    n = n.replace(new RegExp("([_\\-\\s]+)" + escBrand + "(?:$|[_\\-\\s])", "gi"), " ");
+  }
+
+  const sizeName = item?.size?.name || item?.sizeName;
+  if (sizeName) {
+    const escSize = String(sizeName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    n = n.replace(new RegExp("([_\\-\\s]+)" + escSize + "$", "i"), "");
+  }
+
+  return n.replace(/^[_\\-\s]+|[_\\-\s]+$/g, "").trim();
 }
 
 // Sub-Category Filter Options (User Requirement: পণ্য নামের আগে সাব ক্যাটাগরি ফিল্ড দিয়ে ফিল্টার করার সুবিধা)
@@ -1338,7 +1350,7 @@ function compareSizes(aSize: any, bSize: any, aName: string = "", bName: string 
 // POS Product Options for Searchable Select Component (সর্টিং: পণ্যের নাম -> সাইজ -> কালার)
 const posItemOptions = computed(() => {
   const options = availableItems.value.map((it: any) => {
-    const cleanName = cleanItemName(it.name);
+    const cleanName = cleanItemName(it.name, it);
     const sizeName = it.size?.name || "";
     const colorName = it.color?.name || "";
     const specs = [sizeName, colorName].filter(Boolean).join(", ");
