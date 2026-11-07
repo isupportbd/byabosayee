@@ -30,6 +30,20 @@
             <i class="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-2 text-muted small pe-none"></i>
           </div>
 
+          <!-- ব্রান্ড ফিল্টার -->
+          <div class="position-relative" style="min-width: 150px;">
+            <select
+              v-model="brandFilter"
+              class="form-select form-select-sm cursor-pointer"
+              style="padding-right: 28px !important;">
+              <option value="all">সকল ব্র্যান্ড</option>
+              <option v-for="b in brandsList" :key="b.id" :value="b.id">
+                {{ b.name }}
+              </option>
+            </select>
+            <i class="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-2 text-muted small pe-none"></i>
+          </div>
+
           <!-- সার্চ বক্স -->
           <div class="position-relative" style="min-width: 200px;">
             <input
@@ -117,8 +131,8 @@
 
                 <!-- ৬. ব্রান্ড -->
                 <td class="text-center">
-                  <span class="badge bg-light border">
-                    {{ it.brand?.name || '-' }}
+                  <span class="badge bg-light text-dark border">
+                    {{ it.brand?.name || it.brandName || '-' }}
                   </span>
                 </td>
 
@@ -492,6 +506,8 @@ const globalCopies = ref(1);
 const paperSize = ref<"thermal_50x25" | "thermal_38x25" | "a4_grid">("thermal_50x25");
 const selectedProductFilter = ref<"all" | "selected" | "with_stock">("all");
 const categoryFilter = ref("all");
+const brandsList = ref<any[]>([]);
+const brandFilter = ref("all");
 const searchQuery = ref("");
 
 // Visibility Toggles
@@ -586,6 +602,11 @@ const filteredItemsList = computed(() => {
   if (categoryFilter.value !== "all") {
     const catId = Number(categoryFilter.value);
     list = list.filter((it) => it.categoryId === catId || it.category?.id === catId);
+  }
+
+  if (brandFilter.value !== "all") {
+    const bId = Number(brandFilter.value);
+    list = list.filter((it) => it.brandId === bId || it.brand?.id === bId);
   }
 
   if (searchQuery.value) {
@@ -721,13 +742,15 @@ function triggerPrint() {
 async function fetchItems() {
   loading.value = true;
   try {
-    const [itemsRes, catsRes, compRes] = await Promise.all([
+    const [itemsRes, catsRes, brandsRes, compRes] = await Promise.all([
       axios.get("/api/inventory/items"),
       axios.get("/api/catalog/categories").catch(() => ({ data: { data: [] } })),
+      axios.get("/api/inventory/brands").catch(() => ({ data: { data: [] } })),
       axios.get("/api/company/profile").catch(() => ({ data: { data: null } }))
     ]);
     itemsList.value = itemsRes.data?.data || [];
     categoriesList.value = catsRes.data?.data || [];
+    brandsList.value = brandsRes.data?.data || [];
     if (compRes.data?.data?.companyName) {
       defaultStoreName.value = compRes.data.data.companyName;
       storeName.value = compRes.data.data.companyName;

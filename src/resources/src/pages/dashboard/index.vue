@@ -385,12 +385,11 @@
                       <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">বার কোড</h5>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0"
-                    @click="openBarcodeModal">
+                  <router-link
+                    to="/barcodes"
+                    class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
                     +বার কোড
-                  </button>
+                  </router-link>
                 </div>
                 <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
                   <div class="min-w-0">
@@ -402,13 +401,12 @@
                       <i class="bi bi-printer text-dark me-1"></i>স্টিকার ও লেবেল প্রিন্ট
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    class="view-icon-btn text-dark flex-shrink-0"
-                    title="বার কোড প্রিন্ট ও তালিকা দেখুন"
-                    @click="openBarcodeModal">
+                  <router-link
+                    to="/barcodes"
+                    class="view-icon-btn text-dark flex-shrink-0 text-decoration-none d-inline-flex align-items-center justify-content-center"
+                    title="বার কোড প্রিন্ট ও তালিকা দেখুন">
                     <i class="bi bi-eye"></i>
-                  </button>
+                  </router-link>
                 </div>
               </div>
             </div>
@@ -2148,18 +2146,7 @@ watch(
 );
 
 onMounted(() => {
-  if (isSuperAdmin.value) {
-    fetchCompanyCount();
-    fetchDbStats();
-  }
-  if (isCompanyAdmin.value) {
-    fetchInventoryStats();
-    fetchMasterCatalog();
-    fetchBrands();
-    fetchSuppliers();
-    fetchManufacturers();
-    fetchCustomers();
-  }
+  // Handled reactively by immediate watchers to prevent duplicate requests
 });
 </script>
 

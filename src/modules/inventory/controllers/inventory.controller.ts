@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { broadcast, db, HttpStatusCodes } from "@/framework/facade.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
@@ -148,37 +148,57 @@ export async function ensureInventoryTables() {
       ) pi
       WHERE i.id = pi.item_id AND pi.code IS NOT NULL AND pi.code != '';
 
-      -- Step 1: Re-link purchase_items to the correct item_id based on size_id and matching base product name
+      -- Step 0: Ensure every distinct (base_name, size_id, color_id) in purchase_items has a corresponding item in items table
+      INSERT INTO "items" (
+        "user_id", "name", "category_id", "sub_category_id", "brand_id", 
+        "size_id", "color_id", "unit_id", "barcode", "purchase_price", 
+        "selling_price", "stock_quantity", "is_active", "created_at", "updated_at"
+      )
+      SELECT DISTINCT ON (
+        TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))), 
+        pi.size_id, 
+        pi.color_id
+      )
+        p.user_id,
+        pi.name,
+        pi.category_id,
+        pi.sub_category_id,
+        pi.brand_id,
+        pi.size_id,
+        pi.color_id,
+        pi.unit_id,
+        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
+        pi.unit_cost,
+        '0.00',
+        0,
+        true,
+        NOW(),
+        NOW()
+      FROM "purchase_items" pi
+      JOIN "purchases" p ON p.id = pi.purchase_id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "items" i
+        WHERE i.user_id = p.user_id
+          AND TRIM(LOWER(REGEXP_REPLACE(i.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i')))
+          AND i.size_id IS NOT DISTINCT FROM pi.size_id
+          AND i.color_id IS NOT DISTINCT FROM pi.color_id
+      )
+      ORDER BY 
+        TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))), 
+        pi.size_id, 
+        pi.color_id,
+        pi.id DESC;
+
+      -- Step 1: Re-link purchase_items to the correct item_id based on base product name, size_id, AND color_id
       UPDATE "purchase_items" pi
       SET "item_id" = i.id
-      FROM "items" i
-      WHERE pi.size_id IS NOT NULL 
-        AND pi.size_id = i.size_id 
+      FROM "items" i, "purchases" p
+      WHERE pi.purchase_id = p.id
+        AND i.user_id = p.user_id
+        AND pi.size_id IS NOT DISTINCT FROM i.size_id
+        AND pi.color_id IS NOT DISTINCT FROM i.color_id
         AND TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(i.name, '_DGN\\d+.*', '', 'i')))
         AND (pi.item_id IS NULL OR pi.item_id != i.id);
-
-      -- Step 1b: If pi.item_id pointed to a sibling or different item with wrong size, re-link to correct item of same base name
-      UPDATE "purchase_items" pi
-      SET "item_id" = correct_item.id
-      FROM "items" orig_item, "items" correct_item
-      WHERE pi.item_id = orig_item.id
-        AND pi.size_id IS NOT NULL
-        AND (orig_item.size_id IS NULL OR orig_item.size_id != pi.size_id)
-        AND correct_item.user_id = orig_item.user_id
-        AND correct_item.size_id = pi.size_id
-        AND TRIM(LOWER(REGEXP_REPLACE(correct_item.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(orig_item.name, '_DGN\\d+.*', '', 'i')))
-        AND pi.item_id != correct_item.id;
-
-      -- Step 2: Sync color_id to items table from purchase_items
-      UPDATE "items" i
-      SET "color_id" = pi.color_id
-      FROM (
-        SELECT DISTINCT ON (item_id) item_id, color_id
-        FROM "purchase_items"
-        WHERE item_id IS NOT NULL AND color_id IS NOT NULL AND color_id > 0
-        ORDER BY item_id, id DESC
-      ) pi
-      WHERE i.id = pi.item_id AND (i.color_id IS NULL OR i.color_id = 0);
 
       -- Step 3: Sync latest purchase unit_cost into items.purchase_price and items.barcode for all purchased items
       UPDATE "items" i
@@ -369,36 +389,73 @@ function getUserId(c: any): number | null {
  * 1. Dashboard Statistics
  */
 
-export async function syncInventoryStockAndItems(userId: number) {
+const lastStockSyncTime = new Map<number, number>();
+
+export async function syncInventoryStockAndItems(userId: number, force = false) {
   if (!userId) return;
+  const now = Date.now();
+  const lastSync = lastStockSyncTime.get(userId) || 0;
+  // If synced within the last 15 seconds and not forced, skip to prevent DB lock contention
+  if (!force && now - lastSync < 15000) {
+    return;
+  }
+  lastStockSyncTime.set(userId, now);
+
   try {
     await executeRawSql(`
-      -- Step 1: Re-link purchase_items to correct item based on matching base product name and size_id
+      -- Step 0: Ensure every distinct (base_name, size_id, color_id) in purchase_items has a corresponding item in items table
+      INSERT INTO "items" (
+        "user_id", "name", "category_id", "sub_category_id", "brand_id", 
+        "size_id", "color_id", "unit_id", "barcode", "purchase_price", 
+        "selling_price", "stock_quantity", "is_active", "created_at", "updated_at"
+      )
+      SELECT DISTINCT ON (
+        TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))), 
+        pi.size_id, 
+        pi.color_id
+      )
+        p.user_id,
+        pi.name,
+        pi.category_id,
+        pi.sub_category_id,
+        pi.brand_id,
+        pi.size_id,
+        pi.color_id,
+        pi.unit_id,
+        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
+        pi.unit_cost,
+        '0.00',
+        0,
+        true,
+        NOW(),
+        NOW()
+      FROM "purchase_items" pi
+      JOIN "purchases" p ON p.id = pi.purchase_id
+      WHERE p.user_id = ${userId}
+        AND NOT EXISTS (
+          SELECT 1 FROM "items" i
+          WHERE i.user_id = ${userId}
+            AND TRIM(LOWER(REGEXP_REPLACE(i.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i')))
+            AND i.size_id IS NOT DISTINCT FROM pi.size_id
+            AND i.color_id IS NOT DISTINCT FROM pi.color_id
+        )
+      ORDER BY 
+        TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))), 
+        pi.size_id, 
+        pi.color_id,
+        pi.id DESC;
+
+      -- Step 1: Re-link purchase_items to correct item based on base product name, size_id, AND color_id
       UPDATE "purchase_items" pi
       SET "item_id" = correct_item.id
       FROM "items" correct_item, "purchases" p
       WHERE pi.purchase_id = p.id
         AND p.user_id = ${userId}
         AND correct_item.user_id = ${userId}
-        AND pi.size_id IS NOT NULL
-        AND correct_item.size_id = pi.size_id
+        AND pi.size_id IS NOT DISTINCT FROM correct_item.size_id
+        AND pi.color_id IS NOT DISTINCT FROM correct_item.color_id
         AND TRIM(LOWER(REGEXP_REPLACE(correct_item.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i')))
         AND (pi.item_id IS NULL OR pi.item_id != correct_item.id);
-
-      -- Step 1b: Re-link purchase_items where orig_item and correct_item have matching base name and matching size
-      UPDATE "purchase_items" pi
-      SET "item_id" = correct_item.id
-      FROM "items" orig_item, "items" correct_item, "purchases" p
-      WHERE pi.purchase_id = p.id
-        AND p.user_id = ${userId}
-        AND pi.item_id = orig_item.id
-        AND orig_item.user_id = ${userId}
-        AND correct_item.user_id = ${userId}
-        AND pi.size_id IS NOT NULL
-        AND correct_item.size_id = pi.size_id
-        AND (orig_item.size_id IS NULL OR orig_item.size_id != pi.size_id)
-        AND TRIM(LOWER(REGEXP_REPLACE(correct_item.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(orig_item.name, '_DGN\\d+.*', '', 'i')))
-        AND pi.item_id != correct_item.id;
 
       -- Step 2: Recalculate stock_quantity for ALL items of this user based on actual purchase_items and sale_items
       UPDATE "items" i
@@ -1522,40 +1579,53 @@ export const createPurchase: Handler = async (c: any) => {
         : 0;
       const sellingPriceVal = String(sellingPriceNum.toFixed(2));
 
-      if (itemId) {
-        let actualItemId = itemId;
-        const [existingItem] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
-        if (existingItem && existingItem.sizeId !== sizeId && sizeId) {
-          const existingBaseName = (existingItem.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase();
-          const userItems = await db.select().from(items).where(and(eq(items.userId, userId), eq(items.sizeId, sizeId)));
-          const matchingItem = userItems.find((ui) => (ui.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase() === existingBaseName);
-          if (matchingItem) {
-            actualItemId = matchingItem.id;
-          }
-        }
-        itemId = actualItemId;
+      // Match item by base name, sizeId, AND colorId so each variant remains distinct
+      const cleanBaseName = itemName.replace(/_DGN\d+.*$/i, "").trim().toLowerCase();
+      let matchedItem: any = null;
 
-        const [itemToUpdate] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
-        if (itemToUpdate) {
-          await db
-            .update(items)
-            .set({
-              stockQuantity: itemToUpdate.stockQuantity + qty,
-              purchasePrice: actualPurchasePrice,
-              sellingPrice: sellingPriceVal,
-              barcode: code,
-              updatedAt: new Date()
-            })
-            .where(eq(items.id, itemId));
+      if (itemId) {
+        const [candidate] = await db.select().from(items).where(and(eq(items.id, itemId), eq(items.userId, userId)));
+        if (
+          candidate &&
+          (candidate.sizeId ?? null) === (sizeId ?? null) &&
+          (candidate.colorId ?? null) === (colorId ?? null)
+        ) {
+          matchedItem = candidate;
         }
+      }
+
+      if (!matchedItem) {
+        const userItems = await db.select().from(items).where(and(
+          eq(items.userId, userId),
+          sizeId ? eq(items.sizeId, sizeId) : isNull(items.sizeId),
+          colorId ? eq(items.colorId, colorId) : isNull(items.colorId)
+        ));
+        matchedItem = userItems.find((ui) => (ui.name || "").replace(/_DGN\d+.*$/i, "").trim().toLowerCase() === cleanBaseName);
+      }
+
+      if (matchedItem) {
+        itemId = matchedItem.id;
+        await db
+          .update(items)
+          .set({
+            stockQuantity: matchedItem.stockQuantity + qty,
+            purchasePrice: actualPurchasePrice,
+            sellingPrice: sellingPriceVal !== "0.00" ? sellingPriceVal : matchedItem.sellingPrice,
+            barcode: code || matchedItem.barcode,
+            colorId: colorId || matchedItem.colorId,
+            sizeId: sizeId || matchedItem.sizeId,
+            updatedAt: new Date()
+          })
+          .where(eq(items.id, itemId));
       } else {
-        // Create new inventory item
+        // Create new variant item in items table
         const [newItem] = await db
           .insert(items)
           .values({
             userId,
             name: itemName,
             code,
+            barcode: code,
             categoryId,
             subCategoryId,
             brandId,
@@ -1602,7 +1672,7 @@ export const createPurchase: Handler = async (c: any) => {
       createdItems.push(pItem);
     }
 
-    await syncInventoryStockAndItems(userId);
+    await syncInventoryStockAndItems(userId, true);
 
     return c.json(
       {
@@ -1896,7 +1966,7 @@ export const updatePurchase: Handler = async (c: any) => {
       createdItems.push(pItem);
     }
 
-    await syncInventoryStockAndItems(userId);
+    await syncInventoryStockAndItems(userId, true);
 
     return c.json(
       {

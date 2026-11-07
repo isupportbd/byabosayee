@@ -41,26 +41,28 @@
         </div>
       </div>
       <div class="d-flex align-items-center gap-2">
+        <template v-if="activeView === 'list'">
+          <button
+            v-if="completedSalesList.length > 0"
+            type="button"
+            class="btn btn-sm btn-warning shadow-sm fw-semibold d-inline-flex align-items-center gap-1.5"
+            title="সর্বশেষ সম্পন্ন বিক্রয়টি কার্টে নিয়ে এডিট করুন"
+            @click="editLastSale">
+            <i class="bi bi-pencil-square"></i>
+            <span>লাস্ট বিক্রয় এডিট</span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-success text-white shadow-sm d-inline-flex align-items-center gap-1.5"
+            @click="switchView('pos')">
+            <i class="bi bi-upc-scan"></i>
+            <span>নতুন বিক্রয় (POS)</span>
+          </button>
+        </template>
         <button
-          v-if="completedSalesList.length > 0"
+          v-if="activeView === 'pos'"
           type="button"
-          class="btn btn-sm btn-warning shadow-sm fw-semibold d-inline-flex align-items-center gap-1.5"
-          title="সর্বশেষ সম্পন্ন বিক্রয়টি কার্টে নিয়ে এডিট করুন"
-          @click="editLastSale">
-          <i class="bi bi-pencil-square"></i>
-          <span>লাস্ট বিক্রয় এডিট</span>
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm"
-          :class="activeView === 'pos' ? 'btn-success text-white shadow-sm' : 'btn-outline-success'"
-          @click="switchView('pos')">
-          <i class="bi bi-upc-scan me-1"></i>নতুন বিক্রয় (POS)
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm shadow-sm fw-medium d-inline-flex align-items-center gap-1.5"
-          :class="activeView === 'list' ? 'btn-success text-white' : 'btn-outline-success'"
+          class="btn btn-sm btn-outline-success shadow-sm fw-medium d-inline-flex align-items-center gap-1.5"
           @click="switchView('list')">
           <i class="bi bi-card-list"></i>
           <span>বিক্রয় তালিকা ({{ completedSalesList.length }})</span>
@@ -240,12 +242,13 @@
                   :clearable="true"
                   :searchable="true"
                   label="displayName"
-                  parentclass="mb-0"
+                  parentclass="mb-0 pos-product-select"
                   no-options-text="কোনো পণ্য পাওয়া যায়নি"
                   @update:model-value="handleDropdownProductSelect">
                   <template #option="option">
-                    <div class="d-flex align-items-center justify-content-between w-100 py-0.5">
-                      <div class="text-truncate me-2">
+                    <div class="d-flex align-items-center justify-content-between w-100 py-1" style="white-space: normal; line-height: 1.35;">
+                      <div class="d-flex align-items-center flex-wrap me-2" style="white-space: normal; word-break: break-word;">
+                        <span class="text-primary me-1.5 flex-shrink-0" style="font-size: 0.75rem;">●</span>
                         <span class="fw-medium text-dark">{{ option.cleanName || cleanItemName(option.name) }}</span>
                         <span v-if="option.sizeName" class="badge bg-light text-dark border ms-1.5 px-1.5 py-0.5" style="font-size: 0.72rem;">
                           {{ option.sizeName }}
@@ -255,7 +258,7 @@
                           {{ option.colorName }}
                         </span>
                       </div>
-                      <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap" style="font-size: 0.75rem;">
+                      <span class="badge bg-primary-subtle text-primary fw-bold text-nowrap flex-shrink-0" style="font-size: 0.75rem;">
                         ({{ option.stockQtyBn || toBengaliNumber(option.stockQuantity ?? 0) }})
                       </span>
                     </div>
@@ -1096,7 +1099,7 @@ const companyInfo = ref<any>(null);
 const barcodeInputRef = ref<HTMLInputElement | null>(null);
 const scannerQuery = ref("");
 const selectedDropdownItem = ref<any>(null);
-const selectedSubCategoryId = ref<number | string | null>("");
+const selectedSubCategoryId = ref<number | string | null>(null);
 const selectResetKey = ref(0);
 
 // Cashier Name logic
@@ -1258,10 +1261,7 @@ const subCategoryFilterOptions = computed(() => {
       }
     }
   }
-  return [
-    { id: "", name: "সকল সাব-ক্যাটাগরি" },
-    ...Array.from(map.entries()).map(([id, name]) => ({ id, name }))
-  ];
+  return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
 });
 
 // Filtered Available Items for search & dropdown (ইউজারের নির্দেশনা: স্টক নেই এমন পণ্য তালিকায় আসবে না)
@@ -1612,12 +1612,20 @@ function handleBarcodeScan() {
   const query = scannerQuery.value.trim();
   if (!query) return;
 
-  // Search by exact barcode (14-digit or item code), or item name match
+  const q = query.toLowerCase();
+
+  // Search by exact barcode (14-digit, standard 12-digit, or item code)
   const found = itemsList.value.find((it) => {
-    const bc = (it.latestBarcode || "").toLowerCase();
+    const barcode = (it.barcode || "").toLowerCase();
+    const latestBarcode = (it.latestBarcode || "").toLowerCase();
     const code = (it.code || "").toLowerCase();
-    const q = query.toLowerCase();
-    return bc === q || code === q || bc.includes(q);
+    return (
+      barcode === q ||
+      latestBarcode === q ||
+      code === q ||
+      barcode.includes(q) ||
+      latestBarcode.includes(q)
+    );
   });
 
   if (found) {
@@ -1630,8 +1638,14 @@ function handleBarcodeScan() {
     scannerQuery.value = "";
     focusBarcodeInput();
   } else {
-    // Try matching by name
-    const nameMatch = itemsList.value.find((it) => it.name && it.name.toLowerCase().includes(query.toLowerCase()));
+    // Try matching by name, color, size, or design code
+    const nameMatch = itemsList.value.find((it) => {
+      const n = (it.name || "").toLowerCase();
+      const color = (it.color?.name || "").toLowerCase();
+      const size = (it.size?.name || "").toLowerCase();
+      const dgn = (it.designCode || "").toLowerCase();
+      return n.includes(q) || color.includes(q) || dgn.includes(q);
+    });
     if (nameMatch) {
       if (Number(nameMatch.stockQuantity || 0) <= 0) {
         showToast(`"${cleanItemName(nameMatch.name)}" পণ্যটির পর্যাপ্ত স্টক নেই (স্টক: ০)`, "warning");
@@ -2378,6 +2392,16 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+:deep(.pos-product-select .vs__dropdown-menu) {
+  max-width: 650px;
+  width: 100%;
+}
+:deep(.pos-product-select .vs__dropdown-option) {
+  white-space: normal !important;
+  word-break: break-word;
+  padding: 6px 10px;
 }
 
 </style>

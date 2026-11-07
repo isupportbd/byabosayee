@@ -5,6 +5,7 @@ if (import.meta.env.VITE_API_URL) {
 }
 
 axios.defaults.withCredentials = true;
+axios.defaults.timeout = 20000;
 axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
 axios.defaults.headers.common.Accept = "application/json";
 
