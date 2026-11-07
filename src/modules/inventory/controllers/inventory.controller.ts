@@ -350,12 +350,96 @@ function getUserId(c: any): number | null {
 /**
  * 1. Dashboard Statistics
  */
+
+export async function syncInventoryStockAndItems(userId: number) {
+  if (!userId) return;
+  try {
+    await executeRawSql(`
+      -- Step 1: Re-link purchase_items to sibling item of matching size in same product line
+      UPDATE "purchase_items" pi
+      SET "item_id" = correct_item.id
+      FROM "items" orig_item
+      JOIN "items" correct_item ON 
+        correct_item.user_id = orig_item.user_id
+        AND correct_item.size_id = pi.size_id
+        AND (
+          (correct_item.sub_category_id IS NOT DISTINCT FROM orig_item.sub_category_id AND correct_item.brand_id IS NOT DISTINCT FROM orig_item.brand_id AND correct_item.product_type_id IS NOT DISTINCT FROM orig_item.product_type_id)
+          OR (TRIM(REGEXP_REPLACE(correct_item.name, '_DGN\\d+', '', 'i')) = TRIM(REGEXP_REPLACE(orig_item.name, '_DGN\\d+', '', 'i')))
+        )
+      WHERE pi.item_id = orig_item.id
+        AND pi.size_id IS NOT NULL
+        AND (orig_item.size_id IS NULL OR orig_item.size_id != pi.size_id)
+        AND orig_item.user_id = ${userId};
+
+      -- Step 1b: Fallback re-link by name and size_id if item_id was pointing elsewhere
+      UPDATE "purchase_items" pi
+      SET "item_id" = correct_item.id
+      FROM "items" correct_item
+      WHERE pi.size_id IS NOT NULL
+        AND correct_item.user_id = ${userId}
+        AND correct_item.size_id = pi.size_id
+        AND TRIM(REGEXP_REPLACE(correct_item.name, '_DGN\\d+', '', 'i')) = TRIM(REGEXP_REPLACE(pi.name, '_DGN\\d+', '', 'i'))
+        AND (pi.item_id IS NULL OR pi.item_id != correct_item.id);
+
+      -- Step 2: Recalculate stock_quantity for ALL items of this user based on actual purchase_items and sale_items
+      UPDATE "items" i
+      SET "stock_quantity" = (
+        COALESCE((
+          SELECT SUM(pi.quantity)::int 
+          FROM "purchase_items" pi 
+          JOIN "purchases" p ON p.id = pi.purchase_id
+          WHERE pi.item_id = i.id
+        ), 0)
+        -
+        COALESCE((
+          SELECT SUM(si.quantity)::int 
+          FROM "sale_items" si 
+          JOIN "sales" s ON s.id = si.sale_id
+          WHERE si.item_id = i.id AND s.status != 'draft'
+        ), 0)
+      )
+      WHERE i.user_id = ${userId};
+
+      -- Step 3: Sync latest purchase unit_cost into items.purchase_price and items.barcode for all purchased items
+      UPDATE "items" i
+      SET "purchase_price" = pi.unit_cost,
+          "barcode" = COALESCE(NULLIF(pi.code, ''), i.barcode)
+      FROM (
+        SELECT DISTINCT ON (item_id) item_id, unit_cost, code 
+        FROM "purchase_items" 
+        WHERE item_id IS NOT NULL AND unit_cost IS NOT NULL AND unit_cost > 0
+        ORDER BY item_id, id DESC
+      ) pi
+      WHERE i.id = pi.item_id AND i.user_id = ${userId};
+
+      -- Step 4: Sync color_id to items table from purchase_items
+      UPDATE "items" i
+      SET "color_id" = pi.color_id
+      FROM (
+        SELECT DISTINCT ON (item_id) item_id, color_id
+        FROM "purchase_items"
+        WHERE item_id IS NOT NULL AND color_id IS NOT NULL AND color_id > 0
+        ORDER BY item_id, id DESC
+      ) pi
+      WHERE i.id = pi.item_id AND i.user_id = ${userId} AND (i.color_id IS NULL OR i.color_id = 0);
+
+      -- Step 5: Auto generate standard 12-digit barcode for all items if null or empty
+      UPDATE "items"
+      SET "barcode" = LPAD("id"::text, 4, '0') || LPAD(COALESCE("size_id", 0)::text, 2, '0') || to_char("created_at", 'YYMM') || '01'
+      WHERE "user_id" = ${userId} AND ("barcode" IS NULL OR "barcode" = '');
+    `);
+  } catch (err) {
+    console.error("syncInventoryStockAndItems error:", err);
+  }
+}
+
 export const getStats: Handler = async (c: any) => {
   await ensureInventoryTables();
   const userId = getUserId(c);
   if (!userId) {
     return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
   }
+  await syncInventoryStockAndItems(userId);
 
   try {
     const [
@@ -762,6 +846,8 @@ export const listItems: Handler = async (c: any) => {
   const userId = getUserId(c);
   if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
+  await syncInventoryStockAndItems(userId);
+
   const list = await db.query.items.findMany({
     where: eq(items.userId, userId),
     orderBy: [desc(items.id)],
@@ -781,7 +867,7 @@ export const listItems: Handler = async (c: any) => {
     // Query latest pricing info from item_pricings (for accurate selling price & VAT rate per user request)
     let enriched = list;
     try {
-      const [latestPurchases, latestPricings] = await Promise.all([
+      const [latestPurchases, latestPricings, stockPurchases, stockSales] = await Promise.all([
         db.execute(sql`
           SELECT DISTINCT ON (pi.item_id) 
             pi.item_id as "itemId",
@@ -807,6 +893,20 @@ export const listItems: Handler = async (c: any) => {
           FROM "item_pricings" ip
           WHERE ip.user_id = ${userId} AND ip.item_id IS NOT NULL
           ORDER BY ip.item_id, ip.id DESC
+        `),
+        db.execute(sql`
+          SELECT pi.item_id as "itemId", SUM(pi.quantity)::int as "totalPurchased"
+          FROM "purchase_items" pi
+          JOIN "purchases" p ON p.id = pi.purchase_id
+          WHERE p.user_id = ${userId} AND pi.item_id IS NOT NULL
+          GROUP BY pi.item_id
+        `),
+        db.execute(sql`
+          SELECT si.item_id as "itemId", SUM(si.quantity)::int as "totalSold"
+          FROM "sale_items" si
+          JOIN "sales" s ON s.id = si.sale_id
+          WHERE s.user_id = ${userId} AND s.status != 'draft' AND si.item_id IS NOT NULL
+          GROUP BY si.item_id
         `)
       ]);
 
@@ -824,6 +924,18 @@ export const listItems: Handler = async (c: any) => {
         if (id) priceMap.set(id, pr);
       }
 
+      const stockPurchasedMap = new Map<number, number>();
+      for (const r of ((stockPurchases.rows || stockPurchases) as any[])) {
+        const id = Number(r.itemId ?? r.itemid ?? r.item_id);
+        if (id) stockPurchasedMap.set(id, Number(r.totalPurchased ?? r.totalpurchased ?? 0));
+      }
+
+      const stockSoldMap = new Map<number, number>();
+      for (const r of ((stockSales.rows || stockSales) as any[])) {
+        const id = Number(r.itemId ?? r.itemid ?? r.item_id);
+        if (id) stockSoldMap.set(id, Number(r.totalSold ?? r.totalsold ?? 0));
+      }
+
       const allColors = await db.query.colors.findMany();
       const colorMap = new Map<number, any>();
       for (const col of allColors) {
@@ -831,6 +943,11 @@ export const listItems: Handler = async (c: any) => {
       }
 
       enriched = list.map((it: any) => {
+        const itemId = Number(it.id);
+        const hasPurchases = stockPurchasedMap.has(itemId);
+        const calculatedStock = hasPurchases
+          ? Math.max(0, (stockPurchasedMap.get(itemId) || 0) - (stockSoldMap.get(itemId) || 0))
+          : Number(it.stockQuantity || 0);
         const lp = lpMap.get(Number(it.id));
         const pr = priceMap.get(Number(it.id));
         const unitCostVal = lp?.unitCost ?? lp?.unitcost ?? lp?.unit_cost;
@@ -872,6 +989,7 @@ export const listItems: Handler = async (c: any) => {
 
         return {
           ...it,
+          stockQuantity: calculatedStock,
           code: it.code,
           color: resolvedColor,
           colorId: colorIdCandidate || it.colorId,
@@ -1458,6 +1576,8 @@ export const createPurchase: Handler = async (c: any) => {
       createdItems.push(pItem);
     }
 
+    await syncInventoryStockAndItems(userId);
+
     return c.json(
       {
         message: "নতুন ক্রয় চালান সফলভাবে সংরক্ষিত হয়েছে এবং স্টক আপডেট হয়েছে",
@@ -1758,6 +1878,8 @@ export const updatePurchase: Handler = async (c: any) => {
 
       createdItems.push(pItem);
     }
+
+    await syncInventoryStockAndItems(userId);
 
     return c.json(
       {
