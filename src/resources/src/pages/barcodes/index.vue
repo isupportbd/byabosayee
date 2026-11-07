@@ -345,7 +345,7 @@
 
             <!-- ব্র্যান্ড ও সাইজ -->
             <div v-if="showBrandAndSize" class="sticker-meta text-truncate text-muted">
-              <span v-if="st.item.brand?.name" class="me-1">[{{ st.item.brand.name }}]</span>
+              <span v-if="st.item.brand?.name && !cleanItemName(st.item.name, st.item).toLowerCase().includes(st.item.brand.name.toLowerCase().trim())" class="me-1">[{{ st.item.brand.name }}]</span>
               <span>সাইজ: {{ st.item.size?.name || '-' }}</span>
             </div>
 
@@ -390,7 +390,7 @@
 
             <!-- ব্র্যান্ড ও সাইজ -->
             <div v-if="showBrandAndSize" class="sticker-meta text-truncate text-muted">
-              <span v-if="st.item.brand?.name" class="me-1">[{{ st.item.brand.name }}]</span>
+              <span v-if="st.item.brand?.name && !cleanItemName(st.item.name, st.item).toLowerCase().includes(st.item.brand.name.toLowerCase().trim())" class="me-1">[{{ st.item.brand.name }}]</span>
               <span>সাইজ: {{ st.item.size?.name || '-' }}</span>
             </div>
 
@@ -546,29 +546,22 @@ function cleanItemName(name: string | null | undefined, item?: any): string {
   // ১. নামের মধ্যে ডিজাইন কোড থাকলে বাদ দেওয়া
   n = n.replace(/_DGN\d+.*$/i, "").replace(/\s*DGN\d+\b/gi, "");
 
-  // ২. ব্র্যান্ড অবজেক্ট থাকলে নামের ভেতর বা শেষ থেকে ব্র্যান্ডের নাম বাদ দেওয়া (ডুপ্লিকেশন রোধে)
-  const brandName = item?.brand?.name || item?.brandName;
-  if (brandName) {
-    const escBrand = String(brandName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    n = n.replace(new RegExp("([_\\-\\s]+)" + escBrand + "(?:$|[_\\-\\s])", "gi"), " ");
-  }
-
-  // ৩. পণ্যের সাথে সাইজ অবজেক্ট থাকলে নামের শেষ থেকে হুবহু সেই সাইজটি বাদ দেওয়া
+  // ২. পণ্যের সাথে সাইজ অবজেক্ট থাকলে নামের শেষ থেকে হুবহু সেই সাইজটি বাদ দেওয়া
   const sizeName = item?.size?.name;
   if (sizeName) {
     const esc = String(sizeName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     n = n.replace(new RegExp("([_\\-\\s]+)" + esc + "$", "i"), "");
   }
 
-  // ৪. নামের মধ্যে সাধারণ ব্র্যাকেট বা সাইজ টেক্সট থাকলে বাদ দেওয়া (যেমন: (সাইজ: S) বা Size: 38)
+  // ৩. নামের মধ্যে সাধারণ ব্র্যাকেট বা সাইজ টেক্সট থাকলে বাদ দেওয়া (যেমন: (সাইজ: S) বা Size: 38)
   n = n
     .replace(/\s*\(\s*(?:সাইজ|size)[\s\-:-].*?\)/i, "")
     .replace(/\s*(?:সাইজ|size)[\s\-:-].*$/i, "");
 
-  // ৫. নামের শেষে আন্ডারস্কোর যুক্ত সাইজ সাফিক্স থাকলে বাদ দেওয়া (যেমন: _S, _M, _L, _XL, _38, _40 ইত্যাদি)
+  // ৪. নামের শেষে আন্ডারস্কোর যুক্ত সাইজ সাফিক্স থাকলে বাদ দেওয়া (যেমন: _S, _M, _L, _XL, _38, _40 ইত্যাদি)
   n = n.replace(/_[A-Za-z0-9]+$/, "");
 
-  // ৬. শুরুর বা শেষের অতিরিক্ত আন্ডারস্কোর/হাইফেন/স্পেস ট্রিম করা
+  // ৫. শুরুর বা শেষের অতিরিক্ত আন্ডারস্কোর/হাইফেন/স্পেস ট্রিম করা
   return n.replace(/^[_\\-\s]+|[_\\-\s]+$/g, "").trim();
 }
 
