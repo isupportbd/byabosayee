@@ -135,8 +135,8 @@ export async function ensureInventoryTables() {
       ALTER TABLE "items" ADD COLUMN IF NOT EXISTS "barcode" varchar(100);
 
       UPDATE "items"
-      SET "barcode" = LPAD("id"::text, 4, '0') || LPAD(COALESCE("size_id", 0)::text, 2, '0') || to_char("created_at", 'YYMM') || '01'
-      WHERE "barcode" IS NULL OR "barcode" = '';
+      SET "barcode" = LPAD(to_hex("id"), 4, '0') || '-' || RIGHT(to_char("created_at", 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM "created_at")::int)) || '1'
+      WHERE "barcode" IS NULL OR "barcode" = '' OR LENGTH("barcode") > 8;
 
       UPDATE "items" i
       SET "barcode" = pi.code
@@ -167,7 +167,7 @@ export async function ensureInventoryTables() {
         pi.size_id,
         pi.color_id,
         pi.unit_id,
-        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || LPAD(COALESCE(pi.color_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
+        COALESCE(NULLIF(pi.code, ''), LPAD(to_hex(COALESCE(pi.item_id, pi.id)), 4, '0') || '-' || RIGHT(to_char(NOW(), 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM NOW())::int)) || '1'),
         pi.unit_cost,
         '0.00',
         0,
@@ -204,6 +204,16 @@ export async function ensureInventoryTables() {
         AND pi.color_id IS NOT DISTINCT FROM i.color_id
         AND TRIM(LOWER(REGEXP_REPLACE(pi.name, '_DGN\\d+.*', '', 'i'))) = TRIM(LOWER(REGEXP_REPLACE(i.name, '_DGN\\d+.*', '', 'i')))
         AND (pi.item_id IS NULL OR pi.item_id != i.id);
+
+      -- Step 1b: Method 2 barcode auto-generation and upgrade
+      UPDATE "items"
+      SET "barcode" = LPAD(to_hex("id"), 4, '0') || '-' || RIGHT(to_char("created_at", 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM "created_at")::int)) || '1'
+      WHERE "barcode" IS NULL OR "barcode" = '' OR LENGTH("barcode") > 8;
+
+      UPDATE "purchase_items" pi
+      SET "code" = LPAD(to_hex(pi.item_id), 4, '0') || '-' || RIGHT(to_char(COALESCE(p.created_at, NOW()), 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM COALESCE(p.created_at, NOW()))::int)) || '1'
+      FROM "purchases" p
+      WHERE pi.purchase_id = p.id AND pi.item_id IS NOT NULL AND (pi.code IS NULL OR pi.code = '' OR LENGTH(pi.code) > 8);
 
       -- Step 3: Sync latest purchase unit_cost into items.purchase_price and items.barcode for all purchased items
       UPDATE "items" i
@@ -427,7 +437,7 @@ export async function syncInventoryStockAndItems(userId: number, force = false) 
         pi.size_id,
         pi.color_id,
         pi.unit_id,
-        COALESCE(NULLIF(pi.code, ''), LPAD(p.user_id::text, 4, '0') || LPAD(COALESCE(pi.size_id, 0)::text, 2, '0') || LPAD(COALESCE(pi.color_id, 0)::text, 2, '0') || to_char(NOW(), 'YYMM') || '01'),
+        COALESCE(NULLIF(pi.code, ''), LPAD(to_hex(COALESCE(pi.item_id, 0)), 4, '0') || '-' || RIGHT(to_char(NOW(), 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM NOW())::int)) || '1'),
         pi.unit_cost,
         '0.00',
         0,
@@ -455,15 +465,15 @@ export async function syncInventoryStockAndItems(userId: number, force = false) 
       SET "code" = 'PRD-' || "id"
       WHERE "user_id" = ${userId} AND ("code" IS NULL OR "code" = '');
 
-      -- Upgrade 12-digit barcodes to 14-digit barcodes with color_id
-      UPDATE "purchase_items" pi
-      SET "code" = SUBSTRING(pi.code, 1, 6) || LPAD(COALESCE(pi.color_id, 0)::text, 2, '0') || SUBSTRING(pi.code, 7)
-      FROM "purchases" p
-      WHERE pi.purchase_id = p.id AND p.user_id = ${userId} AND pi.code IS NOT NULL AND LENGTH(pi.code) = 12;
-
+      -- Upgrade to Method 2 barcode (VariantHex(4)-YearDigit(1)MonthHex(1)Batch(1))
       UPDATE "items"
-      SET "barcode" = SUBSTRING("barcode", 1, 6) || LPAD(COALESCE("color_id", 0)::text, 2, '0') || SUBSTRING("barcode", 7)
-      WHERE "user_id" = ${userId} AND "barcode" IS NOT NULL AND LENGTH("barcode") = 12;
+      SET "barcode" = LPAD(to_hex("id"), 4, '0') || '-' || RIGHT(to_char("created_at", 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM "created_at")::int)) || '1'
+      WHERE "user_id" = ${userId} AND ("barcode" IS NULL OR "barcode" = '' OR LENGTH("barcode") > 8);
+
+      UPDATE "purchase_items" pi
+      SET "code" = LPAD(to_hex(pi.item_id), 4, '0') || '-' || RIGHT(to_char(COALESCE(p.created_at, NOW()), 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM COALESCE(p.created_at, NOW()))::int)) || '1'
+      FROM "purchases" p
+      WHERE pi.purchase_id = p.id AND p.user_id = ${userId} AND pi.item_id IS NOT NULL AND (pi.code IS NULL OR pi.code = '' OR LENGTH(pi.code) > 8);
 
       -- Step 1: Re-link purchase_items to correct item based on base product name, size_id, AND color_id
       UPDATE "purchase_items" pi
@@ -530,10 +540,10 @@ export async function syncInventoryStockAndItems(userId: number, force = false) 
       ) pi
       WHERE i.id = pi.item_id AND i.user_id = ${userId} AND (i.color_id IS NULL OR i.color_id = 0);
 
-      -- Step 5: Auto generate standard 14-digit barcode for all items if null or empty
+      -- Step 5: Auto generate Method 2 barcode for all items if null, empty, or old format
       UPDATE "items"
-      SET "barcode" = LPAD("id"::text, 4, '0') || LPAD(COALESCE("size_id", 0)::text, 2, '0') || LPAD(COALESCE("color_id", 0)::text, 2, '0') || to_char("created_at", 'YYMM') || '01'
-      WHERE "user_id" = ${userId} AND ("barcode" IS NULL OR "barcode" = '');
+      SET "barcode" = LPAD(to_hex("id"), 4, '0') || '-' || RIGHT(to_char("created_at", 'YYYY'), 1) || UPPER(to_hex(EXTRACT(MONTH FROM "created_at")::int)) || '1'
+      WHERE "user_id" = ${userId} AND ("barcode" IS NULL OR "barcode" = '' OR LENGTH("barcode") > 8);
     `);
   } catch (err) {
     console.error("syncInventoryStockAndItems error:", err);
@@ -1071,24 +1081,22 @@ export const listItems: Handler = async (c: any) => {
           ? String(Number(pricingSellingPrice).toFixed(2))
           : String(Number(it.sellingPrice || 0).toFixed(2));
 
-        // 14-digit standard barcode formula: ItemId(4) + SizeId(2) + ColorId(2) + YYMM(4) + Batch(2) = 14 digits
+        // Method 2 Barcode: VariantHex(4) - YearDigit(1) MonthHex(1) Batch(1) e.g. 0009-6B1
         let fallbackBarcode = "";
         const itemIdNum = Number(it.id || 0);
         if (itemIdNum > 0) {
-          const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
-          const sizeNum = Number(it.sizeId || it.size_id || it.size?.id || 0);
-          const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
-          const colorNum = Number(it.colorId || it.color_id || it.color?.id || 0);
-          const colorStr = String(colorNum).padStart(2, "0").slice(-2);
+          const hexItem = itemIdNum.toString(16).toUpperCase().padStart(4, "0");
           let d = it.createdAt ? new Date(it.createdAt) : new Date();
           if (isNaN(d.getTime())) d = new Date();
-          const yy = String(d.getFullYear()).slice(-2);
-          const mm = String(d.getMonth() + 1).padStart(2, "0");
-          const yymm = `${yy}${mm}`;
-          fallbackBarcode = `${itemStr}${sizeStr}${colorStr}${yymm}01`;
+          const yearDigit = String(d.getFullYear()).slice(-1);
+          const monthHex = (d.getMonth() + 1).toString(16).toUpperCase();
+          fallbackBarcode = `${hexItem}-${yearDigit}${monthHex}1`;
         }
 
-        const purchaseBarcode = lp?.barcode || lp?.code || fallbackBarcode || null;
+        let purchaseBarcode = lp?.barcode || lp?.code || it.barcode || fallbackBarcode || null;
+        if (purchaseBarcode && purchaseBarcode.length > 8 && itemIdNum > 0) {
+          purchaseBarcode = fallbackBarcode;
+        }
         let resolvedColor = it.color;
         const colorIdCandidate = Number(it.colorId || lp?.colorId || lp?.color_id || 0);
         if (!resolvedColor && colorIdCandidate && colorMap.has(colorIdCandidate)) {
@@ -1184,17 +1192,13 @@ export const createItem: Handler = async (c: any) => {
     })
     .returning();
 
-  // Auto-generate standard 14-digit barcode if not provided
-  if (!created.barcode) {
-    const itemStr = String(created.id).padStart(4, "0").slice(-4);
-    const sizeNum = Number(created.sizeId || 0);
-    const sizeStr = String(sizeNum).padStart(2, "0").slice(-2);
-    const colorNum = Number(created.colorId || 0);
-    const colorStr = String(colorNum).padStart(2, "0").slice(-2);
+  // Auto-generate Method 2 barcode if not provided or old format
+  if (!created.barcode || created.barcode.length > 8) {
+    const hexItem = Number(created.id).toString(16).toUpperCase().padStart(4, "0");
     const now = new Date();
-    const yy = String(now.getFullYear()).slice(-2);
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const generatedBarcode = `${itemStr}${sizeStr}${colorStr}${yy}${mm}01`;
+    const yearDigit = String(now.getFullYear()).slice(-1);
+    const monthHex = (now.getMonth() + 1).toString(16).toUpperCase();
+    const generatedBarcode = `${hexItem}-${yearDigit}${monthHex}1`;
     await db
       .update(items)
       .set({ barcode: generatedBarcode, updatedAt: new Date() })
@@ -1578,24 +1582,18 @@ export const createPurchase: Handler = async (c: any) => {
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
 
-      // Barcode: Item ID(4) + Size ID(2) + Color ID(2) + YYMM(4) + Batch(2) = 14 digits
+      // Method 2 Barcode: VariantHex(4) - YearDigit(1) MonthHex(1) Batch(1) e.g. 0009-6B1
       let code = (item.code || "").trim();
-      if (!code) {
-        const itemStr = String(item.itemId || 0).padStart(4, "0").slice(-4);
-        const sizeStr = String(sizeId || 0).padStart(2, "0").slice(-2);
-        const colorStr = String(colorId || 0).padStart(2, "0").slice(-2);
+      const challanDateObj = challanDate ? new Date(challanDate) : new Date();
+      const pDate = isNaN(challanDateObj.getTime()) ? new Date() : challanDateObj;
+      const yearDigit = String(pDate.getFullYear()).slice(-1);
+      const monthHex = (pDate.getMonth() + 1).toString(16).toUpperCase();
 
-        const existingCountRes = await db.execute(sql`
-          SELECT count(*)::int as count 
-          FROM "purchase_items" 
-          WHERE "item_id" = ${item.itemId ? Number(item.itemId) : null}
-            AND "size_id" IS NOT DISTINCT FROM ${sizeId}
-            AND "color_id" IS NOT DISTINCT FROM ${colorId}
-            AND "code" LIKE ${`%${yymm}%`}
-        `);
-        const existingCount = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
-        const batchSerial = String(existingCount + 1).padStart(2, "0").slice(-2);
-        code = `${itemStr}${sizeStr}${colorStr}${yymm}${batchSerial}`;
+      if (!code || code.length > 8) {
+        if (item.itemId) {
+          const hexItem = Number(item.itemId).toString(16).toUpperCase().padStart(4, "0");
+          code = `${hexItem}-${yearDigit}${monthHex}1`;
+        }
       }
 
       // Create or update item in items table to increment stock and set purchase price
@@ -1667,7 +1665,9 @@ export const createPurchase: Handler = async (c: any) => {
           })
           .returning();
         itemId = newItem.id;
-        await db.update(items).set({ code: `PRD-${newItem.id}` }).where(eq(items.id, newItem.id));
+        const hexItem = Number(newItem.id).toString(16).toUpperCase().padStart(4, "0");
+        code = `${hexItem}-${yearDigit}${monthHex}1`;
+        await db.update(items).set({ code: `PRD-${newItem.id}`, barcode: code }).where(eq(items.id, newItem.id));
       }
 
       // Insert purchase item record with all 21 audit/accounting fields
@@ -1892,21 +1892,18 @@ export const updatePurchase: Handler = async (c: any) => {
       const colorId = item.colorId ? Number(item.colorId) : null;
       const unitId = item.unitId ? Number(item.unitId) : null;
 
+      // Method 2 Barcode: VariantHex(4) - YearDigit(1) MonthHex(1) Batch(1) e.g. 0009-6B1
       let code = (item.code || "").trim();
-      if (!code) {
-        const itemStr = String(item.itemId || 0).padStart(4, "0").slice(-4);
-        const sizeStr = String(sizeId || 0).padStart(2, "0").slice(-2);
+      const challanDateObj = challanDate ? new Date(challanDate) : new Date();
+      const pDate = isNaN(challanDateObj.getTime()) ? new Date() : challanDateObj;
+      const yearDigit = String(pDate.getFullYear()).slice(-1);
+      const monthHex = (pDate.getMonth() + 1).toString(16).toUpperCase();
 
-        const existingCountRes = await db.execute(sql`
-          SELECT count(*)::int as count 
-          FROM "purchase_items" 
-          WHERE "item_id" = ${item.itemId ? Number(item.itemId) : null}
-            AND "size_id" IS NOT DISTINCT FROM ${sizeId}
-            AND "code" LIKE ${`%${yymm}%`}
-        `);
-        const existingCount = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
-        const batchSerial = String(existingCount + 1).padStart(2, "0").slice(-2);
-        code = `${itemStr}${sizeStr}${yymm}${batchSerial}`;
+      if (!code || code.length > 8) {
+        if (item.itemId) {
+          const hexItem = Number(item.itemId).toString(16).toUpperCase().padStart(4, "0");
+          code = `${hexItem}-${yearDigit}${monthHex}1`;
+        }
       }
 
       let itemId = item.itemId ? Number(item.itemId) : null;
@@ -1963,6 +1960,9 @@ export const updatePurchase: Handler = async (c: any) => {
           })
           .returning();
         itemId = newItem.id;
+        const hexItem = Number(newItem.id).toString(16).toUpperCase().padStart(4, "0");
+        code = `${hexItem}-${yearDigit}${monthHex}1`;
+        await db.update(items).set({ code: `PRD-${newItem.id}`, barcode: code }).where(eq(items.id, newItem.id));
       }
 
       const [pItem] = await db

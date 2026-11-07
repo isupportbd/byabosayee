@@ -353,7 +353,7 @@
             <div
               v-if="st.item.barcode"
               class="sticker-barcode-wrap"
-              v-html="generateCode128Svg(st.item.barcode, { height: 28, moduleWidth: 1.4, quietZone: 5, showText: true, fontSize: 11, textMargin: 1 })"></div>
+              v-html="generateCode128Svg(st.item.barcode, { height: 32, moduleWidth: 1.5, quietZone: 6, showText: true, fontSize: 11, textMargin: 2 })"></div>
             <div v-else class="text-muted small py-2">
               (বারকোড নেই - ক্রয় বাকি)
             </div>
@@ -398,7 +398,7 @@
             <div
               v-if="st.item.barcode"
               class="sticker-barcode-wrap"
-              v-html="generateCode128Svg(st.item.barcode, { height: 28, moduleWidth: 1.4, quietZone: 5, showText: true, fontSize: 11, textMargin: 1 })"></div>
+              v-html="generateCode128Svg(st.item.barcode, { height: 32, moduleWidth: 1.5, quietZone: 6, showText: true, fontSize: 11, textMargin: 2 })"></div>
             <div v-else class="text-muted small py-2">
               (বারকোড নেই - ক্রয় বাকি)
             </div>

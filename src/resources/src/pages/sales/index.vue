@@ -1614,17 +1614,30 @@ function handleBarcodeScan() {
 
   const q = query.toLowerCase();
 
-  // Search by exact barcode (14-digit, standard 12-digit, or item code)
+  // Search by exact barcode (Method 2, standard 14-digit, or item code)
+  const qClean = q.replace(/[^a-z0-9]/gi, "");
   const found = itemsList.value.find((it) => {
     const barcode = (it.barcode || "").toLowerCase();
+    const barcodeClean = barcode.replace(/[^a-z0-9]/gi, "");
     const latestBarcode = (it.latestBarcode || "").toLowerCase();
+    const latestBarcodeClean = latestBarcode.replace(/[^a-z0-9]/gi, "");
     const code = (it.code || "").toLowerCase();
+    const codeClean = code.replace(/[^a-z0-9]/gi, "");
+
+    if (barcode === q || latestBarcode === q || code === q) return true;
+    if (barcodeClean && qClean && barcodeClean === qClean) return true;
+    if (latestBarcodeClean && qClean && latestBarcodeClean === qClean) return true;
+    if (codeClean && qClean && codeClean === qClean) return true;
+
+    // Check if q matches 4-character hex variant ID (e.g. 0009)
+    if (qClean.length >= 4 && it.id) {
+      const hexPrefix = Number(it.id).toString(16).toLowerCase().padStart(4, "0");
+      if (hexPrefix && qClean.startsWith(hexPrefix)) return true;
+    }
+
     return (
-      barcode === q ||
-      latestBarcode === q ||
-      code === q ||
-      barcode.includes(q) ||
-      latestBarcode.includes(q)
+      (barcode && barcode.includes(q)) ||
+      (latestBarcode && latestBarcode.includes(q))
     );
   });
 

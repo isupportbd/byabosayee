@@ -961,11 +961,11 @@
           </div>
         </div>
 
-        <!-- পণ্যের তালিকা ও ১২ ডিজিটের বারকোড -->
+        <!-- পণ্যের তালিকা ও স্মার্ট বারকোড (পদ্ধতি ২) -->
         <h6 class="fw-bold mb-2 text-dark d-flex align-items-center justify-content-between">
           <span>
             <i class="bi bi-upc-scan text-primary me-1"></i>
-            পণ্যসমূহ ও অটো জেনারেটেড ১৪ ডিজিটের বারকোড (Pure Numeric)
+            পণ্যসমূহ ও স্মার্ট বারকোড (পদ্ধতি ২)
           </span>
           <span class="badge bg-secondary small">
             মোট আইটেম {{ toBengaliNumber(selectedPurchase?.items?.length || 0) }} টি
@@ -977,7 +977,7 @@
             <thead class="table-light small text-nowrap">
               <tr>
                 <th class="text-center" style="width: 35px;">#</th>
-                <th>১৪-ডিজিট বারকোড</th>
+                <th>বারকোড (পদ্ধতি ২)</th>
                 <th>পণ্যের নাম</th>
                 <th>ব্র্যান্ড</th>
                 <th>সাইজ / কালার</th>
@@ -2098,9 +2098,9 @@ const selectedPartnerName = computed(() => {
 });
 
 /**
- * বারকোড জেনারেশন ফর্মুলা (কালার কোড সহ ১৪ ডিজিট):
- * আইটেম আইডি (৪ ডিজিট) + সাইজ আইডি (২ ডিজিট) + কালার আইডি (২ ডিজিট) + YYMM (৪ ডিজিট) + ব্যাচ (২ ডিজিট) = ১৪ ডিজিট
- * উদাহরণ: আইটেম 0009 + সাইজ 06 + কালার 05 + YYMM 2611 + ব্যাচ 01 -> 00090605261101
+ * স্মার্ট বারকোড ফর্মুলা (পদ্ধতি ২: ৭-৮ ক্যারেক্টার):
+ * ভ্যারিয়েন্ট হেক্স (৪ ডিজিট) - সাল লাস্ট ডিজিট (১ ডিজিট) মাস হেক্স (১ ডিজিট) ব্যাচ (১ ডিজিট)
+ * উদাহরণ: ভ্যারিয়েন্ট আইডি 0009 - 2026 এর 6 + নভেম্বর B + ব্যাচ 1 -> 0009-6B1
  */
 function generateCurrentItemBarcode(force: boolean = false) {
   if (!force && currentItem.isCodeCustomized && currentItem.code) {
@@ -2112,18 +2112,15 @@ function generateCurrentItemBarcode(force: boolean = false) {
   }
 
   const itemIdNum = Number(currentItem.itemId || 0);
-  const itemStr = String(itemIdNum).padStart(4, "0").slice(-4);
-  const size = String(currentItem.sizeId || 0).padStart(2, "0").slice(-2);
-  const color = String(currentItem.colorId || 0).padStart(2, "0").slice(-2);
+  const hexItem = itemIdNum.toString(16).toUpperCase().padStart(4, "0");
 
   let d = form.challanDate ? new Date(form.challanDate) : new Date();
   if (isNaN(d.getTime())) d = new Date();
-  const yy = String(d.getFullYear()).slice(-2);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yymm = `${yy}${mm}`;
-  const batch = "01";
+  const yearDigit = String(d.getFullYear()).slice(-1);
+  const monthHex = (d.getMonth() + 1).toString(16).toUpperCase();
+  const batch = "1";
 
-  currentItem.code = `${itemStr}${size}${color}${yymm}${batch}`;
+  currentItem.code = `${hexItem}-${yearDigit}${monthHex}${batch}`;
 }
 
 function onCurrentItemBrandChange() {
