@@ -245,7 +245,7 @@
                   label="displayName"
                   parentclass="mb-0 pos-product-select"
                   no-options-text="কোনো পণ্য পাওয়া যায়নি"
-                  @update:model-value="handleDropdownProductSelect">
+                  @change="handleDropdownProductSelect">
                   <template #option="option">
                     <div class="d-flex flex-column w-100 py-1" style="white-space: normal; line-height: 1.35;">
                       <!-- উপরের রো: সম্পূর্ণ আলাদাভাবে শুধু পণ্যের নাম -->
@@ -1813,22 +1813,28 @@ function handleBarcodeScan() {
 }
 
 // Dropdown Product Select
+let isAddingDropdownItem = false;
 function handleDropdownProductSelect(val?: any) {
-  if (!val) return;
+  if (!val || isAddingDropdownItem) return;
   const itemId = typeof val === "object" ? val.id : val;
   if (!itemId) return;
+  isAddingDropdownItem = true;
   const item = itemsList.value.find((it) => Number(it.id) === Number(itemId));
   if (item) {
     if (!Number(item.sellingPrice) || Number(item.sellingPrice) <= 0) {
       showToast(`"${cleanItemName(item.name)}" পণ্যটির বিক্রয় মূল্য নির্ধারণ বাকি থাকায় বিক্রয়ে যুক্ত করা যাবে না`, "warning");
       selectedDropdownItem.value = null;
       selectResetKey.value++;
+      isAddingDropdownItem = false;
       return;
     }
     addItemToCart(item);
   }
   selectedDropdownItem.value = null;
   selectResetKey.value++;
+  setTimeout(() => {
+    isAddingDropdownItem = false;
+  }, 150);
   nextTick(() => {
     focusBarcodeInput();
   });

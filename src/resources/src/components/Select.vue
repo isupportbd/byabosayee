@@ -65,7 +65,6 @@ const emit = defineEmits<{
   (event: "fetched"): void;
   (event: "clear"): void;
   (event: "change", value: unknown): void;
-  (event: "update:modelValue", value: unknown): void;
   (event: "select", value: unknown): void;
 }>();
 
@@ -177,7 +176,6 @@ const onClose = async () => {
 const onModelUpdate = async (val: unknown) => {
   const newVal = val === null || val === undefined ? "" : val;
   model.value = newVal as SelectValue;
-  emit("update:modelValue", newVal);
   emit("change", newVal);
   emit("select", newVal);
 
@@ -438,7 +436,7 @@ const parentClass = computed(() => {
     </label>
 
     <v-select
-      v-model="model"
+      :model-value="model"
       :label="computedLabel"
       :reduce="computedReduce"
       :options="effectiveOptions"
