@@ -2285,17 +2285,13 @@ export const saveItemPricing: Handler = async (c: any) => {
     const challanDate = body.challanDate || latestPurchase?.challanDate || null;
     const purchasePrice = latestPurchase?.unitPriceWithVat ? String(Number(latestPurchase.unitPriceWithVat).toFixed(2)) : (latestPurchase?.unitPriceExclVat ? String(Number(latestPurchase.unitPriceExclVat).toFixed(2)) : (item.purchasePrice || "0"));
 
-    // VALIDATION: কার্যকর তারিখ ক্রয়ের চালানের তারিখের আগের হতে পারবে না
+    // রেট কার্যকর করার তারিখ: চালান তারিখের সাথে স্বয়ংক্রিয় সমন্বয় (ইউজার যাতে কোনো বাধার সম্মুখীন না হন)
+    let finalEffectiveDate = effectiveDate;
     if (challanDate) {
       const effD = new Date(effectiveDate).getTime();
       const challanD = new Date(challanDate).getTime();
       if (!isNaN(effD) && !isNaN(challanD) && effD < challanD) {
-        return c.json(
-          {
-            message: `রেট কার্যকর করার তারিখ (${effectiveDate}) ক্রয়ের চালানের তারিখ (${challanDate}) এর আগের হতে পারবে না।`
-          },
-          HttpStatusCodes.UNPROCESSABLE_ENTITY
-        );
+        finalEffectiveDate = challanDate;
       }
     }
 
@@ -2312,7 +2308,7 @@ export const saveItemPricing: Handler = async (c: any) => {
           itemId,
           purchasePrice,
           sellingPrice: String(sellingPrice.toFixed(2)),
-          effectiveDate,
+          effectiveDate: finalEffectiveDate,
           challanDate,
           vatRate,
           vatType,
@@ -2337,8 +2333,8 @@ export const saveItemPricing: Handler = async (c: any) => {
           .set({
             purchasePrice,
             sellingPrice: String(sellingPrice.toFixed(2)),
-            effectiveDate,
-            challanDate,
+            effectiveDate: finalEffectiveDate,
+          challanDate,
             vatRate,
             vatType,
             discount,
@@ -2357,8 +2353,8 @@ export const saveItemPricing: Handler = async (c: any) => {
             itemId,
             purchasePrice,
             sellingPrice: String(sellingPrice.toFixed(2)),
-            effectiveDate,
-            challanDate,
+            effectiveDate: finalEffectiveDate,
+          challanDate,
             vatRate,
             vatType,
             discount,
@@ -2376,7 +2372,7 @@ export const saveItemPricing: Handler = async (c: any) => {
       .set({
         sellingPrice: String(sellingPrice.toFixed(2)),
         purchasePrice,
-        priceEffectiveDate: effectiveDate,
+        priceEffectiveDate: finalEffectiveDate,
         discount,
         discountType,
         updatedAt: new Date()
