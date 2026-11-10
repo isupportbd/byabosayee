@@ -93,21 +93,7 @@
                 @change="onProductTypeChange" />
             </div>
 
-            <!-- ৪. সাইজ (ধরনের পরে) -->
-            <div class="col-6 col-sm-6 col-md-4 col-item-size">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
-                সাইজ <span class="text-danger">*</span>
-              </label>
-              <Select
-                v-model="form.sizeId"
-                :options="filteredSizesList"
-                :disabled="!form.subCategoryId"
-                :placeholder="form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন'"
-                :searchable="true"
-                @change="onSizeChange" />
-            </div>
-
-            <!-- ৫. ব্র্যান্ড (সাইজের পরে) -->
+            <!-- ৪. ব্র্যান্ড (ধরনের পরে) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-brand">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ব্র্যান্ড">
                 ব্র্যান্ড <span class="text-danger">*</span>
@@ -119,6 +105,20 @@
                 :placeholder="form.subCategoryId ? 'ব্র্যান্ড নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন'"
                 :searchable="true"
                 @change="onBrandChange" />
+            </div>
+
+            <!-- ৫. সাইজ (ব্র্যান্ডের পরে) -->
+            <div class="col-6 col-sm-6 col-md-4 col-item-size">
+              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="সাইজ">
+                সাইজ <span class="text-danger">*</span>
+              </label>
+              <Select
+                v-model="form.sizeId"
+                :options="filteredSizesList"
+                :disabled="!form.subCategoryId"
+                :placeholder="form.subCategoryId ? 'সাইজ নির্বাচন করুন' : 'আগে সাব-ক্যাটাগরি দিন'"
+                :searchable="true"
+                @change="onSizeChange" />
             </div>
 
             <!-- ৬. পণ্যের নাম -->
@@ -343,19 +343,7 @@
             </select>
           </div>
 
-          <!-- ৩. সাইজ ফিল্টার -->
-          <div style="min-width: 120px;">
-            <select
-              v-model="sizeFilter"
-              class="form-select form-select-sm search-input-unified">
-              <option value="all">সকল সাইজ</option>
-              <option v-for="s in uniqueSizesForFilter" :key="s" :value="s">
-                {{ s }}
-              </option>
-            </select>
-          </div>
-
-          <!-- ৩.১ ব্র্যান্ড ফিল্টার -->
+          <!-- ৩. ব্র্যান্ড ফিল্টার -->
           <div style="min-width: 130px;">
             <select
               v-model="brandFilter"
@@ -363,6 +351,18 @@
               <option value="all">সকল ব্র্যান্ড</option>
               <option v-for="b in brandsList" :key="b.id" :value="b.id">
                 {{ b.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- ৩.১ সাইজ ফিল্টার -->
+          <div style="min-width: 120px;">
+            <select
+              v-model="sizeFilter"
+              class="form-select form-select-sm search-input-unified">
+              <option value="all">সকল সাইজ</option>
+              <option v-for="s in uniqueSizesForFilter" :key="s" :value="s">
+                {{ s }}
               </option>
             </select>
           </div>
