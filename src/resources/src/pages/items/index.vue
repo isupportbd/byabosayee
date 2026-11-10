@@ -170,19 +170,33 @@
               </Select>
             </div>
 
-            <!-- ৯. ডিজাইন কোড (একই পণ্যের প্রতি ডিজাইনে DGN001 থেকে ক্রমান্বয়ে বৃদ্ধি) -->
+            <!-- ৯. ডিজাইন কোড (একই পণ্যের প্রতি ডিজাইনে DGN কোড স্থির থাকবে, "নতুন?" চেক করলে নতুন কোড হবে) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-design-code">
-              <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="ডিজাইন কোড (প্রতিটি পণ্যে DGN001 থেকে শুরু হবে)">
-                ডিজাইন কোড <span class="text-danger">*</span>
-              </label>
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label small fw-semibold mb-0 text-truncate" title="ডিজাইন কোড">
+                  ডিজাইন কোড <span class="text-danger">*</span>
+                </label>
+                <label v-if="!isEditing" class="small text-primary fw-semibold m-0 cursor-pointer d-flex align-items-center gap-1" title="টিক দিলে পরবর্তী নতুন ডিজাইন কোড তৈরি হবে" style="font-size: 0.72rem;">
+                  <input
+                    type="checkbox"
+                    v-model="isNewDesign"
+                    class="form-check-input m-0 cursor-pointer"
+                    style="width: 13px; height: 13px;"
+                    @change="onNewDesignToggle" />
+                  <span>নতুন?</span>
+                </label>
+              </div>
               <input
                 v-model.trim="form.designCode"
+                list="existingDesignCodesList"
                 type="text"
-                class="form-control form-control-sm single-row-input font-monospace frozen-input"
-                readonly
-                tabindex="-1"
+                class="form-control form-control-sm single-row-input font-monospace fw-bold text-primary"
                 placeholder="DGN001"
+                @input="onDesignCodeInput"
                 required />
+              <datalist id="existingDesignCodesList">
+                <option v-for="dCode in availableDesignCodes" :key="dCode" :value="dCode" />
+              </datalist>
             </div>
 
             <!-- ১০. প্রারম্ভিক স্টক -->
@@ -551,6 +565,17 @@
                           <span>এডিট ইমেজ</span>
                         </button>
                       </li>
+                      <!-- ৪. ডিলেট পণ্য (শুধুমাত্র ক্রয় না হওয়া পণ্যের ক্ষেত্রে) -->
+                      <li v-if="!item.hasPurchases && (!item.totalPurchased || Number(item.totalPurchased) <= 0)">
+                        <hr class="dropdown-divider my-1" />
+                        <button
+                          type="button"
+                          class="dropdown-item py-1.5 px-3 small d-flex align-items-center gap-2 text-danger"
+                          @click.stop="confirmDeleteItem(item); openActionMenuId = null">
+                          <i class="bi bi-trash"></i>
+                          <span>পণ্য ডিলেট</span>
+                        </button>
+                      </li>
                     </ul>
                   </div>
                 </td>
@@ -836,6 +861,9 @@ const form = reactive({
   stockQuantity: 0
 });
 
+// New Design State
+const isNewDesign = ref(false);
+
 // Media & Storage Settings from Super Admin Policy
 const mediaConfig = ref<{
   uploadMode: "both" | "direct_upload" | "google_drive";
@@ -960,28 +988,23 @@ async function saveItemImage() {
 }
 
 /**
- * একই পণ্যের জন্য ডিজাইন কোড গণনা (DGN001, DGN002, DGN003...)
- * সাব-ক্যাটাগরি ও সাইজ (বা বেস নাম) অনুযায়ী চেক করে
+ * পণ্যের ডিজাইন কোড লজিক:
+ * - ডিফল্টভাবে একই সাব-ক্যাটাগরি, ব্র্যান্ড ও ধরনের সর্বশেষ ব্যবহৃত ডিজাইন কোড বহাল থাকবে।
+ * - ইউজার "নতুন?" অপশনে টিক দিলে তবেই পরবর্তী নতুন ইউনিক ডিজাইন কোড (DGN...) তৈরি হবে।
  */
-/**
- * একই সাব-ক্যাটাগরি ও ব্র্যান্ডের জন্য স্বয়ংক্রিয় ইউনিক ডিজাইন কোড গণনা (DGN001, DGN002...)
- */
-function computeNextDesignCode(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): string {
-  if (!subCatId) return "DGN001";
-
-  const matching = itemsList.value.filter((it: any) => {
+function getMatchingProductItems(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): any[] {
+  if (!subCatId) return [];
+  return itemsList.value.filter((it: any) => {
     const itSub = it.subCategoryId || it.subCategory?.id;
     if (!itSub || String(itSub) !== String(subCatId)) {
       return false;
     }
-
     if (productTypeId) {
       const itType = it.productTypeId || it.productType?.id;
       if (!itType || String(itType) !== String(productTypeId)) {
         return false;
       }
     }
-
     if (brandId) {
       const itBrand = it.brandId || it.brand?.id;
       if (!itBrand || String(itBrand) !== String(brandId)) {
@@ -990,7 +1013,38 @@ function computeNextDesignCode(subCatId?: string | number, productTypeId?: strin
     }
     return true;
   });
+}
 
+function getExistingDesignCodes(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): string[] {
+  const matching = getMatchingProductItems(subCatId, productTypeId, brandId);
+  const codesSet = new Set<string>();
+  for (const it of matching) {
+    const code = (it.designCode || "").trim().toUpperCase();
+    if (code) codesSet.add(code);
+  }
+  return Array.from(codesSet).sort();
+}
+
+function getLatestDesignCode(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): string {
+  const matching = getMatchingProductItems(subCatId, productTypeId, brandId);
+  if (matching.length === 0) return "DGN001";
+
+  let maxSeq = 0;
+  for (const it of matching) {
+    const code = it.designCode || "";
+    const m = code.match(/DGN(\d+)/i) || (it.name ? it.name.match(/DGN(\d+)/i) : null);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      if (num > maxSeq) maxSeq = num;
+    }
+  }
+  if (maxSeq === 0) return "DGN001";
+  return `DGN${String(maxSeq).padStart(3, "0")}`;
+}
+
+function computeNextDesignCode(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): string {
+  if (!subCatId) return "DGN001";
+  const matching = getMatchingProductItems(subCatId, productTypeId, brandId);
   if (matching.length === 0) return "DGN001";
 
   let maxSeq = 0;
@@ -1007,6 +1061,61 @@ function computeNextDesignCode(subCatId?: string | number, productTypeId?: strin
 
   const nextSeq = Math.max(maxSeq + 1, matching.length + 1);
   return `DGN${String(nextSeq).padStart(3, "0")}`;
+}
+
+const availableDesignCodes = computed(() => {
+  if (!form.subCategoryId) return [];
+  return getExistingDesignCodes(form.subCategoryId, form.productTypeId, form.brandId);
+});
+
+function onNewDesignToggle() {
+  if (isNewDesign.value) {
+    form.designCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  } else {
+    form.designCode = getLatestDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  }
+  updateAutoItemName();
+}
+
+function onDesignCodeInput() {
+  if (isEditing.value) return;
+  const subCat = allSubCategoriesList.value.find(
+    (s: any) => String(s.id) === String(form.subCategoryId)
+  );
+  const typeObj = allProductTypesList.value.find(
+    (t: any) => String(t.id) === String(form.productTypeId)
+  );
+  const brandObj = brandsList.value.find(
+    (b: any) => String(b.id) === String(form.brandId)
+  );
+  if (!subCat) return;
+
+  const activeDesignCode = (form.designCode || "DGN001").trim();
+  const parts = [subCat.name.trim()];
+  if (typeObj?.name && typeObj.name.trim()) {
+    parts.push(typeObj.name.trim());
+  }
+  if (brandObj?.name && brandObj.name.trim()) {
+    parts.push(brandObj.name.trim());
+  }
+  parts.push(activeDesignCode);
+  form.name = parts.join("_");
+}
+
+async function confirmDeleteItem(item: any) {
+  if (!item || !item.id) return;
+  const itemName = item.name || "এই পণ্যটি";
+  if (!window.confirm(`আপনি কি নিশ্চিতভাবে "${itemName}" মুছে ফেলতে চান?\n(যেহেতু পণ্যটি এখনও ক্রয় করা হয়নি, তাই এটি সম্পূর্ণ মুছে ফেলা সম্ভব)`)) {
+    return;
+  }
+  try {
+    const res = await axios.delete(`/api/inventory/items/${item.id}`);
+    showToast(res.data?.message || "পণ্য সফলভাবে মুছে ফেলা হয়েছে", "success");
+    notifyCatalogUpdated("item");
+    await fetchItems();
+  } catch (err: any) {
+    showToast(err.response?.data?.message || "পণ্য মুছে ফেলতে ব্যর্থ হয়েছে", "danger");
+  }
 }
 
 async function fetchMediaConfig() {
@@ -1153,11 +1262,16 @@ function updateAutoItemName() {
 
   if (!subCat) return;
 
-  const nextCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
-  form.designCode = nextCode;
+  if (isNewDesign.value) {
+    form.designCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  } else if (!form.designCode || form.designCode === "DGN001") {
+    form.designCode = getLatestDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  }
+
+  const activeDesignCode = (form.designCode || "DGN001").trim();
 
   // Format: [সাব-ক্যাটাগরি]_[ধরন]_[ব্র্যান্ড]_[ডিজাইন কোড]
-  // উদাহরণ: "এপ্রোন_লং_বাটা_DGN001" অথবা ধরন না থাকলে "এপ্রোন_বাটা_DGN001"
+  // উদাহরণ: "পোলো শার্ট (কলার)_লাকস্ট_সি জি ফ্যাশন_DGN001"
   const parts = [subCat.name.trim()];
   if (typeObj?.name && typeObj.name.trim()) {
     parts.push(typeObj.name.trim());
@@ -1165,7 +1279,7 @@ function updateAutoItemName() {
   if (brandObj?.name && brandObj.name.trim()) {
     parts.push(brandObj.name.trim());
   }
-  parts.push(nextCode);
+  parts.push(activeDesignCode);
 
   form.name = parts.join("_");
   isAutoGenerated.value = true;
@@ -1176,6 +1290,7 @@ function onCategoryChange() {
   form.productTypeId = "";
   form.sizeId = "";
   form.name = "";
+  isNewDesign.value = false;
   form.designCode = "DGN001";
   form.unitId = "";
   if (!form.code) {
@@ -1190,6 +1305,11 @@ function onSubCategoryChange() {
   if (!form.code) {
     form.code = generateNextProductCode();
   }
+  if (isNewDesign.value) {
+    form.designCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  } else {
+    form.designCode = getLatestDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  }
   updateAutoItemName();
   if (filteredUnitsList.value.length === 1 && !form.unitId) {
     form.unitId = filteredUnitsList.value[0].id;
@@ -1197,11 +1317,15 @@ function onSubCategoryChange() {
 }
 
 function onProductTypeChange() {
+  if (isNewDesign.value) {
+    form.designCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  } else {
+    form.designCode = getLatestDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  }
   updateAutoItemName();
 }
 
 function onSizeChange() {
-  updateAutoItemName();
   if (!form.code) {
     form.code = generateNextProductCode();
   }
@@ -1212,11 +1336,16 @@ function onSizeChange() {
 }
 
 function onBrandChange() {
+  if (isNewDesign.value) {
+    form.designCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  } else {
+    form.designCode = getLatestDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+  }
   updateAutoItemName();
 }
 
 watch(
-  () => [form.categoryId, form.subCategoryId, form.productTypeId, form.sizeId, form.brandId],
+  () => [form.subCategoryId, form.productTypeId, form.brandId],
   () => {
     if (!isEditing.value && form.subCategoryId) {
       updateAutoItemName();
@@ -1232,6 +1361,7 @@ function resetForm() {
   form.brandId = "";
   form.name = "";
   form.code = generateNextProductCode();
+  isNewDesign.value = false;
   form.designCode = "DGN001";
   form.imageUrl = "";
   form.unitId = "";
@@ -1242,6 +1372,7 @@ function resetForm() {
 function startEdit(item: any) {
   isEditing.value = true;
   editingItem.value = item;
+  isNewDesign.value = false;
   form.categoryId = item.categoryId || (item.category ? item.category.id : "");
   form.subCategoryId = item.subCategoryId || (item.subCategory ? item.subCategory.id : "");
   form.productTypeId = item.productTypeId || (item.productType ? item.productType.id : "");
@@ -1490,12 +1621,42 @@ async function submitForm() {
     showToast("পরিমাপের একক নির্বাচন করা আবশ্যক (ক্রয়, বিক্রয় ও স্টক ব্যবস্থাপনার ভিত্তি)", "warning");
     return;
   }
+
+  // Duplicate Check: একই সাব-ক্যাটাগরি, ব্র্যান্ড, ধরন, ডিজাইন কোড ও সাইজ ইতিমধ্যে আছে কিনা পরীক্ষা
+  const currentDesignCode = (form.designCode || "DGN001").trim().toUpperCase();
+  const duplicateItem = itemsList.value.find((it: any) => {
+    if (isEditing.value && editingItem.value && Number(it.id) === Number(editingItem.value.id)) {
+      return false;
+    }
+    const itSub = it.subCategoryId ?? it.subCategory?.id;
+    if (!itSub || String(itSub) !== String(form.subCategoryId)) return false;
+
+    const itBrand = it.brandId ?? it.brand?.id ?? "";
+    if (String(itBrand) !== String(form.brandId || "")) return false;
+
+    const itType = it.productTypeId ?? it.productType?.id ?? "";
+    if (String(itType) !== String(form.productTypeId || "")) return false;
+
+    const itSize = it.sizeId ?? it.size?.id;
+    if (!itSize || String(itSize) !== String(form.sizeId)) return false;
+
+    const itDgn = (it.designCode || "DGN001").trim().toUpperCase();
+    return itDgn === currentDesignCode;
+  });
+
+  if (duplicateItem) {
+    const sizeObj = allSizesList.value.find((s: any) => String(s.id) === String(form.sizeId));
+    const sizeName = sizeObj ? sizeObj.name : "এই";
+    showToast(`সতর্কতা: এই পণ্যের (${sizeName}) সাইজটি ইতিমধ্যে "${currentDesignCode}" ডিজাইন কোডে সংরক্ষিত আছে! একই পণ্য পুনরায় তৈরি করা যাবে না।`, "warning");
+    return;
+  }
+
   submitting.value = true;
   try {
     const payload = {
       name: form.name.trim(),
       code: form.code.trim(),
-      designCode: form.designCode?.trim() || "DGN001",
+      designCode: currentDesignCode,
       imageUrl: form.imageUrl?.trim() || null,
       categoryId: Number(form.categoryId),
       subCategoryId: Number(form.subCategoryId),
@@ -1513,8 +1674,16 @@ async function submitForm() {
       notifyCatalogUpdated("item");
     } else {
       const res = await axios.post("/api/inventory/items", payload);
-      showToast(res.data?.message || "পণ্য সফলভাবে তৈরি হয়েছে", "success");
-      resetForm();
+      const sizeObj = allSizesList.value.find((s: any) => String(s.id) === String(form.sizeId));
+      const sizeName = sizeObj ? ` (${sizeObj.name} সাইজ)` : "";
+      showToast(res.data?.message || `পণ্য সফলভাবে তৈরি হয়েছে${sizeName}`, "success");
+
+      // পরবর্তী সাইজ দ্রুত যুক্ত করার সুবিধার্থে ক্যাটাগরি, সাব-ক্যাটাগরি, ব্র্যান্ড ও ডিজাইন কোড বহাল রাখা
+      form.sizeId = "";
+      form.code = generateNextProductCode();
+      form.stockQuantity = 0;
+      isNewDesign.value = false;
+      updateAutoItemName();
       notifyCatalogUpdated("item");
     }
     await fetchItems();
