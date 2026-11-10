@@ -1124,7 +1124,9 @@ export const listItems: Handler = async (c: any) => {
           latestVatRate: finalVatRate,
           latestVatType: pr?.vatType || "inclusive",
           latestDiscount: pr?.discount !== undefined && pr?.discount !== null ? Number(pr.discount) : Number(it.discount || 0),
-          latestDiscountType: pr?.discountType || pr?.discount_type || it.discountType || "percent"
+          latestDiscountType: pr?.discountType || pr?.discount_type || it.discountType || "percent",
+          hasPurchases: Boolean(hasPurchases),
+          totalPurchased: Number(stockPurchasedMap.get(itemId) || 0)
         };
       });
     } catch (err) {

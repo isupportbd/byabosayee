@@ -200,7 +200,7 @@
               class="filter-tab-btn"
               :class="{ active: activeFilterTab === 'all' }"
               @click="activeFilterTab = 'all'">
-              সকল পণ্য ({{ formatNumber(itemsList.length) }})
+              সকল পণ্য ({{ formatNumber(purchasedItemsList.length) }})
             </button>
             <button
               type="button"
@@ -457,8 +457,20 @@ const form = reactive<{
   discountType: "percent"
 });
 
+// Purchased Items Only: শুধুমাত্র যেসব পণ্য ক্রয় (Purchase) করা হয়েছে কেবল তারাই মূল্য নির্ধারণ তালিকায় আসবে
+const purchasedItemsList = computed(() => {
+  return itemsList.value.filter((it: any) => {
+    return Boolean(
+      it.hasPurchases ||
+      it.latestChallanNumber ||
+      it.latestChallanDate ||
+      (it.totalPurchased && Number(it.totalPurchased) > 0)
+    );
+  });
+});
+
 // Available Items
-const availableItemsList = computed(() => itemsList.value);
+const availableItemsList = computed(() => purchasedItemsList.value);
 
 // Selected Item Details
 const selectedItemDetails = computed(() => {
@@ -563,13 +575,13 @@ async function submitForm() {
   }
 }
 
-// Counts for filter tabs
+// Counts for filter tabs (শুধুমাত্র ক্রয়কৃত পণ্যের জন্য)
 const pendingItemsCount = computed(() => {
-  return itemsList.value.filter((it) => !it.sellingPrice || Number(it.sellingPrice) <= 0).length;
+  return purchasedItemsList.value.filter((it) => !it.sellingPrice || Number(it.sellingPrice) <= 0).length;
 });
 
 const pricedRecordsCount = computed(() => {
-  return itemsList.value.filter((it) => Number(it.sellingPrice) > 0).length;
+  return purchasedItemsList.value.filter((it) => Number(it.sellingPrice) > 0).length;
 });
 
 function getStandardBarcode(it: any): string {
@@ -597,7 +609,7 @@ const allPricingRecords = computed(() => {
     }
   });
 
-  return itemsList.value.map((it) => {
+  return purchasedItemsList.value.map((it) => {
     const pricing = pricingsByItemId.get(Number(it.id));
     return {
       id: it.id,
