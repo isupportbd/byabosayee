@@ -972,11 +972,11 @@
                 <!-- Totals -->
                 <div class="font-monospace" style="font-size: 11px;">
                   <div class="d-flex justify-content-between py-0.5">
-                    <span>{{ Number(activeReceiptSale?.discountAmount || 0) > 0 ? 'সাবটোটাল:' : 'মোট বিল:' }}</span>
+                    <span>মোট:</span>
                     <strong>{{ formatBengaliCurrency(activeReceiptSale?.subtotal || activeReceiptSale?.totalAmount) }}৳</strong>
                   </div>
                   <div v-if="Number(activeReceiptSale?.discountAmount || 0) > 0" class="d-flex justify-content-between py-0.5 text-danger">
-                    <span>ছাড়:</span>
+                    <span>ডিসকাউন্ট:</span>
                     <strong>- {{ formatBengaliCurrency(activeReceiptSale?.discountAmount) }}৳</strong>
                   </div>
                   <div v-if="Number(activeReceiptSale?.vatAmount || 0) > 0" class="d-flex justify-content-between py-0.5 pos-text-muted">
@@ -1417,39 +1417,46 @@ function formatBengaliReceiptTime(dateStr?: string | Date): string {
   return `${toBengaliNumber(hoursStr)}:${toBengaliNumber(minutes)} ${ampm}`;
 }
 
-// Memo Item decomposition: Row 1 = Subcategory - Type, Row 2 = Brand | Size | Color
+// Memo Item decomposition: Row 1 = Criteria (Subcategory), Row 2 = Type_Size_Color (no brand)
 function getItemMemoLines(it: any, index?: number) {
   const numPrefix = index !== undefined ? `${toBengaliNumber(index + 1)}. ` : "";
   const raw = cleanItemName(it.name || "");
   const parts = raw.split("_").map((p: string) => p.trim()).filter(Boolean);
 
-  let line1 = "";
-  let brand = (it.brandName || "").trim();
+  let criteria = "";
+  let typeName = (it.productTypeName || it.productType?.name || it.item?.productType?.name || "").trim();
+  const brandName = (it.brandName || it.brand?.name || it.item?.brand?.name || "").trim();
 
   if (parts.length >= 3) {
-    // parts[0] = সাব-ক্যাটাগরি, parts[1] = ধরন, parts[2] = ব্র্যান্ড
-    line1 = `${parts[0]} - ${parts[1]}`;
-    if (!brand) brand = parts[2];
+    // parts[0] = সাব-ক্যাটাগরি / ক্রাইটেরিয়া
+    // parts[1] = ধরন
+    // parts[2] = ব্র্যান্ড
+    criteria = parts[0];
+    if (!typeName) typeName = parts[1];
   } else if (parts.length === 2) {
-    if (brand && parts[1].toLowerCase() === brand.toLowerCase()) {
-      line1 = parts[0];
-    } else {
-      line1 = `${parts[0]} - ${parts[1]}`;
+    criteria = parts[0];
+    if (!typeName && (!brandName || parts[1].toLowerCase() !== brandName.toLowerCase())) {
+      typeName = parts[1];
     }
+  } else if (parts.length === 1) {
+    criteria = parts[0];
   } else {
-    line1 = raw || "পণ্য";
+    criteria = raw || "পণ্য";
   }
 
-  // Row 2: ব্র্যান্ড, সাইজ ও কালার
-  const row2Parts: string[] = [];
-  if (brand) row2Parts.push(brand);
-  if (it.sizeName) row2Parts.push(it.sizeName);
-  if (it.colorName) row2Parts.push(it.colorName);
+  const sizeName = (it.sizeName || it.size?.name || it.item?.size?.name || "").trim();
+  const colorName = (it.colorName || it.color?.name || it.item?.color?.name || "").trim();
 
-  const line2 = row2Parts.join(" | ");
+  // ক্রাইটেরিয়ার নিচে ধরন, সাইজ ও কালার থাকবে (কোনো ব্র্যান্ড নেইম আসবে না), যেমন: সুপার প্রিমিয়াম_M_সবুজ
+  const row2Parts: string[] = [];
+  if (typeName && typeName !== "-") row2Parts.push(typeName);
+  if (sizeName && sizeName !== "-") row2Parts.push(sizeName);
+  if (colorName && colorName !== "-") row2Parts.push(colorName);
+
+  const line2 = row2Parts.join("_");
 
   return {
-    title: `${numPrefix}${line1}`,
+    title: `${numPrefix}${criteria}`,
     subtitle: line2
   };
 }
@@ -1688,9 +1695,9 @@ function sendWhatsAppReceipt() {
   msg += `--------------------------------\n`;
   msg += `*পণ্যের বিবরণ:*\n${itemsListText}`;
   msg += `--------------------------------\n`;
-  msg += `সাবটোটাল: ৳${Number(sale.subtotal || 0).toFixed(2)}\n`;
+  msg += `মোট: ৳${Number(sale.subtotal || sale.totalAmount || 0).toFixed(2)}\n`;
   if (Number(sale.discountAmount || 0) > 0) {
-    msg += `ছাড়: -৳${Number(sale.discountAmount).toFixed(2)}\n`;
+    msg += `ডিসকাউন্ট: -৳${Number(sale.discountAmount).toFixed(2)}\n`;
   }
   if (Number(sale.vatAmount || 0) > 0) {
     msg += `ভ্যাট: ৳${Number(sale.vatAmount).toFixed(2)}\n`;
