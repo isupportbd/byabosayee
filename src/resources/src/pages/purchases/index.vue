@@ -445,7 +445,7 @@
                   </div>
 
                   <!-- পণ্যের তালিকা টেবিল -->
-                  <div v-else class="table-responsive flex-grow-1" style="max-height: 360px; overflow-y: auto;">
+                  <div v-else ref="itemsTableContainer" class="table-responsive flex-grow-1" style="max-height: 360px; overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.83rem;">
                       <thead class="table-light sticky-top">
                         <tr class="text-nowrap text-secondary">
@@ -1408,7 +1408,7 @@
 
 <script setup lang="ts">
 import axios from "axios";
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Select from "@/components/Select.vue";
 import { onCatalogUpdated } from "@/helpers/catalog-sync";
@@ -1443,6 +1443,7 @@ const submitting = ref(false);
 const loadingPurchases = ref(false);
 const searchQuery = ref("");
 const openActionMenuId = ref<number | null>(null);
+const itemsTableContainer = ref<HTMLElement | null>(null);
 
 function toggleActionMenu(id: number, event?: Event) {
   if (event) {
@@ -2281,8 +2282,14 @@ function addItemToList() {
     showToast("পণ্য সফলভাবে আপডেট করা হয়েছে", "success");
     editingIndex.value = null;
   } else {
-    form.items.push(rowData);
+    // নতুন এন্ট্রি তালিকার সর্বপ্রথমে যুক্ত হবে যাতে ব্যবহারকারী তাৎক্ষণিকভাবে তা দেখতে পারেন
+    form.items.unshift(rowData);
     showToast("পণ্য তালিকায় যুক্ত করা হয়েছে", "success");
+    nextTick(() => {
+      if (itemsTableContainer.value) {
+        itemsTableContainer.value.scrollTop = 0;
+      }
+    });
   }
 
   resetCurrentItem();
