@@ -721,29 +721,85 @@
           <i class="bi bi-receipt text-primary fs-5"></i>
           <h6 class="m-0 fw-bold">ক্রয় তালিকা</h6>
           <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">
-            {{ toBengaliNumber(purchasesList.length) }} টি রেকর্ড
+            {{ toBengaliNumber(filteredPurchases.length) }} টি রেকর্ড
           </span>
         </div>
-        <div class="d-flex align-items-center gap-2">
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="form-control form-control-sm"
-            placeholder="চালান নং বা সাপ্লায়ার খুঁজুন..."
-            style="width: 220px;" />
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <!-- ১. ব্র্যান্ড ফিল্টার -->
+          <div style="min-width: 130px;">
+            <select v-model="filterBrandId" class="form-select form-select-sm search-input-unified">
+              <option value="all">সকল ব্র্যান্ড</option>
+              <option v-for="b in brandsList" :key="b.id" :value="b.id">
+                {{ b.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- ২. সাপ্লায়ার / প্রস্তুতকারী ফিল্টার -->
+          <div style="min-width: 170px;">
+            <select v-model="filterVendorId" class="form-select form-select-sm search-input-unified">
+              <option value="all">সকল সাপ্লায়ার / প্রস্তুতকারী</option>
+              <optgroup v-if="suppliersList.length > 0" label="সাপ্লায়ার">
+                <option v-for="s in suppliersList" :key="'sup:' + s.id" :value="'sup:' + s.id">
+                  {{ s.name }}
+                </option>
+              </optgroup>
+              <optgroup v-if="manufacturersList.length > 0" label="প্রস্তুতকারী">
+                <option v-for="m in manufacturersList" :key="'mfg:' + m.id" :value="'mfg:' + m.id">
+                  {{ m.name }}
+                </option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- ৩. তারিখ ফিল্টার (হতে - পর্যন্ত) -->
+          <div class="d-flex align-items-center gap-1">
+            <input
+              v-model="filterStartDate"
+              type="date"
+              class="form-control form-control-sm"
+              title="শুরুর তারিখ"
+              style="width: 130px;" />
+            <span class="text-muted small">-</span>
+            <input
+              v-model="filterEndDate"
+              type="date"
+              class="form-control form-control-sm"
+              title="শেষের তারিখ"
+              style="width: 130px;" />
+          </div>
+
+          <!-- ৪. সার্চ বক্স -->
+          <div class="position-relative" style="min-width: 180px;">
+            <input
+              v-model.trim="searchQuery"
+              type="text"
+              class="form-control form-control-sm ps-4 search-input-unified"
+              placeholder="চালান নং বা বিবরণ খুঁজুন..." />
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted small pe-none"></i>
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="btn btn-sm btn-link position-absolute top-50 end-0 translate-middle-y text-muted p-0 me-2"
+              @click="searchQuery = ''">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+
+          <!-- ৫. ফিল্টার রিসেট / রিফ্রেশ বাটন -->
           <button
             type="button"
-            class="btn btn-sm btn-outline-primary"
-            title="রিফ্রেশ"
-            @click="fetchPurchases">
-            <i class="bi bi-arrow-repeat"></i>
+            class="btn btn-sm btn-secondary d-inline-flex align-items-center justify-content-center shadow-sm filter-reset-btn"
+            title="সকল ফিল্টার রিসেট করুন"
+            @click="resetPurchaseFilters">
+            <i class="bi bi-arrow-counterclockwise" :class="{ 'spin-icon': loadingPurchases }"></i>
           </button>
         </div>
       </div>
 
       <div class="card-body p-0">
         <div class="table-responsive purchases-list-table-responsive">
-          <table class="table table-hover align-middle mb-0 text-nowrap">
+          <table class="table table-hover align-middle mb-0 text-nowrap purchases-list-table">
             <thead class="table-light">
               <tr class="small">
                 <th style="width: 40px;" class="text-center">#</th>
@@ -757,19 +813,18 @@
                 <th class="text-end">পরিশোধিত</th>
                 <th class="text-end">বকেয়া</th>
                 <th class="text-center">পেমেন্ট মেথড</th>
-                <th class="text-center">স্টেটাস</th>
                 <th class="text-center" style="width: 60px;">অ্যাকশন</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="small">
               <tr v-if="loadingPurchases">
-                <td colspan="13" class="text-center py-4 text-muted">
+                <td colspan="12" class="text-center py-4 text-muted">
                   <div class="spinner-border spinner-border-sm text-primary me-2"></div>
                   ক্রয় চালান তালিকা লোড হচ্ছে...
                 </td>
               </tr>
               <tr v-else-if="filteredPurchases.length === 0">
-                <td colspan="13" class="text-center py-4 text-muted">
+                <td colspan="12" class="text-center py-4 text-muted">
                   <i class="bi bi-inbox fs-4 d-block mb-1"></i>
                   কোনো ক্রয় চালানের তথ্য পাওয়া যায়নি
                 </td>
@@ -782,14 +837,12 @@
                 style="cursor: pointer;"
                 title="অ্যাকশন মেনু দেখতে ক্লিক করুন"
                 @click="toggleActionMenu(p.id, $event)">
-                <td class="text-center small text-muted">{{ toBengaliNumber(index + 1) }}</td>
+                <td class="text-center text-muted">{{ toBengaliNumber(index + 1) }}</td>
                 <td>
-                  <span class="badge bg-secondary-subtle text-secondary border">
-                    {{ p.challanType?.name || 'সাধারণ চালান' }}
-                  </span>
+                  {{ p.challanType?.name || 'সাধারণ চালান' }}
                 </td>
                 <td class="fw-semibold text-primary">{{ p.challanNumber || '-' }}</td>
-                <td class="small text-muted">{{ formatDate(p.challanDate) }}</td>
+                <td class="text-muted">{{ formatDate(p.challanDate) }}</td>
                 <td>
                   <div class="d-flex align-items-center gap-1">
                     <i
@@ -801,19 +854,15 @@
                   </div>
                 </td>
                 <td>
-                  <span class="badge bg-light text-dark border fw-medium">
-                    {{ getPurchaseBrandNames(p) }}
-                  </span>
+                  {{ getPurchaseBrandNames(p) }}
                 </td>
                 <td class="text-center">
-                  <span class="badge bg-light text-dark border">
-                    {{ toBengaliNumber(p.items?.length || 0) }} টি
-                  </span>
+                  {{ toBengaliNumber(p.items?.length || 0) }} টি
                 </td>
-                <td class="text-end fw-bold text-dark">
+                <td class="text-end fw-semibold text-dark">
                   ৳ {{ toBengaliNumber(Number(p.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })) }}
                 </td>
-                <td class="text-end text-success fw-medium">
+                <td class="text-end text-success fw-semibold">
                   ৳ {{ toBengaliNumber(Number(p.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })) }}
                 </td>
                 <td class="text-end">
@@ -823,20 +872,11 @@
                     ৳ {{ toBengaliNumber(Number(p.dueAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })) }}
                   </span>
                 </td>
-                <td class="text-center small">
-                  <span
-                    v-if="Number(p.paidAmount || 0) > 0 && p.paymentMethod"
-                    class="badge bg-light text-dark border">
+                <td class="text-center">
+                  <span v-if="Number(p.paidAmount || 0) > 0 && p.paymentMethod">
                     {{ formatPaymentMethod(p.paymentMethod) }}
                   </span>
-                  <span v-else class="text-muted small">—</span>
-                </td>
-                <td class="text-center">
-                  <span
-                    class="badge"
-                    :class="Number(p.dueAmount || 0) <= 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'">
-                    {{ Number(p.dueAmount || 0) <= 0 ? 'পরিশোধিত' : 'বকেয়া' }}
-                  </span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td class="text-center position-relative" @click.stop>
                   <div class="dropdown d-inline-block">
@@ -1442,6 +1482,10 @@ const editingPurchaseId = ref<number | null>(null);
 const submitting = ref(false);
 const loadingPurchases = ref(false);
 const searchQuery = ref("");
+const filterBrandId = ref<string | number>("all");
+const filterVendorId = ref<string>("all");
+const filterStartDate = ref<string>("");
+const filterEndDate = ref<string>("");
 const openActionMenuId = ref<number | null>(null);
 const itemsTableContainer = ref<HTMLElement | null>(null);
 
@@ -2498,18 +2542,78 @@ const netExtraExpenses = computed(() => {
   return (Number(form.otherExpenses) || 0) - (Number(form.discountAmount) || 0);
 });
 
+function resetPurchaseFilters() {
+  filterBrandId.value = "all";
+  filterVendorId.value = "all";
+  filterStartDate.value = "";
+  filterEndDate.value = "";
+  searchQuery.value = "";
+  fetchPurchases();
+}
+
 // Filtered purchases
 const filteredPurchases = computed(() => {
-  if (!searchQuery.value.trim()) return purchasesList.value;
-  const q = searchQuery.value.toLowerCase().trim();
-  return purchasesList.value.filter((p) => {
-    return (
-      (p.challanNumber && p.challanNumber.toLowerCase().includes(q)) ||
-      (p.supplier?.name && p.supplier.name.toLowerCase().includes(q)) ||
-      (p.manufacturer?.name && p.manufacturer.name.toLowerCase().includes(q)) ||
-      (p.challanType?.name && p.challanType.name.toLowerCase().includes(q))
-    );
-  });
+  let list = purchasesList.value || [];
+
+  // 1. Filter by Brand
+  if (filterBrandId.value !== "all") {
+    const bId = Number(filterBrandId.value);
+    list = list.filter((p) => {
+      if (p.items && Array.isArray(p.items)) {
+        return p.items.some((it: any) => {
+          const itemBrandId = it.brandId || it.brand?.id;
+          return Number(itemBrandId) === bId;
+        });
+      }
+      return false;
+    });
+  }
+
+  // 2. Filter by Supplier / Manufacturer
+  if (filterVendorId.value !== "all") {
+    const [type, idStr] = filterVendorId.value.split(":");
+    const targetId = Number(idStr);
+    list = list.filter((p) => {
+      if (type === "sup") {
+        return Number(p.supplierId || p.supplier?.id) === targetId;
+      }
+      if (type === "mfg") {
+        return Number(p.manufacturerId || p.manufacturer?.id) === targetId;
+      }
+      return true;
+    });
+  }
+
+  // 3. Filter by Date range
+  if (filterStartDate.value) {
+    list = list.filter((p) => {
+      if (!p.challanDate) return false;
+      const cDate = p.challanDate.split("T")[0];
+      return cDate >= filterStartDate.value;
+    });
+  }
+  if (filterEndDate.value) {
+    list = list.filter((p) => {
+      if (!p.challanDate) return false;
+      const cDate = p.challanDate.split("T")[0];
+      return cDate <= filterEndDate.value;
+    });
+  }
+
+  // 4. Search Query Filter
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter((p) => {
+      const challanMatch = p.challanNumber && p.challanNumber.toLowerCase().includes(q);
+      const supplierMatch = p.supplier?.name && p.supplier.name.toLowerCase().includes(q);
+      const mfgMatch = p.manufacturer?.name && p.manufacturer.name.toLowerCase().includes(q);
+      const typeMatch = p.challanType?.name && p.challanType.name.toLowerCase().includes(q);
+      const brandMatch = getPurchaseBrandNames(p).toLowerCase().includes(q);
+      return challanMatch || supplierMatch || mfgMatch || typeMatch || brandMatch;
+    });
+  }
+
+  return list;
 });
 
 function formatPaymentMethod(m: string | null | undefined): string {
@@ -3073,6 +3177,11 @@ onBeforeUnmount(() => {
   min-height: 250px;
 }
 
+.purchases-list-table th,
+.purchases-list-table td {
+  font-size: 0.85rem;
+}
+
 .purchase-form-card {
   border-top: 3px solid #0d6efd !important;
 }
@@ -3195,6 +3304,24 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
+}
+
+.filter-reset-btn {
+  height: 31px;
+  width: 32px;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media print {
