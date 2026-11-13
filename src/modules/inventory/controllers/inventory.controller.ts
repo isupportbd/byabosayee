@@ -1223,7 +1223,7 @@ export const createItem: Handler = async (c: any) => {
       brandId,
       sizeId,
       unitId: body.unitId ? Number(body.unitId) : null,
-      stockQuantity: Number(body.stockQuantity || 0),
+      stockQuantity: 0,
       purchasePrice: "0",
       sellingPrice: "0",
       alertQuantity: 5
@@ -1301,7 +1301,30 @@ export const updateItem: Handler = async (c: any) => {
   const sizeId = body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : undefined;
   const finalDesignCode = body.designCode !== undefined ? (body.designCode?.trim() || "DGN001").toUpperCase() : undefined;
 
-  if (subCatId && sizeId && finalDesignCode) {
+  const [currentItem] = await db
+    .select()
+    .from(items)
+    .where(and(eq(items.id, id), eq(items.userId, userId)));
+
+  if (!currentItem) {
+    return c.json({ message: "পণ্য পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+  }
+
+  // Check duplicate ONLY if size, designCode, subCategory, brand, or productType changed from current
+  const curSubCatId = currentItem.subCategoryId;
+  const curBrandId = currentItem.brandId;
+  const curTypeId = currentItem.productTypeId;
+  const curSizeId = currentItem.sizeId;
+  const curDgn = (currentItem.designCode || "DGN001").trim().toUpperCase();
+
+  const isVariantChanged =
+    (subCatId !== undefined && subCatId !== curSubCatId) ||
+    (brandId !== undefined && brandId !== curBrandId) ||
+    (productTypeId !== undefined && productTypeId !== curTypeId) ||
+    (sizeId !== undefined && sizeId !== curSizeId) ||
+    (finalDesignCode !== undefined && finalDesignCode !== curDgn);
+
+  if (isVariantChanged && subCatId && sizeId && finalDesignCode) {
     const duplicateConditions = [
       eq(items.userId, userId),
       ne(items.id, id),

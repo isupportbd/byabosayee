@@ -199,17 +199,19 @@
               </datalist>
             </div>
 
-            <!-- ১০. প্রারম্ভিক স্টক -->
+            <!-- ১০. প্রারম্ভিক স্টক (আপাতত ফ্রিজ, ডিফল্ট ০) -->
             <div class="col-6 col-sm-6 col-md-4 col-item-stock">
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="প্রারম্ভিক স্টক">
                 প্রারম্ভিক স্টক
               </label>
               <input
-                v-model.number="form.stockQuantity"
+                :value="0"
                 type="number"
-                min="0"
-                class="form-control form-control-sm single-row-input text-end"
-                placeholder="0" />
+                class="form-control form-control-sm single-row-input text-end bg-light text-muted"
+                disabled
+                readonly
+                placeholder="0"
+                title="প্রারম্ভিক স্টক বর্তমানে স্থগিত (ডিফল্ট ০)" />
             </div>
 
             <!-- ৮. ছবি সংযুক্তি (সুপারএডমিন পলিসি অনুযায়ী) -->
@@ -1456,7 +1458,10 @@ function resetAllFilters() {
 
 // Filtered Items
 const filteredItems = computed(() => {
-  let list = itemsList.value;
+  let list = [...itemsList.value];
+
+  // সর্বশেষ এন্ট্রি (Last Entry) সর্বদা তালিকার প্রথমে থাকবে
+  list.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
 
   // 1. Category Filter
   if (categoryFilter.value !== "all") {
@@ -1624,31 +1629,55 @@ async function submitForm() {
 
   // Duplicate Check: একই সাব-ক্যাটাগরি, ব্র্যান্ড, ধরন, ডিজাইন কোড ও সাইজ ইতিমধ্যে আছে কিনা পরীক্ষা
   const currentDesignCode = (form.designCode || "DGN001").trim().toUpperCase();
-  const duplicateItem = itemsList.value.find((it: any) => {
-    if (isEditing.value && editingItem.value && Number(it.id) === Number(editingItem.value.id)) {
-      return false;
+
+  // এডিটের ক্ষেত্রে যদি ভ্যারিয়েন্ট (সাব-ক্যাটাগরি, ব্র্যান্ড, ধরন, সাইজ ও ডিজাইন কোড) অপরিবর্তিত থাকে তবে ডুপ্লিকেট চেকের প্রয়োজন নেই
+  let shouldCheckDuplicate = true;
+  if (isEditing.value && editingItem.value) {
+    const origSub = editingItem.value.subCategoryId ?? editingItem.value.subCategory?.id;
+    const origBrand = editingItem.value.brandId ?? editingItem.value.brand?.id ?? "";
+    const origType = editingItem.value.productTypeId ?? editingItem.value.productType?.id ?? "";
+    const origSize = editingItem.value.sizeId ?? editingItem.value.size?.id;
+    const origDgn = (editingItem.value.designCode || "DGN001").trim().toUpperCase();
+
+    const isSameVariant =
+      String(origSub) === String(form.subCategoryId) &&
+      String(origBrand) === String(form.brandId || "") &&
+      String(origType) === String(form.productTypeId || "") &&
+      String(origSize) === String(form.sizeId) &&
+      origDgn === currentDesignCode;
+
+    if (isSameVariant) {
+      shouldCheckDuplicate = false;
     }
-    const itSub = it.subCategoryId ?? it.subCategory?.id;
-    if (!itSub || String(itSub) !== String(form.subCategoryId)) return false;
+  }
 
-    const itBrand = it.brandId ?? it.brand?.id ?? "";
-    if (String(itBrand) !== String(form.brandId || "")) return false;
+  if (shouldCheckDuplicate) {
+    const duplicateItem = itemsList.value.find((it: any) => {
+      if (isEditing.value && editingItem.value && Number(it.id) === Number(editingItem.value.id)) {
+        return false;
+      }
+      const itSub = it.subCategoryId ?? it.subCategory?.id;
+      if (!itSub || String(itSub) !== String(form.subCategoryId)) return false;
 
-    const itType = it.productTypeId ?? it.productType?.id ?? "";
-    if (String(itType) !== String(form.productTypeId || "")) return false;
+      const itBrand = it.brandId ?? it.brand?.id ?? "";
+      if (String(itBrand) !== String(form.brandId || "")) return false;
 
-    const itSize = it.sizeId ?? it.size?.id;
-    if (!itSize || String(itSize) !== String(form.sizeId)) return false;
+      const itType = it.productTypeId ?? it.productType?.id ?? "";
+      if (String(itType) !== String(form.productTypeId || "")) return false;
 
-    const itDgn = (it.designCode || "DGN001").trim().toUpperCase();
-    return itDgn === currentDesignCode;
-  });
+      const itSize = it.sizeId ?? it.size?.id;
+      if (!itSize || String(itSize) !== String(form.sizeId)) return false;
 
-  if (duplicateItem) {
-    const sizeObj = allSizesList.value.find((s: any) => String(s.id) === String(form.sizeId));
-    const sizeName = sizeObj ? sizeObj.name : "এই";
-    showToast(`সতর্কতা: এই পণ্যের (${sizeName}) সাইজটি ইতিমধ্যে "${currentDesignCode}" ডিজাইন কোডে সংরক্ষিত আছে! একই পণ্য পুনরায় তৈরি করা যাবে না।`, "warning");
-    return;
+      const itDgn = (it.designCode || "DGN001").trim().toUpperCase();
+      return itDgn === currentDesignCode;
+    });
+
+    if (duplicateItem) {
+      const sizeObj = allSizesList.value.find((s: any) => String(s.id) === String(form.sizeId));
+      const sizeName = sizeObj ? sizeObj.name : "এই";
+      showToast(`সতর্কতা: এই পণ্যের (${sizeName}) সাইজটি ইতিমধ্যে "${currentDesignCode}" ডিজাইন কোডে সংরক্ষিত আছে! একই পণ্য পুনরায় তৈরি করা যাবে না।`, "warning");
+      return;
+    }
   }
 
   submitting.value = true;
@@ -1664,7 +1693,7 @@ async function submitForm() {
       sizeId: Number(form.sizeId),
       brandId: form.brandId ? Number(form.brandId) : null,
       unitId: Number(form.unitId),
-      stockQuantity: Number(form.stockQuantity || 0)
+      stockQuantity: 0
     };
 
     if (isEditing.value && editingItem.value) {
@@ -1736,7 +1765,9 @@ async function fetchItems() {
   loading.value = true;
   try {
     const res = await axios.get("/api/inventory/items");
-    itemsList.value = res.data?.data || [];
+    const raw = res.data?.data || [];
+    raw.sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0));
+    itemsList.value = raw;
   } catch (err: any) {
     showToast(err.response?.data?.message || "আইটেম তালিকা লোড করা যায়নি", "danger");
   } finally {
