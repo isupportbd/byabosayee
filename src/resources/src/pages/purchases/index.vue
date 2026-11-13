@@ -247,6 +247,7 @@
                   label="name"
                   placeholder="পণ্য নির্বাচন করুন"
                   :searchable="true"
+                  :filter-by="filterItemOption"
                   @change="onCurrentItemSelect">
                   <template #selected-option="option">
                     <span class="text-truncate" :title="option.name">
@@ -256,15 +257,13 @@
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
                       <div class="d-flex align-items-center justify-content-between gap-2">
-                        <span class="fw-semibold text-truncate">{{ option.name }}</span>
+                        <span class="fw-semibold text-truncate">{{ getItemDropdownSubCategory(option) }}</span>
                         <span v-if="option.size?.name || getSizeName(option.sizeId)" class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.72rem;">
                           {{ option.size?.name || getSizeName(option.sizeId) }}
                         </span>
                       </div>
                       <small class="opacity-75 font-monospace mt-0.5" style="font-size: 0.75rem;">
-                        <span v-if="option.code">{{ option.code }}</span>
-                        <span v-if="option.code && (option.designCode || 'DGN001')" class="mx-1.5 opacity-50">|</span>
-                        <span>{{ option.designCode || 'DGN001' }}</span>
+                        {{ getItemDropdownBrandAndDesign(option) }}
                       </small>
                     </div>
                   </template>
@@ -2423,6 +2422,64 @@ function getBrandName(brandId: number | ""): string {
   if (!brandId) return "-";
   const b = brandsList.value.find((br) => br.id === Number(brandId));
   return b ? b.name : "-";
+}
+
+function getSubCategoryName(subCatId: number | ""): string {
+  if (!subCatId) return "";
+  const sub = subCategoriesList.value.find((s) => Number(s.id) === Number(subCatId));
+  return sub ? sub.name : "";
+}
+
+function getItemDropdownSubCategory(option: any): string {
+  if (!option) return "";
+  const sub = option.subCategory?.name || (option.subCategoryId ? getSubCategoryName(option.subCategoryId) : "");
+  if (sub && sub.trim()) return sub.trim();
+  if (option.name) {
+    const parts = option.name.split("_");
+    if (parts.length > 0 && parts[0].trim()) {
+      return parts[0].trim();
+    }
+  }
+  return option.name || "";
+}
+
+function getItemDropdownBrandAndDesign(option: any): string {
+  if (!option) return "";
+  let brand = (option.brand?.name || (option.brandId ? getBrandName(option.brandId) : "") || "").trim();
+  if (brand === "-") brand = "";
+
+  if (!brand && option.name) {
+    const parts = option.name.split("_").map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length >= 4) {
+      brand = parts[2];
+    } else if (parts.length === 3) {
+      brand = parts[1];
+    }
+  }
+
+  const designCode = (option.designCode || "DGN001").trim();
+
+  if (brand && designCode) {
+    return `${brand}_${designCode}`;
+  } else if (brand) {
+    return brand;
+  }
+  return designCode;
+}
+
+function filterItemOption(option: any, label: string, search: string): boolean {
+  if (!search) return true;
+  const q = search.trim().toLowerCase();
+  if (label && String(label).toLowerCase().includes(q)) return true;
+  if (option.name && String(option.name).toLowerCase().includes(q)) return true;
+  if (option.subCategory?.name && String(option.subCategory.name).toLowerCase().includes(q)) return true;
+  const brand = option.brand?.name || (option.brandId ? getBrandName(option.brandId) : "");
+  if (brand && String(brand).toLowerCase().includes(q)) return true;
+  if (option.designCode && String(option.designCode).toLowerCase().includes(q)) return true;
+  if (option.code && String(option.code).toLowerCase().includes(q)) return true;
+  const size = option.size?.name || (option.sizeId ? getSizeName(option.sizeId) : "");
+  if (size && String(size).toLowerCase().includes(q)) return true;
+  return false;
 }
 
 function getItemCategorySubtitle(itemId: number | ""): string {
