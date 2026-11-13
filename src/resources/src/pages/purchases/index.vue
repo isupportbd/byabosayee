@@ -3219,8 +3219,8 @@ onBeforeUnmount(() => {
 }
 
 .col-item-name {
-  flex: 2 1 140px;
-  min-width: 120px;
+  flex: 3.5 1 180px;
+  min-width: 140px;
 }
 
 .col-item-brand {
@@ -3254,8 +3254,9 @@ onBeforeUnmount(() => {
 }
 
 .col-item-mrp {
-  flex: 1.2 1 85px;
-  min-width: 75px;
+  flex: 0.6 0 65px;
+  min-width: 58px;
+  max-width: 70px;
 }
 
 .col-item-vat {
