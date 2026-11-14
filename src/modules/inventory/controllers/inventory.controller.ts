@@ -1214,24 +1214,38 @@ export const createItem: Handler = async (c: any) => {
       where: eq(companySettings.userId, userId)
     });
     const prefix = compSettings?.productPrefix || "PRD-";
-    const existingCountRes = await db.execute(sql`
-      SELECT count(*)::int as count FROM "items" WHERE "user_id" = ${userId}
-    `);
-    const count = Number((existingCountRes.rows || existingCountRes)[0]?.count || 0);
-    code = `${prefix}${count + 1}`;
-  }
-
-  // Design code: default DGN001 or calculate based on existing same items
-  let designCode = body.designCode?.trim();
-  if (!designCode && body.name) {
-    const existingSame = await db.execute(sql`
-      SELECT count(*)::int as count
+    const existingMaxCode = await db.execute(sql`
+      SELECT COALESCE(MAX(
+        CASE 
+          WHEN "code" ~* ('^' || ${prefix} || '[0-9]+$') THEN SUBSTRING("code" from (LENGTH(${prefix}) + 1))::int
+          WHEN "code" ~* '^PRD-[0-9]+$' THEN SUBSTRING("code" from 5)::int
+          ELSE 0
+        END
+      ), 0)::int as max_num
       FROM "items"
       WHERE "user_id" = ${userId}
-        AND LOWER(TRIM("name")) = LOWER(TRIM(${body.name.trim()}))
     `);
-    const c = Number((existingSame.rows || existingSame)[0]?.count || 0);
-    designCode = `DGN${String(c + 1).padStart(3, "0")}`;
+    const maxNum = Number((existingMaxCode.rows || existingMaxCode)[0]?.max_num || 0);
+    code = `${prefix}${maxNum + 1}`;
+  }
+
+  // Design code: default DGN001 or calculate based on existing max
+  let designCode = body.designCode?.trim();
+  if (!designCode) {
+    const existingMaxDgn = await db.execute(sql`
+      SELECT COALESCE(MAX(
+        CASE 
+          WHEN "design_code" ~* '^DGN[0-9]+' THEN SUBSTRING("design_code" from 4)::int
+          ELSE 0
+        END
+      ), 0)::int as max_num
+      FROM "items"
+      WHERE "user_id" = ${userId}
+        AND (${body.subCategoryId ? sql`"sub_category_id" = ${Number(body.subCategoryId)}` : sql`1=1`})
+        AND (${body.brandId ? sql`"brand_id" = ${Number(body.brandId)}` : sql`1=1`})
+    `);
+    const maxNum = Number((existingMaxDgn.rows || existingMaxDgn)[0]?.max_num || 0);
+    designCode = `DGN${String(maxNum + 1).padStart(3, "0")}`;
   }
 
   const subCatId = body.subCategoryId ? Number(body.subCategoryId) : null;

@@ -12,6 +12,15 @@
           <span class="badge bg-secondary-subtle text-secondary border">
             {{ toBengaliNumber(filteredItemsList.length) }} টি পণ্য
           </span>
+          <span v-if="selectedItemIds.length > 0" class="badge bg-primary-subtle text-primary border border-primary-subtle d-inline-flex align-items-center gap-1">
+            <span>নির্বাচিত: {{ toBengaliNumber(selectedItemIds.length) }} টি</span>
+            <button
+              type="button"
+              class="btn-close ms-1"
+              style="font-size: 0.55rem;"
+              title="সব নির্বাচন বাতিল করুন"
+              @click="selectedItemIds = []"></button>
+          </span>
         </div>
 
         <!-- সার্চ ও ক্যাটাগরি ফিল্টার -->
@@ -766,7 +775,7 @@ async function fetchItems() {
     }
     // Default select all
     if (selectedItemIds.value.length === 0) {
-      selectedItemIds.value = itemsList.value.map((it) => Number(it.id));
+      // selectedItemIds starts empty
     }
   } catch (err: any) {
     showToast("পণ্য তালিকা লোড করতে ব্যর্থ হয়েছে", "danger");

@@ -994,6 +994,18 @@ async function saveItemImage() {
  * - ডিফল্টভাবে একই সাব-ক্যাটাগরি, ব্র্যান্ড ও ধরনের সর্বশেষ ব্যবহৃত ডিজাইন কোড বহাল থাকবে।
  * - ইউজার "নতুন?" অপশনে টিক দিলে তবেই পরবর্তী নতুন ইউনিক ডিজাইন কোড (DGN...) তৈরি হবে।
  */
+function extractDesignNumber(it: any): number {
+  if (!it) return 0;
+  const dgn = it.designCode || "";
+  let m = dgn.match(/DGN0*(\d+)/i);
+  if (m) return parseInt(m[1], 10);
+  if (it.name) {
+    m = it.name.match(/_DGN0*(\d+)/i) || it.name.match(/DGN0*(\d+)/i);
+    if (m) return parseInt(m[1], 10);
+  }
+  return 0;
+}
+
 function getMatchingProductItems(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): any[] {
   if (!subCatId) return [];
   return itemsList.value.filter((it: any) => {
@@ -1001,16 +1013,21 @@ function getMatchingProductItems(subCatId?: string | number, productTypeId?: str
     if (!itSub || String(itSub) !== String(subCatId)) {
       return false;
     }
-    if (productTypeId) {
-      const itType = it.productTypeId || it.productType?.id;
-      if (!itType || String(itType) !== String(productTypeId)) {
+    if (brandId) {
+      const itBrand = it.brandId || it.brand?.id;
+      if (itBrand && String(itBrand) !== String(brandId)) {
         return false;
       }
     }
-    if (brandId) {
-      const itBrand = it.brandId || it.brand?.id;
-      if (!itBrand || String(itBrand) !== String(brandId)) {
-        return false;
+    if (productTypeId) {
+      const itType = it.productTypeId || it.productType?.id;
+      if (itType) {
+        if (String(itType) !== String(productTypeId)) return false;
+      } else if (it.name) {
+        const pt = allProductTypesList.value.find((p: any) => String(p.id) === String(productTypeId));
+        if (pt && pt.name && !it.name.toLowerCase().includes(pt.name.toLowerCase())) {
+          return false;
+        }
       }
     }
     return true;
@@ -1021,8 +1038,10 @@ function getExistingDesignCodes(subCatId?: string | number, productTypeId?: stri
   const matching = getMatchingProductItems(subCatId, productTypeId, brandId);
   const codesSet = new Set<string>();
   for (const it of matching) {
-    const code = (it.designCode || "").trim().toUpperCase();
-    if (code) codesSet.add(code);
+    const num = extractDesignNumber(it);
+    if (num > 0) {
+      codesSet.add(`DGN${String(num).padStart(3, "0")}`);
+    }
   }
   return Array.from(codesSet).sort();
 }
@@ -1031,17 +1050,13 @@ function getLatestDesignCode(subCatId?: string | number, productTypeId?: string 
   const matching = getMatchingProductItems(subCatId, productTypeId, brandId);
   if (matching.length === 0) return "DGN001";
 
-  let maxSeq = 0;
+  let maxNum = 0;
   for (const it of matching) {
-    const code = it.designCode || "";
-    const m = code.match(/DGN(\d+)/i) || (it.name ? it.name.match(/DGN(\d+)/i) : null);
-    if (m) {
-      const num = parseInt(m[1], 10);
-      if (num > maxSeq) maxSeq = num;
-    }
+    const num = extractDesignNumber(it);
+    if (num > maxNum) maxNum = num;
   }
-  if (maxSeq === 0) return "DGN001";
-  return `DGN${String(maxSeq).padStart(3, "0")}`;
+  if (maxNum === 0) return "DGN001";
+  return `DGN${String(maxNum).padStart(3, "0")}`;
 }
 
 function computeNextDesignCode(subCatId?: string | number, productTypeId?: string | number, brandId?: string | number): string {
@@ -1049,19 +1064,13 @@ function computeNextDesignCode(subCatId?: string | number, productTypeId?: strin
   const matching = getMatchingProductItems(subCatId, productTypeId, brandId);
   if (matching.length === 0) return "DGN001";
 
-  let maxSeq = 0;
+  let maxNum = 0;
   for (const it of matching) {
-    const code = it.designCode || "";
-    const m = code.match(/DGN(\d+)/i) || (it.name ? it.name.match(/DGN(\d+)/i) : null);
-    if (m) {
-      const num = parseInt(m[1], 10);
-      if (num > maxSeq) maxSeq = num;
-    } else {
-      maxSeq++;
-    }
+    const num = extractDesignNumber(it);
+    if (num > maxNum) maxNum = num;
   }
 
-  const nextSeq = Math.max(maxSeq + 1, matching.length + 1);
+  const nextSeq = maxNum + 1;
   return `DGN${String(nextSeq).padStart(3, "0")}`;
 }
 
@@ -1115,6 +1124,15 @@ async function confirmDeleteItem(item: any) {
     showToast(res.data?.message || "পণ্য সফলভাবে মুছে ফেলা হয়েছে", "success");
     notifyCatalogUpdated("item");
     await fetchItems();
+    if (!isEditing.value) {
+      form.code = generateNextProductCode();
+      if (isNewDesign.value) {
+        form.designCode = computeNextDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+      } else {
+        form.designCode = getLatestDesignCode(form.subCategoryId, form.productTypeId, form.brandId);
+      }
+      updateAutoItemName();
+    }
   } catch (err: any) {
     showToast(err.response?.data?.message || "পণ্য মুছে ফেলতে ব্যর্থ হয়েছে", "danger");
   }
@@ -1822,8 +1840,24 @@ async function fetchItems() {
 const productPrefix = ref("PRD-");
 
 function generateNextProductCode(): string {
-  const nextNum = itemsList.value.length + 1;
-  return `${productPrefix.value}${nextNum}`;
+  const pfx = productPrefix.value || "PRD-";
+  if (!itemsList.value || itemsList.value.length === 0) {
+    return `${pfx}1`;
+  }
+  let maxNum = 0;
+  for (const it of itemsList.value) {
+    const code = String(it.code || "");
+    const match = code.match(new RegExp(`^${pfx.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}(\\d+)$`, "i")) ||
+                  code.match(/^PRD-(\d+)$/i) ||
+                  code.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  return `${pfx}${maxNum + 1}`;
 }
 
 async function fetchCompanySettings() {

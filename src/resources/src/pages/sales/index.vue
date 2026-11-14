@@ -970,8 +970,8 @@
                   </tbody>
                 </table>
 
-                <!-- Rule -->
-                <div class="pos-rule my-1.5"></div>
+                <!-- Rule above মোট (হেডারের মতো লাইন) -->
+                <div class="border-top border-dark border-opacity-25 my-1.5" style="border-top: 1px solid rgba(0, 0, 0, 0.25);"></div>
 
                 <!-- Totals -->
                 <div class="font-monospace" style="font-size: 11px;">
