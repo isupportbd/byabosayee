@@ -1643,10 +1643,6 @@ async function submitForm() {
     showToast("পণ্যের নাম আবশ্যক", "warning");
     return;
   }
-  if (!form.code.trim()) {
-    showToast("পণ্য কোড / বারকোড আবশ্যক", "warning");
-    return;
-  }
   if (!form.unitId) {
     showToast("পরিমাপের একক নির্বাচন করা আবশ্যক (ক্রয়, বিক্রয় ও স্টক ব্যবস্থাপনার ভিত্তি)", "warning");
     return;
