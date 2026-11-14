@@ -362,6 +362,24 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
           WHERE u."role_id" = ${companyAdminRole.id} AND cs."id" IS NULL;
         `);
       }
+
+      // 9. Auto-heal: Ensure all items of the same product family (user_id, sub_category_id, brand_id, product_type_id) share the same canonical product code
+      await executeRawSql(`
+        UPDATE items i
+        SET code = sub.canonical_code
+        FROM (
+          SELECT user_id, sub_category_id, brand_id, product_type_id,
+                 MIN(code) as canonical_code
+          FROM items
+          WHERE sub_category_id IS NOT NULL AND code IS NOT NULL AND code != ''
+          GROUP BY user_id, sub_category_id, brand_id, product_type_id
+          HAVING count(DISTINCT code) > 1
+        ) sub
+        WHERE i.user_id = sub.user_id
+          AND i.sub_category_id = sub.sub_category_id
+          AND (i.brand_id = sub.brand_id OR (i.brand_id IS NULL AND sub.brand_id IS NULL))
+          AND (i.product_type_id = sub.product_type_id OR (i.product_type_id IS NULL AND sub.product_type_id IS NULL));
+      `);
     } catch (seedErr) {
       console.warn("[Auto-Init] Super admin check warning (non-fatal):", seedErr);
     }

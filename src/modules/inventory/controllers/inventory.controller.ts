@@ -1207,8 +1207,45 @@ export const createItem: Handler = async (c: any) => {
     return c.json({ message: "আইটেমের নাম আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
   }
 
-  // Generate code if not provided - company prefix + sequential 1, 2, 3...
+  const subCatId = body.subCategoryId ? Number(body.subCategoryId) : null;
+  const brandId = body.brandId ? Number(body.brandId) : null;
+  let productTypeId = body.productTypeId ? Number(body.productTypeId) : null;
+  if (!productTypeId && body.name && subCatId) {
+    try {
+      const allPts = await db.select().from(productTypes).where(
+        and(
+          eq(productTypes.subCategoryId, subCatId),
+          sql`('_' || ${body.name.trim()} || '_') ILIKE ('%_' || ${productTypes.name} || '_%')`
+        )
+      );
+      if (allPts.length > 0) {
+        productTypeId = allPts[0].id;
+      }
+    } catch {}
+  }
+
+  // Generate code: Category + Subcategory + Type + Brand = Unique product code!
+  // If this product family already exists, inherit its existing code so all designs/sizes share it.
   let code = body.code?.trim();
+  if (!code && subCatId) {
+    const existingFamilyRes = await db.execute(sql`
+      SELECT "code"
+      FROM "items"
+      WHERE "user_id" = ${userId}
+        AND "sub_category_id" = ${subCatId}
+        AND (${brandId ? sql`"brand_id" = ${brandId}` : sql`"brand_id" IS NULL`})
+        AND (${productTypeId ? sql`"product_type_id" = ${productTypeId}` : sql`"product_type_id" IS NULL`})
+        AND "code" IS NOT NULL AND "code" != ''
+      ORDER BY "id" ASC
+      LIMIT 1
+    `);
+    const existingFamily = (existingFamilyRes.rows || existingFamilyRes)[0];
+    if (existingFamily && existingFamily.code) {
+      code = existingFamily.code;
+    }
+  }
+
+  // If no existing product code for this family, generate next sequential code (prefix + max + 1)
   if (!code) {
     const compSettings = await db.query.companySettings.findFirst({
       where: eq(companySettings.userId, userId)
@@ -1241,28 +1278,12 @@ export const createItem: Handler = async (c: any) => {
       ), 0)::int as max_num
       FROM "items"
       WHERE "user_id" = ${userId}
-        AND (${body.subCategoryId ? sql`"sub_category_id" = ${Number(body.subCategoryId)}` : sql`1=1`})
-        AND (${body.brandId ? sql`"brand_id" = ${Number(body.brandId)}` : sql`1=1`})
+        AND (${subCatId ? sql`"sub_category_id" = ${subCatId}` : sql`1=1`})
+        AND (${brandId ? sql`"brand_id" = ${brandId}` : sql`1=1`})
+        AND (${productTypeId ? sql`"product_type_id" = ${productTypeId}` : sql`1=1`})
     `);
     const maxNum = Number((existingMaxDgn.rows || existingMaxDgn)[0]?.max_num || 0);
-    designCode = `DGN${String(maxNum + 1).padStart(3, "0")}`;
-  }
-
-  const subCatId = body.subCategoryId ? Number(body.subCategoryId) : null;
-  const brandId = body.brandId ? Number(body.brandId) : null;
-  let productTypeId = body.productTypeId ? Number(body.productTypeId) : null;
-  if (!productTypeId && body.name && subCatId) {
-    try {
-      const allPts = await db.select().from(productTypes).where(
-        and(
-          eq(productTypes.subCategoryId, subCatId),
-          sql`('_' || ${body.name.trim()} || '_') ILIKE ('%_' || ${productTypes.name} || '_%')`
-        )
-      );
-      if (allPts.length > 0) {
-        productTypeId = allPts[0].id;
-      }
-    } catch {}
+    designCode = `DGN${String(maxNum > 0 ? maxNum : 1).padStart(3, "0")}`;
   }
   const sizeId = body.sizeId ? Number(body.sizeId) : null;
   const finalDesignCode = (designCode || "DGN001").trim().toUpperCase();
@@ -1459,11 +1480,32 @@ export const updateItem: Handler = async (c: any) => {
         }, HttpStatusCodes.CONFLICT);
       }
     }
+    let finalCode = currentItem.code;
+    if (body.code !== undefined && body.code?.trim()) {
+      finalCode = body.code.trim();
+    } else if (subCatId && (subCatId !== curSubCatId || brandId !== curBrandId || productTypeId !== curTypeId || !finalCode)) {
+      const existingFamilyRes = await db.execute(sql`
+        SELECT "code"
+        FROM "items"
+        WHERE "user_id" = ${userId}
+          AND "sub_category_id" = ${subCatId}
+          AND (${brandId ? sql`"brand_id" = ${brandId}` : sql`"brand_id" IS NULL`})
+          AND (${productTypeId ? sql`"product_type_id" = ${productTypeId}` : sql`"product_type_id" IS NULL`})
+          AND "code" IS NOT NULL AND "code" != ''
+        ORDER BY "id" ASC
+        LIMIT 1
+      `);
+      const existingFamily = (existingFamilyRes.rows || existingFamilyRes)[0];
+      if (existingFamily && existingFamily.code) {
+        finalCode = existingFamily.code;
+      }
+    }
+
     const [updated] = await db
       .update(items)
       .set({
         name: body.name !== undefined ? body.name.trim() : undefined,
-        code: body.code !== undefined ? body.code?.trim() || null : undefined,
+        code: finalCode,
         categoryId: body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : undefined,
         subCategoryId: subCatId,
         productTypeId,
