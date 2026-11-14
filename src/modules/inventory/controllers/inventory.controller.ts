@@ -17,7 +17,7 @@ import {
   suppliers
 } from "@/modules/inventory/database/models/inventory.js";
 import { companySettings } from "@/modules/company/database/models/company.js";
-import { challanTypes, colors } from "@/modules/catalog/database/models/catalog.js";
+import { challanTypes, colors, productTypes } from "@/modules/catalog/database/models/catalog.js";
 import { executeRawSql } from "@/framework/database/auto-init.js";
 
 let inventoryTablesEnsured = false;
