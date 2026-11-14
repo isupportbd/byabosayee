@@ -257,7 +257,7 @@
                   <template #option="option">
                     <div class="d-flex flex-column py-0.5">
                       <div class="d-flex align-items-center justify-content-between gap-2">
-                        <span class="fw-semibold text-truncate">{{ getItemDropdownSubCategory(option) }}</span>
+                        <span class="fw-semibold text-truncate">{{ getItemDropdownSubCategoryAndType(option) }}</span>
                         <span v-if="option.size?.name || getSizeName(option.sizeId)" class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.72rem;">
                           {{ option.size?.name || getSizeName(option.sizeId) }}
                         </span>
@@ -1462,6 +1462,7 @@ const setPageTitle = inject<((t: string) => void) | null>("setPageTitle", null);
 // Master Catalog Data
 const categoriesList = ref<any[]>([]);
 const subCategoriesList = ref<any[]>([]);
+const productTypesList = ref<any[]>([]);
 const brandsList = ref<any[]>([]);
 const sizesList = ref<any[]>([]);
 const colorsList = ref<any[]>([]);
@@ -2430,17 +2431,37 @@ function getSubCategoryName(subCatId: number | ""): string {
   return sub ? sub.name : "";
 }
 
-function getItemDropdownSubCategory(option: any): string {
+function getProductTypeName(productTypeId: number | ""): string {
+  if (!productTypeId) return "";
+  const pt = productTypesList.value.find((p) => Number(p.id) === Number(productTypeId));
+  return pt ? pt.name : "";
+}
+
+function getItemDropdownSubCategoryAndType(option: any): string {
   if (!option) return "";
-  const sub = option.subCategory?.name || (option.subCategoryId ? getSubCategoryName(option.subCategoryId) : "");
-  if (sub && sub.trim()) return sub.trim();
+  let sub = (option.subCategory?.name || (option.subCategoryId ? getSubCategoryName(option.subCategoryId) : "") || "").trim();
+  let type = (option.productType?.name || (option.productTypeId ? getProductTypeName(option.productTypeId) : "") || "").trim();
+  if (type === "-") type = "";
+
   if (option.name) {
-    const parts = option.name.split("_");
-    if (parts.length > 0 && parts[0].trim()) {
-      return parts[0].trim();
+    const parts = option.name.split("_").map((p: string) => p.trim()).filter(Boolean);
+    if (!sub && parts.length > 0) {
+      sub = parts[0];
+    }
+    // If type was not found via relation, see if parts has type (e.g. parts[1])
+    if (!type && parts.length >= 3) {
+      const brand = (option.brand?.name || (option.brandId ? getBrandName(option.brandId) : "") || "").trim();
+      // If parts[1] is not the brand and does not start with DGN, it's the type!
+      if ((!brand || parts[1].toLowerCase() !== brand.toLowerCase()) && !parts[1].toUpperCase().startsWith("DGN")) {
+        type = parts[1];
+      }
     }
   }
-  return option.name || "";
+
+  if (sub && type) {
+    return `${sub}_${type}`;
+  }
+  return sub || option.name || "";
 }
 
 function getItemDropdownBrandAndDesign(option: any): string {
@@ -2467,19 +2488,64 @@ function getItemDropdownBrandAndDesign(option: any): string {
   return designCode;
 }
 
+function normalizeDigitBn(str: string): string {
+  const enToBn: Record<string, string> = {
+    '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+    '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+  };
+  return (str || "").replace(/[0-9]/g, (d) => enToBn[d] || d);
+}
+
+function normalizeDigitEn(str: string): string {
+  const bnToEn: Record<string, string> = {
+    '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+    '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+  };
+  return (str || "").replace(/[০-৯]/g, (d) => bnToEn[d] || d);
+}
+
+// POS-style multi-token flexible search for purchases
 function filterItemOption(option: any, label: string, search: string): boolean {
   if (!search) return true;
-  const q = search.trim().toLowerCase();
-  if (label && String(label).toLowerCase().includes(q)) return true;
-  if (option.name && String(option.name).toLowerCase().includes(q)) return true;
-  if (option.subCategory?.name && String(option.subCategory.name).toLowerCase().includes(q)) return true;
-  const brand = option.brand?.name || (option.brandId ? getBrandName(option.brandId) : "");
-  if (brand && String(brand).toLowerCase().includes(q)) return true;
-  if (option.designCode && String(option.designCode).toLowerCase().includes(q)) return true;
-  if (option.code && String(option.code).toLowerCase().includes(q)) return true;
-  const size = option.size?.name || (option.sizeId ? getSizeName(option.sizeId) : "");
-  if (size && String(size).toLowerCase().includes(q)) return true;
-  return false;
+  const rawQ = search.trim().toLowerCase();
+  if (!rawQ) return true;
+
+  const targetParts = [
+    label || "",
+    option.name || "",
+    option.code || "",
+    option.barcode || "",
+    option.designCode || "",
+    option.category?.name || "",
+    option.subCategory?.name || (option.subCategoryId ? getSubCategoryName(option.subCategoryId) : ""),
+    option.productType?.name || (option.productTypeId ? getProductTypeName(option.productTypeId) : ""),
+    option.brand?.name || (option.brandId ? getBrandName(option.brandId) : ""),
+    option.size?.name || (option.sizeId ? getSizeName(option.sizeId) : ""),
+    option.color?.name || (option.colorId ? getColorName(option.colorId) : "")
+  ];
+
+  if (option.name) {
+    targetParts.push(...option.name.split("_"));
+  }
+
+  const combinedTarget = targetParts.join(" ").toLowerCase();
+  const targetBn = normalizeDigitBn(combinedTarget);
+  const targetEn = normalizeDigitEn(combinedTarget);
+
+  const tokens = rawQ.split(/\s+/).filter(Boolean);
+
+  return tokens.every((token) => {
+    const tokenClean = token.replace(/[-_]/g, "");
+    const tokenBn = normalizeDigitBn(token);
+    const tokenEn = normalizeDigitEn(token);
+
+    return (
+      combinedTarget.includes(token) ||
+      targetBn.includes(tokenBn) ||
+      targetEn.includes(tokenEn) ||
+      (tokenClean && combinedTarget.replace(/[-_]/g, "").includes(tokenClean))
+    );
+  });
 }
 
 function getItemCategorySubtitle(itemId: number | ""): string {
@@ -2891,6 +2957,7 @@ async function fetchCatalogData() {
     const master = catRes.data?.data || {};
     categoriesList.value = master.categories || [];
     subCategoriesList.value = master.subCategories || [];
+    productTypesList.value = master.productTypes || [];
     sizesList.value = master.sizes || [];
     colorsList.value = master.colors || [];
     unitsList.value = master.units || [];

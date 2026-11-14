@@ -586,6 +586,26 @@ async function submitBrandForm() {
     return;
   }
 
+  // Duplicate Check: একই ক্যাটাগরি ও সাব-ক্যাটাগরির অধীনে একই ব্র্যান্ড একাধিকবার তৈরি করা যাবে না
+  const brandName = form.name.trim().toLowerCase();
+  const catId = Number(form.categoryId);
+  const subCatId = Number(form.subCategoryId);
+
+  const duplicate = brandsList.value.find((b: any) => {
+    if (isEditing.value && editingBrand.value && Number(b.id) === Number(editingBrand.value.id)) {
+      return false;
+    }
+    const bName = (b.name || "").trim().toLowerCase();
+    const bCat = Number(b.categoryId || b.category?.id);
+    const bSub = Number(b.subCategoryId || b.subCategory?.id);
+    return bName === brandName && bCat === catId && bSub === subCatId;
+  });
+
+  if (duplicate) {
+    showToast(`সতর্কতা: এই ক্যাটাগরি ও সাব-ক্যাটাগরির অধীনে "${form.name.trim()}" ব্র্যান্ডটি ইতিমধ্যে তৈরি আছে! একই ব্র্যান্ড পুনরায় যুক্ত করা যাবে না।`, "warning");
+    return;
+  }
+
   submitting.value = true;
   try {
     const payload = {

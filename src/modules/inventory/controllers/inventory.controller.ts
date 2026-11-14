@@ -647,13 +647,43 @@ export const createBrand: Handler = async (c: any) => {
     return c.json({ message: "ব্রান্ডের নাম আবশ্যক" }, HttpStatusCodes.BAD_REQUEST);
   }
 
+  const brandName = body.name.trim();
+  const categoryId = body.categoryId ? Number(body.categoryId) : null;
+  const subCategoryId = body.subCategoryId ? Number(body.subCategoryId) : null;
+
+  // Unique Check: একই ক্যাটাগরি ও সাব-ক্যাটাগরির অধীনে একই ব্র্যান্ড নেম দ্বিতীয়বার গ্রহণ করা হবে না
+  const duplicateConditions = [
+    eq(brands.userId, userId),
+    sql`LOWER(TRIM(${brands.name})) = LOWER(TRIM(${brandName}))`
+  ];
+  if (categoryId) {
+    duplicateConditions.push(eq(brands.categoryId, categoryId));
+  } else {
+    duplicateConditions.push(sql`${brands.categoryId} IS NULL`);
+  }
+  if (subCategoryId) {
+    duplicateConditions.push(eq(brands.subCategoryId, subCategoryId));
+  } else {
+    duplicateConditions.push(sql`${brands.subCategoryId} IS NULL`);
+  }
+
+  const existingBrand = await db.query.brands.findFirst({
+    where: and(...duplicateConditions)
+  });
+
+  if (existingBrand) {
+    return c.json({
+      message: `সতর্কতা: এই ক্যাটাগরি ও সাব-ক্যাটাগরির অধীনে "${brandName}" ব্র্যান্ডটি ইতিমধ্যে নিবন্ধিত রয়েছে!`
+    }, HttpStatusCodes.CONFLICT);
+  }
+
   const [created] = await db
     .insert(brands)
     .values({
       userId,
-      name: body.name.trim(),
-      categoryId: body.categoryId ? Number(body.categoryId) : null,
-      subCategoryId: body.subCategoryId ? Number(body.subCategoryId) : null,
+      name: brandName,
+      categoryId,
+      subCategoryId,
       origin: body.origin?.trim() || null,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : true
     })
@@ -676,6 +706,37 @@ export const updateBrand: Handler = async (c: any) => {
   });
   if (!existing) {
     return c.json({ message: "ব্রান্ড পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+  }
+
+  const brandName = body.name !== undefined && body.name.trim() ? body.name.trim() : existing.name;
+  const categoryId = body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : existing.categoryId;
+  const subCategoryId = body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : existing.subCategoryId;
+
+  // Duplicate Check against other brands
+  const duplicateConditions = [
+    eq(brands.userId, userId),
+    ne(brands.id, id),
+    sql`LOWER(TRIM(${brands.name})) = LOWER(TRIM(${brandName}))`
+  ];
+  if (categoryId) {
+    duplicateConditions.push(eq(brands.categoryId, categoryId));
+  } else {
+    duplicateConditions.push(sql`${brands.categoryId} IS NULL`);
+  }
+  if (subCategoryId) {
+    duplicateConditions.push(eq(brands.subCategoryId, subCategoryId));
+  } else {
+    duplicateConditions.push(sql`${brands.subCategoryId} IS NULL`);
+  }
+
+  const existingBrand = await db.query.brands.findFirst({
+    where: and(...duplicateConditions)
+  });
+
+  if (existingBrand && Number(existingBrand.id) !== id) {
+    return c.json({
+      message: `সতর্কতা: এই ক্যাটাগরি ও সাব-ক্যাটাগরির অধীনে "${brandName}" ব্র্যান্ডটি ইতিমধ্যে নিবন্ধিত রয়েছে!`
+    }, HttpStatusCodes.CONFLICT);
   }
 
   const updateData: any = {
@@ -1175,7 +1236,20 @@ export const createItem: Handler = async (c: any) => {
 
   const subCatId = body.subCategoryId ? Number(body.subCategoryId) : null;
   const brandId = body.brandId ? Number(body.brandId) : null;
-  const productTypeId = body.productTypeId ? Number(body.productTypeId) : null;
+  let productTypeId = body.productTypeId ? Number(body.productTypeId) : null;
+  if (!productTypeId && body.name && subCatId) {
+    try {
+      const allPts = await db.select().from(productTypes).where(
+        and(
+          eq(productTypes.subCategoryId, subCatId),
+          sql`('_' || ${body.name.trim()} || '_') ILIKE ('%_' || ${productTypes.name} || '_%')`
+        )
+      );
+      if (allPts.length > 0) {
+        productTypeId = allPts[0].id;
+      }
+    } catch {}
+  }
   const sizeId = body.sizeId ? Number(body.sizeId) : null;
   const finalDesignCode = (designCode || "DGN001").trim().toUpperCase();
 
@@ -1288,94 +1362,116 @@ export const deleteItem: Handler = async (c: any) => {
 };
 
 export const updateItem: Handler = async (c: any) => {
-  await ensureInventoryTables();
-  const userId = getUserId(c);
-  const id = Number(c.req.param("id"));
-  if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+  try {
+    await ensureInventoryTables();
+    const userId = getUserId(c);
+    const id = Number(c.req.param("id"));
+    if (!userId) return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
 
-  const body = await c.req.json();
+    const body = await c.req.json();
 
-  const subCatId = body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : undefined;
-  const brandId = body.brandId !== undefined ? (body.brandId ? Number(body.brandId) : null) : undefined;
-  const productTypeId = body.productTypeId !== undefined ? (body.productTypeId ? Number(body.productTypeId) : null) : undefined;
-  const sizeId = body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : undefined;
-  const finalDesignCode = body.designCode !== undefined ? (body.designCode?.trim() || "DGN001").toUpperCase() : undefined;
+    const [currentItem] = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, id), eq(items.userId, userId)));
 
-  const [currentItem] = await db
-    .select()
-    .from(items)
-    .where(and(eq(items.id, id), eq(items.userId, userId)));
+    if (!currentItem) {
+      return c.json({ message: "পণ্য পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    }
 
-  if (!currentItem) {
-    return c.json({ message: "পণ্য পাওয়া যায়নি" }, HttpStatusCodes.NOT_FOUND);
+    const subCatId = body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : currentItem.subCategoryId;
+    const brandId = body.brandId !== undefined ? (body.brandId ? Number(body.brandId) : null) : currentItem.brandId;
+    let productTypeId = body.productTypeId !== undefined ? (body.productTypeId ? Number(body.productTypeId) : null) : currentItem.productTypeId;
+    
+    // Auto-detect productTypeId from name if empty
+    if (!productTypeId && (body.name || currentItem.name) && subCatId) {
+      try {
+        const checkName = (body.name || currentItem.name).trim();
+        const allPts = await db.select().from(productTypes).where(
+          and(
+            eq(productTypes.subCategoryId, subCatId),
+            sql`('_' || ${checkName} || '_') ILIKE ('%_' || ${productTypes.name} || '_%')`
+          )
+        );
+        if (allPts.length > 0) {
+          productTypeId = allPts[0].id;
+        }
+      } catch {}
+    }
+
+    const sizeId = body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : currentItem.sizeId;
+    const finalDesignCode = body.designCode !== undefined ? (body.designCode?.trim() || "DGN001").toUpperCase() : (currentItem.designCode || "DGN001").trim().toUpperCase();
+
+    // Check duplicate ONLY if size, designCode, subCategory, brand, or productType changed to conflict with another item
+    const curSubCatId = currentItem.subCategoryId;
+    const curBrandId = currentItem.brandId;
+    const curTypeId = currentItem.productTypeId;
+    const curSizeId = currentItem.sizeId;
+    const curDgn = (currentItem.designCode || "DGN001").trim().toUpperCase();
+
+    const isVariantChanged =
+      subCatId !== curSubCatId ||
+      brandId !== curBrandId ||
+      productTypeId !== curTypeId ||
+      sizeId !== curSizeId ||
+      finalDesignCode !== curDgn;
+
+    if (isVariantChanged && subCatId && sizeId && finalDesignCode) {
+      const duplicateConditions = [
+        eq(items.userId, userId),
+        ne(items.id, id),
+        eq(items.subCategoryId, subCatId),
+        eq(items.sizeId, sizeId),
+        sql`UPPER(TRIM(COALESCE(${items.designCode}, 'DGN001'))) = ${finalDesignCode}`
+      ];
+      if (brandId) {
+        duplicateConditions.push(eq(items.brandId, brandId));
+      } else {
+        duplicateConditions.push(sql`${items.brandId} IS NULL`);
+      }
+      if (productTypeId) {
+        duplicateConditions.push(eq(items.productTypeId, productTypeId));
+      } else {
+        duplicateConditions.push(sql`${items.productTypeId} IS NULL`);
+      }
+
+      const existingDuplicate = await db.query.items.findFirst({
+        where: and(...duplicateConditions)
+      });
+
+      if (existingDuplicate && Number(existingDuplicate.id) !== id) {
+        return c.json({
+          message: `সতর্কতা: এই পণ্যের নির্বাচিত সাইজ ও ডিজাইন কোড (${finalDesignCode}) ইতিমধ্যে অন্য পণ্যে ব্যবহৃত!`
+        }, HttpStatusCodes.CONFLICT);
+      }
+    }
+    const [updated] = await db
+      .update(items)
+      .set({
+        name: body.name !== undefined ? body.name.trim() : undefined,
+        code: body.code !== undefined ? body.code?.trim() || null : undefined,
+        categoryId: body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : undefined,
+        subCategoryId: subCatId,
+        productTypeId,
+        brandId,
+        sizeId,
+        unitId: body.unitId !== undefined ? (body.unitId ? Number(body.unitId) : null) : undefined,
+        stockQuantity: body.stockQuantity !== undefined ? Number(body.stockQuantity) : undefined,
+        designCode: finalDesignCode,
+        imageUrl: body.imageUrl !== undefined ? (body.imageUrl?.trim() || null) : undefined,
+        isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
+        updatedAt: new Date()
+      })
+      .where(and(eq(items.id, id), eq(items.userId, userId)))
+      .returning();
+
+    broadcast("catalog.updated", { entity: "item", userId }, { all: true, rooms: ["catalog"] });
+
+    return c.json({ message: "আইটেম সফলভাবে আপডেট করা হয়েছে", data: updated }, HttpStatusCodes.OK);
+  } catch (err: any) {
+    console.error("updateItem error:", err);
+    return c.json({ message: err.message || "আইটেম আপডেট করতে সমস্যা হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
   }
-
-  // Check duplicate ONLY if size, designCode, subCategory, brand, or productType changed from current
-  const curSubCatId = currentItem.subCategoryId;
-  const curBrandId = currentItem.brandId;
-  const curTypeId = currentItem.productTypeId;
-  const curSizeId = currentItem.sizeId;
-  const curDgn = (currentItem.designCode || "DGN001").trim().toUpperCase();
-
-  const isVariantChanged =
-    (subCatId !== undefined && subCatId !== curSubCatId) ||
-    (brandId !== undefined && brandId !== curBrandId) ||
-    (productTypeId !== undefined && productTypeId !== curTypeId) ||
-    (sizeId !== undefined && sizeId !== curSizeId) ||
-    (finalDesignCode !== undefined && finalDesignCode !== curDgn);
-
-  if (isVariantChanged && subCatId && sizeId && finalDesignCode) {
-    const duplicateConditions = [
-      eq(items.userId, userId),
-      ne(items.id, id),
-      eq(items.subCategoryId, subCatId),
-      eq(items.sizeId, sizeId),
-      sql`UPPER(TRIM(COALESCE(${items.designCode}, 'DGN001'))) = ${finalDesignCode}`
-    ];
-    if (brandId) {
-      duplicateConditions.push(eq(items.brandId, brandId));
-    } else {
-      duplicateConditions.push(sql`${items.brandId} IS NULL`);
-    }
-    if (productTypeId) {
-      duplicateConditions.push(eq(items.productTypeId, productTypeId));
-    } else {
-      duplicateConditions.push(sql`${items.productTypeId} IS NULL`);
-    }
-
-    const existingDuplicate = await db.query.items.findFirst({
-      where: and(...duplicateConditions)
-    });
-
-    if (existingDuplicate) {
-      return c.json({
-        message: `সতর্কতা: এই পণ্যের নির্বাচিত সাইজ ও ডিজাইন কোড (${finalDesignCode}) ইতিমধ্যে অন্য পণ্যে ব্যবহৃত!`
-      }, HttpStatusCodes.CONFLICT);
-    }
-  }
-  const [updated] = await db
-    .update(items)
-    .set({
-      name: body.name !== undefined ? body.name.trim() : undefined,
-      code: body.code !== undefined ? body.code?.trim() || null : undefined,
-      categoryId: body.categoryId !== undefined ? (body.categoryId ? Number(body.categoryId) : null) : undefined,
-      subCategoryId: body.subCategoryId !== undefined ? (body.subCategoryId ? Number(body.subCategoryId) : null) : undefined,
-      productTypeId: body.productTypeId !== undefined ? (body.productTypeId ? Number(body.productTypeId) : null) : undefined,
-      brandId: body.brandId !== undefined ? (body.brandId ? Number(body.brandId) : null) : undefined,
-      sizeId: body.sizeId !== undefined ? (body.sizeId ? Number(body.sizeId) : null) : undefined,
-      unitId: body.unitId !== undefined ? (body.unitId ? Number(body.unitId) : null) : undefined,
-      stockQuantity: body.stockQuantity !== undefined ? Number(body.stockQuantity) : undefined,
-      designCode: body.designCode !== undefined ? (body.designCode?.trim() || null) : undefined,
-      imageUrl: body.imageUrl !== undefined ? (body.imageUrl?.trim() || null) : undefined,
-      isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
-      updatedAt: new Date()
-    })
-    .where(and(eq(items.id, id), eq(items.userId, userId)))
-    .returning();
-
-  broadcast("catalog.updated", { entity: "item", userId }, { all: true, rooms: ["catalog"] });
-
-  return c.json({ message: "আইটেম সফলভাবে আপডেট করা হয়েছে", data: updated }, HttpStatusCodes.OK);
 };
 
 /**

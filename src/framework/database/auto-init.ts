@@ -234,6 +234,31 @@ export async function ensureAllDatabaseTablesAndSeeds(): Promise<void> {
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
+
+      -- Deduplicate and enforce unique index on brands (userId, categoryId, subCategoryId, name)
+      DELETE FROM "brands" b1
+      USING "brands" b2
+      WHERE b1.id > b2.id
+        AND b1.user_id = b2.user_id
+        AND COALESCE(b1.category_id, 0) = COALESCE(b2.category_id, 0)
+        AND COALESCE(b1.sub_category_id, 0) = COALESCE(b2.sub_category_id, 0)
+        AND LOWER(TRIM(b1.name)) = LOWER(TRIM(b2.name));
+
+      CREATE UNIQUE INDEX IF NOT EXISTS "brands_user_cat_subcat_name_idx" 
+      ON "brands" ("user_id", COALESCE("category_id", 0), COALESCE("sub_category_id", 0), LOWER(TRIM("name")));
+
+      -- Auto-heal: Link product_type_id on items where it is NULL but name contains the type name
+      UPDATE "items" i
+      SET "product_type_id" = pt.id
+      FROM "product_types" pt
+      WHERE i.product_type_id IS NULL
+        AND (i.sub_category_id = pt.sub_category_id OR pt.sub_category_id IS NULL)
+        AND ('_' || i.name || '_') ILIKE ('%_' || pt.name || '_%');
+
+      -- Auto-heal: Ensure design_code is populated
+      UPDATE "items"
+      SET "design_code" = COALESCE(SUBSTRING("name" FROM '(DGN\\d+)'), 'DGN001')
+      WHERE "design_code" IS NULL OR "design_code" = '';
     `);
 
     // 5. Settings and Company Settings
