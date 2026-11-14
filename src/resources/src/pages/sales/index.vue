@@ -942,8 +942,9 @@
                   <thead>
                     <tr class="border-bottom border-dark border-opacity-25">
                       <th class="text-start pb-1">আইটেম</th>
-                      <th class="text-center pb-1" style="width: 45px;">পরিমাণ</th>
-                      <th class="text-end pb-1" style="width: 65px;">টাকা</th>
+                      <th class="text-center pb-1" style="width: 36px;">পরিমাণ</th>
+                      <th class="text-end pb-1" style="width: 48px;">দর</th>
+                      <th class="text-end pb-1" style="width: 56px;">টাকা</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -958,6 +959,9 @@
                       </td>
                       <td class="text-center py-1 font-monospace" style="white-space: nowrap;">
                         {{ toBengaliNumber(it.quantity) }}
+                      </td>
+                      <td class="text-end py-1 font-monospace" style="white-space: nowrap;">
+                        {{ formatBengaliCurrency(it.unitPrice ?? it.sellingPrice ?? (it.quantity ? Number(it.totalPrice) / Number(it.quantity) : 0)) }}
                       </td>
                       <td class="text-end py-1 font-monospace" style="white-space: nowrap;">
                         {{ formatBengaliCurrency(it.totalPrice) }}
