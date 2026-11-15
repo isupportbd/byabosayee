@@ -520,26 +520,29 @@
                           <thead>
                             <tr class="border-bottom border-dark border-opacity-25">
                               <th class="text-start pb-1">আইটেম</th>
-                              <th class="text-center pb-1">পরিমাণ</th>
-                              <th class="text-end pb-1">টাকা</th>
+                              <th class="text-center pb-1" style="width: 36px;">পরিমাণ</th>
+                              <th class="text-end pb-1" style="width: 48px;">দর</th>
+                              <th class="text-end pb-1" style="width: 56px;">টাকা</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
-                              <td class="text-start py-1">১. কটন শার্ট (XL)</td>
-                              <td class="text-center py-1">২</td>
-                              <td class="text-end py-1">১,৪০০</td>
+                              <td class="text-start py-1 pe-1">১. কটন শার্ট (XL)</td>
+                              <td class="text-center py-1 font-monospace" style="white-space: nowrap;">২</td>
+                              <td class="text-end py-1 font-monospace" style="white-space: nowrap;">৭০০</td>
+                              <td class="text-end py-1 font-monospace" style="white-space: nowrap;">১,৪০০</td>
                             </tr>
                             <tr>
-                              <td class="text-start py-1">২. জিন্স প্যান্ট (32)</td>
-                              <td class="text-center py-1">১</td>
-                              <td class="text-end py-1">১,২০০</td>
+                              <td class="text-start py-1 pe-1">২. জিন্স প্যান্ট (32)</td>
+                              <td class="text-center py-1 font-monospace" style="white-space: nowrap;">১</td>
+                              <td class="text-end py-1 font-monospace" style="white-space: nowrap;">১,২০০</td>
+                              <td class="text-end py-1 font-monospace" style="white-space: nowrap;">১,২০০</td>
                             </tr>
                           </tbody>
                         </table>
 
-                        <!-- Rule -->
-                        <div class="pos-rule my-1.5"></div>
+                        <!-- Rule above মোট (হেডারের মতো লাইন) -->
+                        <div class="border-top border-dark border-opacity-25 my-1.5" style="border-top: 1px solid rgba(0, 0, 0, 0.25);"></div>
 
                         <!-- Totals -->
                         <div class="font-monospace" style="font-size: 11px;">
