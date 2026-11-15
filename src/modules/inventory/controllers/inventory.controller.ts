@@ -1194,7 +1194,12 @@ export const listItems: Handler = async (c: any) => {
       console.error("Enrich items with latest purchase and pricing error:", err);
     }
 
-  return c.json({ message: "Success", data: enriched }, HttpStatusCodes.OK);
+  const purchasedOnly = c.req.query("purchasedOnly") === "true";
+  const finalData = purchasedOnly
+    ? enriched.filter((it: any) => Boolean(it.hasPurchases) || Number(it.totalPurchased || 0) > 0 || Number(it.stockQuantity || 0) > 0)
+    : enriched;
+
+  return c.json({ message: "Success", data: finalData }, HttpStatusCodes.OK);
 };
 
 export const createItem: Handler = async (c: any) => {

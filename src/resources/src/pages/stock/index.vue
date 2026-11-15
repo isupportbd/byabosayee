@@ -270,12 +270,7 @@
                 <!-- অবস্থা / স্টেটাস -->
                 <td class="text-center">
                   <span
-                    v-if="Number(item.stockQuantity || 0) <= 0 && (!item.purchasePrice || Number(item.purchasePrice) <= 0)"
-                    class="badge bg-secondary-subtle text-secondary border border-secondary-subtle small">
-                    অক্রয়কৃত
-                  </span>
-                  <span
-                    v-else-if="Number(item.stockQuantity || 0) <= 0"
+                    v-if="Number(item.stockQuantity || 0) <= 0"
                     class="badge bg-danger-subtle text-danger border border-danger-subtle small">
                     স্টক শেষ
                   </span>
@@ -486,8 +481,13 @@ const paginationData = computed(() => {
 async function fetchItems() {
   loading.value = true;
   try {
-    const res = await axios.get("/api/inventory/items");
-    itemsList.value = res.data?.data || [];
+    const res = await axios.get("/api/inventory/items?purchasedOnly=true");
+    const rawItems = res.data?.data || [];
+    // Only items that have been purchased or have stock should appear in Stock Report:
+    // "পণ্য তৈরির পর ক্রয় না হলে স্টকে দেখানোর প্রয়োজন নাই"
+    itemsList.value = rawItems.filter(
+      (item: any) => Boolean(item.hasPurchases) || Number(item.totalPurchased || 0) > 0 || Number(item.stockQuantity || 0) > 0
+    );
   } catch (err) {
     console.error("Failed to fetch stock items:", err);
   } finally {
