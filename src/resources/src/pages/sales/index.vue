@@ -1070,6 +1070,7 @@ import { authUser } from "@/composables/useAuth";
 import Pagination from "@/components/datatable/Pagination.vue";
 import Input from "@/components/Input.vue";
 import Select from "@/components/Select.vue";
+import { matchProductSearch, filterProductSelectOption } from "@/helpers/product-search";
 
 const router = useRouter();
 const route = useRoute();
@@ -1610,48 +1611,9 @@ function normalizeDigitBn(str: string): string {
   return (str || "").replace(/[0-9]/g, (d) => enToBn[d] || d);
 }
 
-// Comprehensive search filter for POS items (মাল্টি-ওয়ার্ড ও প্রতিটি শব্দ/অংশ অনুযায়ী সার্চ)
+// Comprehensive search filter for POS items (মাল্টি-টোকেন পণ্য সার্চ)
 function filterPosItem(option: any, label: string, search: string): boolean {
-  if (!search) return true;
-  const rawQ = search.trim().toLowerCase();
-  if (!rawQ) return true;
-
-  // Build a consolidated search target including Name, Clean Name, Specs, Brand, Size, Color, Barcode, etc.
-  const targetParts = [
-    label || "",
-    option.displayName || "",
-    option.name || "",
-    option.cleanName || "",
-    option.code || "",
-    option.barcode || "",
-    option.latestBarcode || "",
-    option.sizeName || "",
-    option.colorName || "",
-    option.brand?.name || "",
-    option.brandName || "",
-    option.subCategory?.name || "",
-    option.category?.name || ""
-  ];
-  const combinedTarget = targetParts.join(" ").toLowerCase();
-  const targetBn = normalizeDigitBn(combinedTarget);
-  const targetEn = normalizeDigitEn(combinedTarget);
-
-  // Split search query into individual words/tokens
-  const tokens = rawQ.split(/\s+/).filter(Boolean);
-
-  // Every word typed must match somewhere in the product info (with Bengali/English digit and hyphen tolerance)
-  return tokens.every((token) => {
-    const tokenClean = token.replace(/[-_]/g, "");
-    const tokenBn = normalizeDigitBn(token);
-    const tokenEn = normalizeDigitEn(token);
-
-    return (
-      combinedTarget.includes(token) ||
-      targetBn.includes(tokenBn) ||
-      targetEn.includes(tokenEn) ||
-      (tokenClean && combinedTarget.replace(/[-_]/g, "").includes(tokenClean))
-    );
-  });
+  return filterProductSelectOption(option, label, search);
 }
 
 // Send WhatsApp Receipt

@@ -307,6 +307,7 @@ import { ref, computed, onMounted } from "vue";
 import { useHead } from "@vueuse/head";
 import axios from "axios";
 import Pagination from "@/components/datatable/Pagination.vue";
+import { matchProductSearch } from "@/helpers/product-search";
 
 useHead({ title: "স্টক বিবরণ" });
 
@@ -413,15 +414,9 @@ const filteredItems = computed(() => {
     list = list.filter((item) => Number(item.stockQuantity || 0) <= 0);
   }
 
+  // Search Query Filter (ইউনিফাইড মাল্টি-টোকেন পণ্য সার্চ)
   if (searchQuery.value.trim()) {
-    const q = searchQuery.value.trim().toLowerCase();
-    list = list.filter((item) => {
-      const matchName = item.name?.toLowerCase().includes(q);
-      const matchCode = item.code?.toLowerCase().includes(q);
-      const matchBrand = item.brand?.name?.toLowerCase().includes(q);
-      const matchCat = item.category?.name?.toLowerCase().includes(q);
-      return matchName || matchCode || matchBrand || matchCat;
-    });
+    list = list.filter((item) => matchProductSearch(item, searchQuery.value));
   }
 
   return list;

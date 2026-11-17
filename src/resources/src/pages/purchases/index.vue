@@ -1451,6 +1451,7 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, 
 import { useRoute, useRouter } from "vue-router";
 import Select from "@/components/Select.vue";
 import { onCatalogUpdated } from "@/helpers/catalog-sync";
+import { matchProductSearch, filterProductSelectOption } from "@/helpers/product-search";
 
 const route = useRoute();
 const router = useRouter();
@@ -2595,47 +2596,14 @@ function normalizeDigitEn(str: string): string {
   return (str || "").replace(/[০-৯]/g, (d) => bnToEn[d] || d);
 }
 
-// POS-style multi-token flexible search for purchases
+// মাল্টি-টোকেন ফ্লেক্সিবল পণ্য সার্চ ফিল্টার
 function filterItemOption(option: any, label: string, search: string): boolean {
-  if (!search) return true;
-  const rawQ = search.trim().toLowerCase();
-  if (!rawQ) return true;
-
-  const targetParts = [
-    label || "",
-    option.name || "",
-    option.code || "",
-    option.barcode || "",
-    option.designCode || "",
-    option.category?.name || "",
-    option.subCategory?.name || (option.subCategoryId ? getSubCategoryName(option.subCategoryId) : ""),
-    option.productType?.name || (option.productTypeId ? getProductTypeName(option.productTypeId) : ""),
-    option.brand?.name || (option.brandId ? getBrandName(option.brandId) : ""),
-    option.size?.name || (option.sizeId ? getSizeName(option.sizeId) : ""),
-    option.color?.name || (option.colorId ? getColorName(option.colorId) : "")
-  ];
-
-  if (option.name) {
-    targetParts.push(...option.name.split("_"));
-  }
-
-  const combinedTarget = targetParts.join(" ").toLowerCase();
-  const targetBn = normalizeDigitBn(combinedTarget);
-  const targetEn = normalizeDigitEn(combinedTarget);
-
-  const tokens = rawQ.split(/\s+/).filter(Boolean);
-
-  return tokens.every((token) => {
-    const tokenClean = token.replace(/[-_]/g, "");
-    const tokenBn = normalizeDigitBn(token);
-    const tokenEn = normalizeDigitEn(token);
-
-    return (
-      combinedTarget.includes(token) ||
-      targetBn.includes(tokenBn) ||
-      targetEn.includes(tokenEn) ||
-      (tokenClean && combinedTarget.replace(/[-_]/g, "").includes(tokenClean))
-    );
+  return filterProductSelectOption(option, label, search, {
+    resolveSize: getSizeName,
+    resolveColor: getColorName,
+    resolveBrand: getBrandName,
+    resolveSubCategory: getSubCategoryName,
+    resolveProductType: getProductTypeName
   });
 }
 
@@ -2814,16 +2782,18 @@ const filteredPurchases = computed(() => {
     });
   }
 
-  // 4. Search Query Filter
+  // 4. Search Query Filter (চালান নং, সরবরাহকারী, ব্র্যান্ড বা চালানের পণ্য অনুযায়ী সার্চ)
   if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
+    const q = searchQuery.value.trim();
+    const qLower = q.toLowerCase();
     list = list.filter((p) => {
-      const challanMatch = p.challanNumber && p.challanNumber.toLowerCase().includes(q);
-      const supplierMatch = p.supplier?.name && p.supplier.name.toLowerCase().includes(q);
-      const mfgMatch = p.manufacturer?.name && p.manufacturer.name.toLowerCase().includes(q);
-      const typeMatch = p.challanType?.name && p.challanType.name.toLowerCase().includes(q);
-      const brandMatch = getPurchaseBrandNames(p).toLowerCase().includes(q);
-      return challanMatch || supplierMatch || mfgMatch || typeMatch || brandMatch;
+      const challanMatch = p.challanNumber && p.challanNumber.toLowerCase().includes(qLower);
+      const supplierMatch = p.supplier?.name && p.supplier.name.toLowerCase().includes(qLower);
+      const mfgMatch = p.manufacturer?.name && p.manufacturer.name.toLowerCase().includes(qLower);
+      const typeMatch = p.challanType?.name && p.challanType.name.toLowerCase().includes(qLower);
+      const brandMatch = getPurchaseBrandNames(p).toLowerCase().includes(qLower);
+      const itemMatch = p.items && Array.isArray(p.items) && p.items.some((it: any) => matchProductSearch(it, q));
+      return challanMatch || supplierMatch || mfgMatch || typeMatch || brandMatch || itemMatch;
     });
   }
 

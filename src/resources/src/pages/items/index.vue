@@ -790,6 +790,7 @@ import axios from "axios";
 import Select from "@/components/Select.vue";
 import Pagination from "@/components/datatable/Pagination.vue";
 import { notifyCatalogUpdated, onCatalogUpdated } from "@/helpers/catalog-sync";
+import { matchProductSearch } from "@/helpers/product-search";
 
 // Bengali Number Formatter
 function toBengaliNumber(num: number | string | null | undefined): string {
@@ -1529,18 +1530,9 @@ const filteredItems = computed(() => {
     );
   }
 
-  // 4. Search Query Filter
+  // 4. Search Query Filter (ইউনিফাইড মাল্টি-টোকেন পণ্য সার্চ)
   if (searchQuery.value.trim()) {
-    const q = searchQuery.value.trim().toLowerCase();
-    list = list.filter((item) => {
-      const matchName = item.name?.toLowerCase().includes(q);
-      const matchCode = item.code?.toLowerCase().includes(q);
-      const matchCat = item.category?.name?.toLowerCase().includes(q);
-      const matchSub = item.subCategory?.name?.toLowerCase().includes(q);
-      const matchType = item.productType?.name?.toLowerCase().includes(q);
-      const matchBrand = item.brand?.name?.toLowerCase().includes(q);
-      return matchName || matchCode || matchCat || matchSub || matchType || matchBrand;
-    });
+    list = list.filter((item) => matchProductSearch(item, searchQuery.value));
   }
 
   return list;

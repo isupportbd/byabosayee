@@ -376,6 +376,7 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import Pagination from "@/components/datatable/Pagination.vue";
 import Toast from "@/components/Toast.vue";
+import { matchProductSearch } from "@/helpers/product-search";
 
 useHead({ title: "পণ্যের মূল্য নির্ধারণ" });
 
@@ -650,18 +651,9 @@ const filteredPricingRecords = computed(() => {
     list = list.filter((r) => Number(r.category?.id) === Number(categoryFilter.value));
   }
 
-  // Filter by Search Query
+  // Filter by Search Query (ইউনিফাইড মাল্টি-টোকেন পণ্য সার্চ)
   if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim();
-    list = list.filter(
-      (r) =>
-        (r.name && r.name.toLowerCase().includes(q)) ||
-        (r.code && r.code.toLowerCase().includes(q)) ||
-        (r.barcode && r.barcode.toLowerCase().includes(q)) ||
-        (r.brand?.name && r.brand.name.toLowerCase().includes(q)) ||
-        (r.category?.name && r.category.name.toLowerCase().includes(q)) ||
-        (r.size?.name && r.size.name.toLowerCase().includes(q))
-    );
+    list = list.filter((r) => matchProductSearch(r, searchQuery.value));
   }
 
   return list;

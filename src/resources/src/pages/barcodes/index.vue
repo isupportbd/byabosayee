@@ -489,6 +489,7 @@ import Toast from "@/components/Toast.vue";
 import Pagination from "@/components/datatable/Pagination.vue";
 import { authUser } from "@/composables/useAuth";
 import { generateCode128Svg } from "@/utils/barcode128";
+import { matchProductSearch } from "@/helpers/product-search";
 
 const route = useRoute();
 const setBreadcrumbs = inject<(crumbs: any[] | null) => void>("setBreadcrumbs");
@@ -620,14 +621,9 @@ const filteredItemsList = computed(() => {
     list = list.filter((it) => it.brandId === bId || it.brand?.id === bId);
   }
 
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    list = list.filter(
-      (it) =>
-        (it.name && it.name.toLowerCase().includes(q)) ||
-        (it.code && it.code.toLowerCase().includes(q)) ||
-        (it.brand?.name && it.brand.name.toLowerCase().includes(q))
-    );
+  // Search Query Filter (ইউনিফাইড মাল্টি-টোকেন পণ্য সার্চ)
+  if (searchQuery.value.trim()) {
+    list = list.filter((it) => matchProductSearch(it, searchQuery.value));
   }
 
   return list;
