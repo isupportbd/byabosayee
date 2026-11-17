@@ -1687,6 +1687,83 @@ export const deleteCustomer: Handler = async (c: any) => {
 /* -------------------------------------------------------------
  * 6. Purchases (ক্রয়) Controllers
  * ----------------------------------------------------------- */
+const standardSizeOrder: Record<string, number> = {
+  "free": 0,
+  "free size": 0,
+  "xxs": 1,
+  "xs": 2,
+  "s": 3,
+  "m": 4,
+  "l": 5,
+  "xl": 6,
+  "xxl": 7,
+  "2xl": 7,
+  "xxxl": 8,
+  "3xl": 8,
+  "4xl": 9,
+  "5xl": 10,
+  "6xl": 11
+};
+
+function compareSizes(aSize: any, bSize: any, aName: string = "", bName: string = ""): number {
+  const aClean = (aName || aSize?.name || "").trim().toLowerCase();
+  const bClean = (bName || bSize?.name || "").trim().toLowerCase();
+
+  if (aClean === bClean) return 0;
+  if (!aClean) return 1;
+  if (!bClean) return -1;
+
+  const aOrder = Number(aSize?.sortOrder ?? aSize?.sort_order ?? 0);
+  const bOrder = Number(bSize?.sortOrder ?? bSize?.sort_order ?? 0);
+  if (aOrder > 0 && bOrder > 0 && aOrder !== bOrder) {
+    return aOrder - bOrder;
+  }
+
+  const aRank = standardSizeOrder[aClean];
+  const bRank = standardSizeOrder[bClean];
+  if (aRank !== undefined && bRank !== undefined) {
+    return aRank - bRank;
+  }
+  if (aRank !== undefined) return -1;
+  if (bRank !== undefined) return 1;
+
+  const aNum = parseFloat(aClean);
+  const bNum = parseFloat(bClean);
+  if (!isNaN(aNum) && !isNaN(bNum) && aNum !== bNum) {
+    return aNum - bNum;
+  }
+
+  return aClean.localeCompare(bClean, "bn", { numeric: true, sensitivity: "base" });
+}
+
+function sortPurchaseItems(items: any[]): any[] {
+  if (!Array.isArray(items) || items.length <= 1) return items || [];
+  return [...items].sort((a: any, b: any) => {
+    // ১. পণ্যের নাম (Item / Product name)
+    const nameA = (a.name || a.item?.name || "").trim();
+    const nameB = (b.name || b.item?.name || "").trim();
+    if (nameA && nameB && nameA !== nameB) {
+      const nameCmp = nameA.localeCompare(nameB, "bn", { sensitivity: "base" });
+      if (nameCmp !== 0) return nameCmp;
+    }
+
+    // ২. কালার অনুযায়ী বর্ণানুক্রমিক সর্ট (Color name)
+    const colorA = (a.color?.name || a.colorName || "").trim();
+    const colorB = (b.color?.name || b.colorName || "").trim();
+    if (colorA !== colorB) {
+      if (!colorA || colorA === "-") return 1;
+      if (!colorB || colorB === "-") return -1;
+      const colorCmp = colorA.localeCompare(colorB, "bn", { sensitivity: "base" });
+      if (colorCmp !== 0) return colorCmp;
+    }
+
+    // ৩. একই কালারের একাধিক সাইজ থাকলে পরপর হবে (Size order)
+    const sizeNameA = a.size?.name || a.sizeName || "";
+    const sizeNameB = b.size?.name || b.sizeName || "";
+    return compareSizes(a.size, b.size, sizeNameA, sizeNameB);
+  });
+}
+
 export const listPurchases: Handler = async (c: any) => {
   await ensureInventoryTables();
   const userId = getUserId(c);
@@ -1714,6 +1791,12 @@ export const listPurchases: Handler = async (c: any) => {
       }
     });
 
+    for (const p of list) {
+      if (Array.isArray(p.items) && p.items.length > 1) {
+        p.items = sortPurchaseItems(p.items);
+      }
+    }
+
     return c.json(
       {
         message: "ক্রয় তালিকা সফলভাবে পাওয়া গেছে",
@@ -1734,7 +1817,7 @@ export const createPurchase: Handler = async (c: any) => {
 
   try {
     const body = await c.req.json();
-    const rawItems = Array.isArray(body.items) ? body.items : [];
+    const rawItems = sortPurchaseItems(Array.isArray(body.items) ? body.items : []);
 
     if (rawItems.length === 0) {
       return c.json({ message: "চালানে অন্তত একটি পণ্য যোগ করুন" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
@@ -2017,7 +2100,7 @@ export const updatePurchase: Handler = async (c: any) => {
     }
 
     const body = await c.req.json();
-    const rawItems = Array.isArray(body.items) ? body.items : [];
+    const rawItems = sortPurchaseItems(Array.isArray(body.items) ? body.items : []);
 
     if (rawItems.length === 0) {
       return c.json({ message: "চালানে অন্তত একটি পণ্য যোগ করুন" }, HttpStatusCodes.UNPROCESSABLE_ENTITY);
@@ -3097,7 +3180,7 @@ export const updateSale: Handler = async (c: any) => {
     }
 
     const body = await c.req.json();
-    const rawItems = Array.isArray(body.items) ? body.items : [];
+    const rawItems = sortPurchaseItems(Array.isArray(body.items) ? body.items : []);
     if (rawItems.length === 0) {
       return c.json({ message: "বিক্রয় চালানে অন্তত একটি পণ্য যোগ করুন" }, HttpStatusCodes.BAD_REQUEST);
     }

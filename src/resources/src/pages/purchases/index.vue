@@ -1009,14 +1009,14 @@
           </div>
         </div>
 
-        <!-- পণ্যের তালিকা ও স্মার্ট বারকোড (পদ্ধতি ২) -->
+        <!-- পণ্যের তালিকা ও স্মার্ট বারকোড -->
         <h6 class="fw-bold mb-2 text-dark d-flex align-items-center justify-content-between">
           <span>
             <i class="bi bi-upc-scan text-primary me-1"></i>
-            পণ্যসমূহ ও স্মার্ট বারকোড (পদ্ধতি ২)
+            পণ্যসমূহ ও স্মার্ট বারকোড
           </span>
           <span class="badge bg-secondary small">
-            মোট আইটেম {{ toBengaliNumber(selectedPurchase?.items?.length || 0) }} টি
+            মোট আইটেম {{ toBengaliNumber(sortedSelectedPurchaseItems.length) }} টি
           </span>
         </h6>
 
@@ -1025,7 +1025,7 @@
             <thead class="table-light small text-nowrap">
               <tr>
                 <th class="text-center" style="width: 35px;">#</th>
-                <th>বারকোড (পদ্ধতি ২)</th>
+                <th>বারকোড</th>
                 <th>পণ্যের নাম</th>
                 <th>ব্র্যান্ড</th>
                 <th>সাইজ / কালার</th>
@@ -1038,7 +1038,7 @@
               </tr>
             </thead>
             <tbody class="small">
-              <tr v-for="(it, i) in selectedPurchase?.items || []" :key="it.id || i">
+              <tr v-for="(it, i) in sortedSelectedPurchaseItems" :key="it.id || i">
                 <td class="text-center text-muted">{{ toBengaliNumber(Number(i) + 1) }}</td>
                 <!-- ১. বারকোডে আইকন/ব্যাজ ছাড়া রেগুলার ফন্ট -->
                 <td>
@@ -2413,6 +2413,97 @@ function getColorName(colorId: number | ""): string {
   return c ? c.name : "-";
 }
 
+// -------------------------------------------------------------
+// পণ্য তালিকা সর্টিং: কালার অনুযায়ী বর্ণানুক্রমিক এবং একই কালারের একাধিক সাইজ থাকলে পরপর (ক্রমানুসারে)
+// -------------------------------------------------------------
+const standardSizeOrder: Record<string, number> = {
+  "free": 0,
+  "free size": 0,
+  "xxs": 1,
+  "xs": 2,
+  "s": 3,
+  "m": 4,
+  "l": 5,
+  "xl": 6,
+  "xxl": 7,
+  "2xl": 7,
+  "xxxl": 8,
+  "3xl": 8,
+  "4xl": 9,
+  "5xl": 10,
+  "6xl": 11
+};
+
+function compareSizes(aSize: any, bSize: any, aName: string = "", bName: string = ""): number {
+  const aClean = (aName || aSize?.name || "").trim().toLowerCase();
+  const bClean = (bName || bSize?.name || "").trim().toLowerCase();
+
+  if (aClean === bClean) return 0;
+  if (!aClean) return 1;
+  if (!bClean) return -1;
+
+  // ১. সাইজের ডাটাবেস sortOrder যদি থাকে
+  const aOrder = Number(aSize?.sortOrder ?? aSize?.sort_order ?? 0);
+  const bOrder = Number(bSize?.sortOrder ?? bSize?.sort_order ?? 0);
+  if (aOrder > 0 && bOrder > 0 && aOrder !== bOrder) {
+    return aOrder - bOrder;
+  }
+
+  // ২. স্ট্যান্ডার্ড লেটার সাইজ ক্রম (XS, S, M, L, XL, XXL ইত্যাদি)
+  const aRank = standardSizeOrder[aClean];
+  const bRank = standardSizeOrder[bClean];
+  if (aRank !== undefined && bRank !== undefined) {
+    return aRank - bRank;
+  }
+  if (aRank !== undefined) return -1;
+  if (bRank !== undefined) return 1;
+
+  // ৩. নিউমেরিক সাইজ (যেমন: 28, 30, 32, 34, 36...)
+  const aNum = parseFloat(aClean);
+  const bNum = parseFloat(bClean);
+  if (!isNaN(aNum) && !isNaN(bNum) && aNum !== bNum) {
+    return aNum - bNum;
+  }
+
+  // ৪. ডিফল্ট স্ট্রিং তুলনা
+  return aClean.localeCompare(bClean, "bn", { numeric: true, sensitivity: "base" });
+}
+
+function sortPurchaseItems(items: any[]): any[] {
+  if (!items || !items.length) return [];
+  return [...items].sort((a: any, b: any) => {
+    // ১. পণ্যের নাম (Item / Product name) যদি চালানে একাধিক ভিন্ন পণ্য থাকে
+    const nameA = (a.name || a.item?.name || "").trim();
+    const nameB = (b.name || b.item?.name || "").trim();
+    if (nameA && nameB && nameA !== nameB) {
+      const nameCmp = nameA.localeCompare(nameB, "bn", { sensitivity: "base" });
+      if (nameCmp !== 0) return nameCmp;
+    }
+
+    // ২. কালার অনুযায়ী বর্ণানুক্রমিক সর্ট (Color name)
+    const colorA = (a.color?.name || (a.colorId ? getColorName(a.colorId) : "") || a.colorName || "").trim();
+    const colorB = (b.color?.name || (b.colorId ? getColorName(b.colorId) : "") || b.colorName || "").trim();
+    if (colorA !== colorB) {
+      if (!colorA || colorA === "-") return 1;
+      if (!colorB || colorB === "-") return -1;
+      const colorCmp = colorA.localeCompare(colorB, "bn", { sensitivity: "base" });
+      if (colorCmp !== 0) return colorCmp;
+    }
+
+    // ৩. একই কালারের একাধিক সাইজ থাকলে পরপর হবে (Size order)
+    const sizeObjA = a.size || (a.sizeId ? sizesList.value.find((s: any) => Number(s.id) === Number(a.sizeId)) : null);
+    const sizeObjB = b.size || (b.sizeId ? sizesList.value.find((s: any) => Number(s.id) === Number(b.sizeId)) : null);
+    const sizeNameA = sizeObjA?.name || (a.sizeId ? getSizeName(a.sizeId) : "") || a.sizeName || "";
+    const sizeNameB = sizeObjB?.name || (b.sizeId ? getSizeName(b.sizeId) : "") || b.sizeName || "";
+
+    return compareSizes(sizeObjA, sizeObjB, sizeNameA, sizeNameB);
+  });
+}
+
+const sortedSelectedPurchaseItems = computed(() => {
+  return sortPurchaseItems(selectedPurchase.value?.items || []);
+});
+
 function getUnitName(unitId: number | ""): string {
   if (!unitId) return "";
   const u = unitsList.value.find((un) => un.id === Number(unitId));
@@ -2865,7 +2956,7 @@ function editPurchase(p: any) {
   form.notes = p.notes || "";
 
   // Populate items
-  form.items = (p.items || []).map((it: any) => {
+  form.items = sortPurchaseItems(p.items || []).map((it: any) => {
     let matchedItemId = it.itemId || "";
     if (it.sizeId) {
       const itBaseName = cleanItemName(it.name || "").trim().toLowerCase();
@@ -3049,7 +3140,7 @@ async function submitPurchase() {
       discountAmount: form.discountAmount,
       paidAmount: form.paidAmount,
       notes: form.notes,
-      items: form.items.map((row) => {
+      items: sortPurchaseItems(form.items).map((row) => {
         const p = getItemPricing(row);
         return {
           itemId: row.itemId ? Number(row.itemId) : null,
