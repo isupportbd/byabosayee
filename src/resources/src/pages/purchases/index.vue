@@ -250,8 +250,8 @@
                   :filter-by="filterItemOption"
                   @change="onCurrentItemSelect">
                   <template #selected-option="option">
-                    <span class="text-truncate" :title="option.name">
-                      {{ option.name }} <span v-if="option.size?.name || getSizeName(option.sizeId)" class="text-muted fw-normal">({{ option.size?.name || getSizeName(option.sizeId) }})</span>
+                    <span class="text-truncate" :title="getItemDropdownDisplayName(option)">
+                      {{ getItemDropdownDisplayName(option) }} <span v-if="option.size?.name || getSizeName(option.sizeId)" class="text-muted fw-normal">({{ option.size?.name || getSizeName(option.sizeId) }})</span>
                     </span>
                   </template>
                   <template #option="option">
@@ -2221,14 +2221,11 @@ function onCurrentItemSizeChange() {
 
     if (match) {
       currentItem.itemId = match.id;
-      currentItem.name = match.name;
+      currentItem.name = getItemDropdownDisplayName(match) || match.name;
       currentItem.designCode = match.designCode || "";
       currentItem.sizeId = match.sizeId ?? match.size_id ?? (match.size?.id ?? newSizeId);
       if (match.unitId || match.unit?.id) {
         currentItem.unitId = match.unitId ?? match.unit?.id;
-      }
-      if (match.sellingPrice) {
-        currentItem.sellingPrice = Number(match.sellingPrice) || 0;
       }
     }
   }
@@ -2244,19 +2241,18 @@ function onCurrentItemSelect(val?: any) {
   const selected = itemsList.value.find((it) => Number(it.id) === Number(itemId));
   if (selected) {
     currentItem.itemId = selected.id;
-    currentItem.name = selected.name;
+    currentItem.name = getItemDropdownDisplayName(selected) || selected.name;
     currentItem.designCode = selected.designCode || "";
     currentItem.categoryId = selected.categoryId ?? selected.category_id ?? (selected.category?.id ?? "");
     currentItem.subCategoryId = selected.subCategoryId ?? selected.sub_category_id ?? (selected.subCategory?.id ?? "");
     currentItem.brandId = selected.brandId ?? selected.brand_id ?? (selected.brand?.id ?? "");
     currentItem.sizeId = selected.sizeId ?? selected.size_id ?? (selected.size?.id ?? "");
-    currentItem.colorId = selected.colorId ?? selected.color_id ?? (selected.color?.id ?? "");
+    // কালার ডিফল্ট খালি থাকবে যাতে ব্যবহারকারী চালানের নির্দিষ্ট কালার নিজেই নির্বাচন করতে পারেন
+    currentItem.colorId = "";
     currentItem.unitId = selected.unitId ?? selected.unit_id ?? (selected.unit?.id ?? "");
-    // নতুন এন্ট্রির জন্য ক্রয়মূল্য খালি রাখা হচ্ছে যাতে ব্যবহারকারী চালানের প্রকৃত ক্রয়দর টাইপ করতে পারেন
+    // নতুন এন্ট্রির জন্য ক্রয়মূল্য ও MRP খালি রাখা হচ্ছে যাতে ব্যবহারকারী নতুন চালানের প্রকৃত দর টাইপ করতে পারেন
     currentItem.unitPrice = "" as any;
-    if (selected.sellingPrice) {
-      currentItem.sellingPrice = Number(selected.sellingPrice) || 0;
-    }
+    currentItem.sellingPrice = "" as any;
     generateCurrentItemBarcode(true);
   }
 }
@@ -2527,6 +2523,16 @@ function getProductTypeName(productTypeId: number | ""): string {
   if (!productTypeId) return "";
   const pt = productTypesList.value.find((p) => Number(p.id) === Number(productTypeId));
   return pt ? pt.name : "";
+}
+
+function getItemDropdownDisplayName(option: any): string {
+  if (!option) return "";
+  const subType = getItemDropdownSubCategoryAndType(option);
+  const brandDesign = getItemDropdownBrandAndDesign(option);
+  if (subType && brandDesign) {
+    return `${subType}_${brandDesign}`;
+  }
+  return subType || brandDesign || option.name || "";
 }
 
 function getItemDropdownSubCategoryAndType(option: any): string {
