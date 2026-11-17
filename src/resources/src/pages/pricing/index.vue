@@ -22,19 +22,9 @@
           </span>
         </div>
 
-        <!-- বিক্রয়মূল্য: ভ্যাটসহ / ভ্যাট ছাড়া রেডিও অপশন (স্ক্র্যাচ অনুযায়ী ডানপাশে) -->
+        <!-- বিক্রয়মূল্য: ভ্যাট ছাড়া / ভ্যাটসহ রেডিও অপশন (স্ক্র্যাচ অনুযায়ী ডানপাশে) -->
         <div class="d-flex align-items-center gap-3">
           <span class="small fw-semibold text-secondary">বিক্রয়মূল্য:</span>
-          <label class="d-inline-flex align-items-center gap-1 small fw-semibold cursor-pointer m-0 user-select-none">
-            <input
-              id="vatInclusive"
-              v-model="vatMode"
-              class="form-check-input m-0 cursor-pointer"
-              type="radio"
-              name="vatMode"
-              value="inclusive" />
-            <span>ভ্যাটসহ</span>
-          </label>
           <label class="d-inline-flex align-items-center gap-1 small fw-semibold cursor-pointer m-0 user-select-none">
             <input
               id="vatExclusive"
@@ -44,6 +34,16 @@
               name="vatMode"
               value="exclusive" />
             <span>ভ্যাট ছাড়া</span>
+          </label>
+          <label class="d-inline-flex align-items-center gap-1 small fw-semibold cursor-pointer m-0 user-select-none">
+            <input
+              id="vatInclusive"
+              v-model="vatMode"
+              class="form-check-input m-0 cursor-pointer"
+              type="radio"
+              name="vatMode"
+              value="inclusive" />
+            <span>ভ্যাটসহ</span>
           </label>
         </div>
       </div>
@@ -58,17 +58,34 @@
               <label class="form-label small fw-semibold mb-1 text-truncate d-block" title="পণ্য নির্বাচন করুন">
                 পণ্য <span class="text-danger">*</span>
               </label>
-              <select
+              <Select
                 v-model="form.itemId"
-                class="form-select form-select-sm single-row-input"
+                :options="availableItemsList"
+                placeholder="পণ্য নির্বাচন করুন..."
+                :searchable="true"
                 :disabled="isEditing"
-                required
+                :filter-by="filterItemOption"
                 @change="onItemSelect">
-                <option value="" disabled>পণ্য নির্বাচন করুন...</option>
-                <option v-for="it in availableItemsList" :key="it.id" :value="it.id">
-                  {{ getItemFullDisplayName(it) }}
-                </option>
-              </select>
+                <template #selected-option="option">
+                  <span class="text-truncate" :title="getItemDropdownDisplayName(option)">
+                    {{ getItemDropdownDisplayName(option) }}
+                    <span v-if="option.size?.name" class="text-muted fw-normal">({{ option.size.name }})</span>
+                  </span>
+                </template>
+                <template #option="option">
+                  <div class="d-flex flex-column py-0.5">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                      <span class="fw-semibold text-truncate">{{ getItemDropdownSubCategoryAndType(option) }}</span>
+                      <span v-if="option.size?.name" class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.72rem;">
+                        {{ option.size.name }}
+                      </span>
+                    </div>
+                    <small class="opacity-75 font-monospace mt-0.5" style="font-size: 0.75rem;">
+                      {{ getItemDropdownBrandAndDesign(option) }}
+                    </small>
+                  </div>
+                </template>
+              </Select>
             </div>
 
             <!-- ২. প্রকৃত ক্রয়দর (অটো পপুলেটেড ও রিডঅনলি) -->
@@ -376,7 +393,8 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import Pagination from "@/components/datatable/Pagination.vue";
 import Toast from "@/components/Toast.vue";
-import { matchProductSearch } from "@/helpers/product-search";
+import Select from "@/components/Select.vue";
+import { matchProductSearch, filterProductSelectOption } from "@/helpers/product-search";
 
 useHead({ title: "পণ্যের মূল্য নির্ধারণ" });
 
@@ -442,7 +460,7 @@ const categoriesList = ref<any[]>([]);
 
 // Form State
 const isEditing = ref(false);
-const vatMode = ref<"inclusive" | "exclusive">("inclusive");
+const vatMode = ref<"inclusive" | "exclusive">("exclusive");
 
 const form = reactive<{
   itemId: number | string;
@@ -499,8 +517,73 @@ function getItemFullDisplayName(item: any): string {
   return parts.join(" — ");
 }
 
-function onItemSelect() {
-  const item = selectedItemDetails.value;
+function getItemDropdownDisplayName(option: any): string {
+  if (!option) return "";
+  const subType = getItemDropdownSubCategoryAndType(option);
+  const brandDesign = getItemDropdownBrandAndDesign(option);
+  if (subType && brandDesign) {
+    return `${subType}_${brandDesign}`;
+  }
+  return subType || brandDesign || option.name || "";
+}
+
+function getItemDropdownSubCategoryAndType(option: any): string {
+  if (!option) return "";
+  let sub = (option.subCategory?.name || "").trim();
+  let type = (option.productType?.name || "").trim();
+  if (type === "-") type = "";
+
+  if (option.name) {
+    const parts = option.name.split("_").map((p: string) => p.trim()).filter(Boolean);
+    if (!sub && parts.length > 0) {
+      sub = parts[0];
+    }
+    if (!type && parts.length >= 3) {
+      const brand = (option.brand?.name || "").trim();
+      if ((!brand || parts[1].toLowerCase() !== brand.toLowerCase()) && !parts[1].toUpperCase().startsWith("DGN")) {
+        type = parts[1];
+      }
+    }
+  }
+
+  if (sub && type) {
+    return `${sub}_${type}`;
+  }
+  return sub || option.name || "";
+}
+
+function getItemDropdownBrandAndDesign(option: any): string {
+  if (!option) return "";
+  let brand = (option.brand?.name || "").trim();
+  if (brand === "-") brand = "";
+
+  if (!brand && option.name) {
+    const parts = option.name.split("_").map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length >= 4) {
+      brand = parts[2];
+    } else if (parts.length === 3) {
+      brand = parts[1];
+    }
+  }
+
+  const designCode = (option.designCode || "DGN001").trim();
+
+  if (brand && designCode) {
+    return `${brand}_${designCode}`;
+  } else if (brand) {
+    return brand;
+  }
+  return designCode;
+}
+
+function filterItemOption(option: any, label: string, search: string): boolean {
+  return filterProductSelectOption(option, label, search);
+}
+
+function onItemSelect(selectedId?: any) {
+  const targetId = selectedId || form.itemId;
+  if (!targetId) return;
+  const item = itemsList.value.find((it) => Number(it.id) === Number(targetId)) || selectedItemDetails.value;
   if (!item) return;
 
   form.vatRate = item.latestVatRate !== undefined ? Number(item.latestVatRate) : 0;
@@ -521,7 +604,7 @@ function resetForm() {
   form.vatRate = 0;
   form.discount = 0;
   form.discountType = "percent";
-  vatMode.value = "inclusive";
+  vatMode.value = "exclusive";
 }
 
 function resetAllFilters() {
@@ -626,7 +709,7 @@ const allPricingRecords = computed(() => {
       purchasePrice: pricing?.purchasePrice || it.latestUnitCost || it.purchasePrice || 0,
       sellingPrice: pricing?.sellingPrice || it.sellingPrice || 0,
       vatRate: pricing?.vatRate !== undefined ? Number(pricing.vatRate) : (it.latestVatRate || 0),
-      vatType: pricing?.vatType || "inclusive",
+      vatType: pricing?.vatType || "exclusive",
       discount: pricing?.discount !== undefined && pricing?.discount !== null ? Number(pricing.discount) : (it.latestDiscount !== undefined ? Number(it.latestDiscount) : Number(it.discount || 0)),
       discountType: pricing?.discountType || it.latestDiscountType || it.discountType || "percent",
       challanDate: pricing?.challanDate || it.latestChallanDate || null,
