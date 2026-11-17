@@ -60,6 +60,9 @@ async function uiStaticMiddleware(c: any, next: any) {
 
 async function uiIndexMiddleware(c: any, next: any) {
   ensurePublicDir();
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
+  c.header("Pragma", "no-cache");
+  c.header("Expires", "0");
   if (!_uiIndexMiddleware) {
     const serveStatic = await resolveServeStatic();
     _uiIndexMiddleware = serveStatic({ path: "./public/index.html" });
