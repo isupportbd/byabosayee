@@ -10,7 +10,16 @@ const socketEnabled = process.env.SOCKET !== "false";
 const proxy: Record<string, any> = {
   "/api": { target: apiUrl, changeOrigin: true },
   "/health": { target: apiUrl, changeOrigin: true },
-  "/storage": { target: apiUrl, changeOrigin: true }
+  "/storage": {
+    target: apiUrl,
+    changeOrigin: true,
+    bypass: (req: any) => {
+      // Do not proxy HTML page navigations (e.g. /storage page route)
+      if (req.headers && req.headers.accept && req.headers.accept.includes("text/html")) {
+        return "/index.html";
+      }
+    }
+  }
 };
 
 proxy["/socket.io"] = { target: apiUrl, changeOrigin: true, ws: true };
