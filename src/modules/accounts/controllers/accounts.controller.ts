@@ -599,3 +599,185 @@ export const getAccountsSummary: Handler = async (c: any) => {
     return c.json({ message: "হিসাব সারাংশ পেতে ব্যর্থ হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
   }
 };
+
+/**
+ * ── SHAREHOLDERS UNIFIED LEDGER (শেয়ারহোল্ডারভিত্তিক সার্বিক খতিয়ান ও স্টেটমেন্ট) ──
+ * মূল কোন শেয়ারহোল্ডার কবে কত টাকা দিয়েছে এবং কবে কত টাকা উত্তোলন করেছে তার বিস্তারিত খতিয়ান।
+ */
+export const getShareholdersLedger: Handler = async (c: any) => {
+  await ensureAccountsTables();
+  const userId = getUserId(c);
+  if (!userId) {
+    return c.json({ message: "অননুমোদিত অ্যাক্সেস" }, HttpStatusCodes.UNAUTHORIZED);
+  }
+
+  try {
+    const [allInvestments, allWithdrawals, [settingsRow, userRow]] = await Promise.all([
+      db
+        .select()
+        .from(capitalInvestments)
+        .where(eq(capitalInvestments.userId, userId))
+        .orderBy(desc(capitalInvestments.date), desc(capitalInvestments.id)),
+      db
+        .select()
+        .from(capitalWithdrawals)
+        .where(eq(capitalWithdrawals.userId, userId))
+        .orderBy(desc(capitalWithdrawals.date), desc(capitalWithdrawals.id)),
+      Promise.all([
+        db.query.companySettings.findFirst({ where: eq(companySettings.userId, userId) }),
+        db.query.users.findFirst({ where: eq(users.id, userId) })
+      ])
+    ]);
+
+    const shareholderMap: Record<string, {
+      id: string;
+      name: string;
+      ownershipType: string;
+      totalInvested: number;
+      totalWithdrawn: number;
+      balance: number;
+      investmentsCount: number;
+      withdrawalsCount: number;
+      lastDate: string | null;
+      transactions: Array<{
+        id: number;
+        type: "deposit" | "withdrawal";
+        date: string;
+        amount: number;
+        paymentMethod: string;
+        reference: string | null;
+        accountDetails: string | null;
+        notes: string | null;
+      }>;
+    }> = {};
+
+    const rawList = Array.isArray((settingsRow as any)?.shareholders) ? (settingsRow as any).shareholders : [];
+    rawList.forEach((s: any, idx: number) => {
+      if (s && s.name) {
+        const name = s.name.trim();
+        shareholderMap[name] = {
+          id: s.id || `sh_${idx + 1}`,
+          name,
+          ownershipType: s.ownershipType || "শেয়ারহোল্ডার",
+          totalInvested: 0,
+          totalWithdrawn: 0,
+          balance: 0,
+          investmentsCount: 0,
+          withdrawalsCount: 0,
+          lastDate: null,
+          transactions: []
+        };
+      }
+    });
+
+    const ownerName = userRow?.name || "প্রধান মালিক";
+    if (Object.keys(shareholderMap).length === 0) {
+      shareholderMap[ownerName] = {
+        id: "owner",
+        name: ownerName,
+        ownershipType: "মালিক",
+        totalInvested: 0,
+        totalWithdrawn: 0,
+        balance: 0,
+        investmentsCount: 0,
+        withdrawalsCount: 0,
+        lastDate: null,
+        transactions: []
+      };
+    }
+
+    allInvestments.forEach((inv) => {
+      const name = inv.shareholderName?.trim() || ownerName;
+      if (!shareholderMap[name]) {
+        shareholderMap[name] = {
+          id: inv.shareholderId || `sh_${name}`,
+          name,
+          ownershipType: inv.ownershipType || "অংশীদার",
+          totalInvested: 0,
+          totalWithdrawn: 0,
+          balance: 0,
+          investmentsCount: 0,
+          withdrawalsCount: 0,
+          lastDate: null,
+          transactions: []
+        };
+      }
+      const amt = Number(inv.amount) || 0;
+      shareholderMap[name].totalInvested += amt;
+      shareholderMap[name].investmentsCount += 1;
+      if (!shareholderMap[name].lastDate || inv.date > shareholderMap[name].lastDate!) {
+        shareholderMap[name].lastDate = inv.date;
+      }
+      shareholderMap[name].transactions.push({
+        id: inv.id,
+        type: "deposit",
+        date: inv.date,
+        amount: amt,
+        paymentMethod: inv.paymentMethod || "নগদ",
+        reference: inv.receiptNo || null,
+        accountDetails: inv.accountDetails || null,
+        notes: inv.notes || null
+      });
+    });
+
+    allWithdrawals.forEach((wth) => {
+      const name = wth.shareholderName?.trim() || ownerName;
+      if (!shareholderMap[name]) {
+        shareholderMap[name] = {
+          id: wth.shareholderId || `sh_${name}`,
+          name,
+          ownershipType: wth.ownershipType || "অংশীদার",
+          totalInvested: 0,
+          totalWithdrawn: 0,
+          balance: 0,
+          investmentsCount: 0,
+          withdrawalsCount: 0,
+          lastDate: null,
+          transactions: []
+        };
+      }
+      const amt = Number(wth.amount) || 0;
+      shareholderMap[name].totalWithdrawn += amt;
+      shareholderMap[name].withdrawalsCount += 1;
+      if (!shareholderMap[name].lastDate || wth.date > shareholderMap[name].lastDate!) {
+        shareholderMap[name].lastDate = wth.date;
+      }
+      shareholderMap[name].transactions.push({
+        id: wth.id,
+        type: "withdrawal",
+        date: wth.date,
+        amount: amt,
+        paymentMethod: wth.paymentMethod || "নগদ",
+        reference: wth.voucherNo || null,
+        accountDetails: wth.accountDetails || null,
+        notes: wth.notes || null
+      });
+    });
+
+    let grandTotalInvested = 0;
+    let grandTotalWithdrawn = 0;
+
+    const list = Object.values(shareholderMap).map((sh) => {
+      sh.balance = sh.totalInvested - sh.totalWithdrawn;
+      sh.transactions.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+      grandTotalInvested += sh.totalInvested;
+      grandTotalWithdrawn += sh.totalWithdrawn;
+      return sh;
+    });
+
+    return c.json({
+      data: list,
+      summary: {
+        grandTotalInvested,
+        grandTotalWithdrawn,
+        netCapitalBalance: grandTotalInvested - grandTotalWithdrawn,
+        totalShareholders: list.length,
+        totalInvestmentsCount: allInvestments.length,
+        totalWithdrawalsCount: allWithdrawals.length
+      }
+    }, HttpStatusCodes.OK);
+  } catch (error: any) {
+    console.error("Error fetching shareholder ledger:", error);
+    return c.json({ message: "শেয়ারহোল্ডার লেজার পেতে সমস্যা হয়েছে" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+  }
+};

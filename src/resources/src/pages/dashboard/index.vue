@@ -549,18 +549,18 @@
                   <div class="min-w-0">
                     <div class="d-flex align-items-baseline">
                       <span class="stat-value me-1 text-emerald">
-                        {{ toBengaliNumber(Math.abs(inventoryStats.sales.totalAmount - inventoryStats.purchases.totalAmount).toFixed(0)) }}
+                        {{ toBengaliNumber(accountsSummary.netCapital.toFixed(0)) }}
                       </span>
-                      <span class="text-muted small">৳ নিট ব্যালেন্স</span>
+                      <span class="text-muted small">৳ নিট মূলধন</span>
                     </div>
                     <p class="text-muted small mb-0 mt-1 text-truncate">
-                      <i class="bi bi-cash-stack text-emerald me-1"></i>পুঁজি, উত্তোলন ও ক্যাশ
+                      <i class="bi bi-cash-stack text-emerald me-1"></i>জমা: {{ toBengaliNumber(accountsSummary.totalCapital.toFixed(0)) }} ৳ | উত্তোলন: {{ toBengaliNumber(accountsSummary.totalWithdrawn.toFixed(0)) }} ৳
                     </p>
                   </div>
                   <router-link
                     to="/accounts/capital"
                     class="view-icon-btn text-emerald flex-shrink-0"
-                    title="পুঁজি ও একাউন্টস বিবরণী দেখুন">
+                    title="শেয়ারহোল্ডারদের পুঁজি ও খতিয়ান বিবরণী দেখুন">
                     <i class="bi bi-eye"></i>
                   </router-link>
                 </div>
@@ -1536,9 +1536,31 @@ const barcodeCopies = ref(1);
 
 // একাউন্টস (Accounts) State
 const showAccountsModal = ref(false);
+const accountsSummary = reactive({
+  totalCapital: 0,
+  totalWithdrawn: 0,
+  netCapital: 0,
+  capitalCount: 0,
+  withdrawalCount: 0
+});
+
+async function fetchAccountsSummary() {
+  try {
+    const res = await axios.get("/api/accounts/summary");
+    const data = res.data?.data || {};
+    accountsSummary.totalCapital = Number(data.totalCapital) || 0;
+    accountsSummary.totalWithdrawn = Number(data.totalWithdrawn) || 0;
+    accountsSummary.netCapital = Number(data.netCapital) || 0;
+    accountsSummary.capitalCount = Number(data.capitalCount) || 0;
+    accountsSummary.withdrawalCount = Number(data.withdrawalCount) || 0;
+  } catch (e) {
+    console.error("Failed to fetch accounts summary:", e);
+  }
+}
 
 function openAccountsModal() {
   fetchInventoryStats();
+  fetchAccountsSummary();
   showAccountsModal.value = true;
 }
 
@@ -1808,6 +1830,7 @@ async function fetchInventoryStats() {
     inventoryStats.suppliers = data.suppliers || { count: 0 };
     inventoryStats.manufacturers = data.manufacturers || { count: 0 };
     inventoryStats.customers = data.customers || { count: 0 };
+    await fetchAccountsSummary();
   } catch (e) {
     console.error("Failed to fetch inventory stats:", e);
   }

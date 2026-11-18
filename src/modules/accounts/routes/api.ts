@@ -9,6 +9,7 @@ import {
   getCapitalById,
   getCapitals,
   getShareholders,
+  getShareholdersLedger,
   getWithdrawalById,
   getWithdrawals,
   updateCapital,
@@ -22,6 +23,7 @@ router.use("*", authMiddleware);
 // Accounts Summary & Shareholders
 router.get("/summary", getAccountsSummary);
 router.get("/shareholders", getShareholders);
+router.get("/ledger", getShareholdersLedger);
 
 // Capital Investments (মূলধন / পুঁজি যোগ)
 router.get("/capitals", getCapitals);

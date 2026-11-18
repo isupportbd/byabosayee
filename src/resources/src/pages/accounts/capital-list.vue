@@ -143,7 +143,90 @@
       </div>
     </div>
 
-    <!-- 2. Main List Card -->
+    <!-- 2. Shareholder Summary & Unified Ledger Card -->
+    <div class="card border shadow-sm mb-4">
+      <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="stat-icon-circle bg-emerald-subtle text-emerald" style="width: 30px; height: 30px; font-size: 14px;">
+            <i class="bi bi-person-lines-fill"></i>
+          </div>
+          <h6 class="m-0 fw-bold">অংশীদার / শেয়ারহোল্ডারদের সার্বিক লেজার ও স্থিতি</h6>
+          <span class="badge bg-emerald-subtle text-emerald border border-emerald-subtle">
+            {{ toBengaliNumber(ledgerList.length) }} জন অংশীদার
+          </span>
+        </div>
+        <div class="small text-muted">
+          কে কবে কত টাকা মূলধন দিয়েছেন এবং কত টাকা উত্তোলন করেছেন তার চূড়ান্ত স্থিতি
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 custom-table">
+            <thead class="table-light text-muted small text-uppercase">
+              <tr>
+                <th class="ps-3" style="width: 50px;">#</th>
+                <th>অংশীদার / শেয়ারহোল্ডার</th>
+                <th>পদবী / শেয়ার ধরন</th>
+                <th class="text-end">মোট জমা মূলধন</th>
+                <th class="text-end">মোট উত্তোলন</th>
+                <th class="text-end">বর্তমান স্থিতি (ব্যালেন্স)</th>
+                <th class="text-center">সর্বশেষ লেনদেন</th>
+                <th class="text-center pe-3" style="width: 140px;">স্টেটমেন্ট</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="ledgerList.length === 0">
+                <td colspan="8" class="text-center py-4 text-muted small">
+                  কোনো শেয়ারহোল্ডারের রেকর্ড পাওয়া যায়নি। কোম্পানি সেটিংসে গিয়ে শেয়ারহোল্ডার যোগ করতে পারেন।
+                </td>
+              </tr>
+              <tr v-for="(sh, idx) in ledgerList" :key="sh.id || idx">
+                <td class="ps-3 text-muted small">{{ toBengaliNumber(idx + 1) }}</td>
+                <td>
+                  <span class="fw-bold text-dark">{{ sh.name }}</span>
+                </td>
+                <td>
+                  <span class="badge bg-secondary-subtle text-secondary border small">{{ sh.ownershipType || 'মালিক' }}</span>
+                </td>
+                <td class="text-end text-success fw-bold">
+                  ৳ {{ toBengaliNumber(formatAmount(sh.totalInvested)) }}
+                </td>
+                <td class="text-end text-danger fw-bold">
+                  ৳ {{ toBengaliNumber(formatAmount(sh.totalWithdrawn)) }}
+                </td>
+                <td class="text-end fw-bold fs-6" :class="sh.balance >= 0 ? 'text-emerald' : 'text-danger'">
+                  ৳ {{ toBengaliNumber(formatAmount(sh.balance)) }}
+                </td>
+                <td class="text-center text-muted small">
+                  {{ sh.lastDate ? toBengaliDate(sh.lastDate) : 'লেনদেন নেই' }}
+                </td>
+                <td class="text-center pe-3">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-emerald d-inline-flex align-items-center gap-1 py-1 px-2.5 shadow-sm small"
+                    title="জমা ও উত্তোলনের প্রতিটি তারিখ সহ পূর্ণাঙ্গ বিবরণী দেখুন"
+                    @click="openShareholderStatement(sh)">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                    <span>লেজার খতিয়ান</span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot class="table-light fw-bold" v-if="ledgerList.length > 0">
+              <tr>
+                <td colspan="3" class="ps-3 text-end text-dark">সর্বমোট মূলধন স্থিতি:</td>
+                <td class="text-end text-success">৳ {{ toBengaliNumber(formatAmount(ledgerSummary.grandTotalInvested)) }}</td>
+                <td class="text-end text-danger">৳ {{ toBengaliNumber(formatAmount(ledgerSummary.grandTotalWithdrawn)) }}</td>
+                <td class="text-end text-emerald fs-6">৳ {{ toBengaliNumber(formatAmount(ledgerSummary.netCapitalBalance)) }}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Main List Card: Individual Capital Vouchers -->
     <div class="card border shadow-sm">
       <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
@@ -374,6 +457,101 @@
         </div>
       </div>
     </div>
+    <!-- Shareholder Detailed Statement Modal -->
+    <div
+      v-if="selectedStatementShareholder"
+      class="modal fade show d-block"
+      tabindex="-1"
+      style="background: rgba(0,0,0,0.5); z-index: 1060;"
+      @click.self="selectedStatementShareholder = null">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header border-bottom py-2.5 bg-light">
+            <div>
+              <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-2 mb-0">
+                <i class="bi bi-person-badge text-emerald fs-5"></i>
+                <span>{{ selectedStatementShareholder.name }} - বিস্তারিত হিসাব খতিয়ান</span>
+              </h6>
+              <small class="text-muted">পদবী: {{ selectedStatementShareholder.ownershipType || 'মালিক' }}</small>
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @click="selectedStatementShareholder = null"></button>
+          </div>
+          <div class="modal-body p-3">
+            <!-- 3 Mini Metric Cards -->
+            <div class="row g-2 mb-3">
+              <div class="col-4">
+                <div class="p-2.5 rounded bg-success-subtle border border-success-subtle text-center">
+                  <div class="small text-success fw-medium">মোট জমা মূলধন</div>
+                  <div class="fs-6 fw-bold text-success">৳ {{ toBengaliNumber(formatAmount(selectedStatementShareholder.totalInvested)) }}</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="p-2.5 rounded bg-danger-subtle border border-danger-subtle text-center">
+                  <div class="small text-danger fw-medium">মোট উত্তোলন</div>
+                  <div class="fs-6 fw-bold text-danger">৳ {{ toBengaliNumber(formatAmount(selectedStatementShareholder.totalWithdrawn)) }}</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="p-2.5 rounded bg-emerald-subtle border border-emerald-subtle text-center">
+                  <div class="small text-emerald fw-medium">বর্তমান অবশিষ্ট স্থিতি</div>
+                  <div class="fs-6 fw-bold text-emerald">৳ {{ toBengaliNumber(formatAmount(selectedStatementShareholder.balance)) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="table-responsive border rounded">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light small">
+                  <tr>
+                    <th class="ps-3">তারিখ</th>
+                    <th>লেনদেনের ধরন</th>
+                    <th>মাধ্যম ও রসিদ/ভাউচার</th>
+                    <th class="text-end">জমা (৳)</th>
+                    <th class="text-end">উত্তোলন (৳)</th>
+                    <th class="pe-3">বিবরণ / মন্তব্য</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!selectedStatementShareholder.transactions || selectedStatementShareholder.transactions.length === 0">
+                    <td colspan="6" class="text-center py-4 text-muted small">
+                      কোনো লেনদেন রেকর্ড পাওয়া যায়নি।
+                    </td>
+                  </tr>
+                  <tr v-for="tx in selectedStatementShareholder.transactions" :key="tx.type + tx.id">
+                    <td class="ps-3 fw-semibold small text-nowrap">{{ toBengaliDate(tx.date) }}</td>
+                    <td>
+                      <span
+                        class="badge rounded-pill"
+                        :class="tx.type === 'deposit' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'">
+                        <i :class="tx.type === 'deposit' ? 'bi bi-plus-circle' : 'bi bi-dash-circle'" class="me-1"></i>
+                        {{ tx.type === 'deposit' ? 'মূলধন জমা' : 'টাকা উত্তোলন' }}
+                      </span>
+                    </td>
+                    <td class="small">
+                      <div>{{ tx.paymentMethod || 'নগদ' }}</div>
+                      <small v-if="tx.reference" class="text-muted">নং: {{ tx.reference }}</small>
+                    </td>
+                    <td class="text-end text-success fw-bold small">
+                      {{ tx.type === 'deposit' ? `+ ৳ ${toBengaliNumber(formatAmount(tx.amount))}` : '-' }}
+                    </td>
+                    <td class="text-end text-danger fw-bold small">
+                      {{ tx.type === 'withdrawal' ? `- ৳ ${toBengaliNumber(formatAmount(tx.amount))}` : '-' }}
+                    </td>
+                    <td class="small text-muted pe-3">{{ tx.notes || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer py-2 bg-light">
+            <button type="button" class="btn btn-sm btn-secondary" @click="selectedStatementShareholder = null">
+              বন্ধ করুন
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -394,6 +572,35 @@ const overallStats = ref<any>({
   totalWithdrawn: 0,
   netCapital: 0
 });
+
+// Shareholder Ledger State
+const ledgerList = ref<any[]>([]);
+const ledgerSummary = ref<any>({
+  grandTotalInvested: 0,
+  grandTotalWithdrawn: 0,
+  netCapitalBalance: 0,
+  totalShareholders: 0
+});
+const selectedStatementShareholder = ref<any>(null);
+
+function openShareholderStatement(sh: any) {
+  selectedStatementShareholder.value = sh;
+}
+
+async function fetchLedger() {
+  try {
+    const res = await axios.get("/api/accounts/ledger");
+    ledgerList.value = res.data?.data || [];
+    ledgerSummary.value = res.data?.summary || {
+      grandTotalInvested: 0,
+      grandTotalWithdrawn: 0,
+      netCapitalBalance: 0,
+      totalShareholders: 0
+    };
+  } catch (e) {
+    console.warn("Failed to fetch shareholder ledger:", e);
+  }
+}
 
 const selectedShareholderFilter = ref("all");
 const searchQuery = ref("");
@@ -512,7 +719,7 @@ async function executeDelete() {
     const res = await axios.delete(`/api/accounts/capitals/${deletingCapital.value.id}`);
     showToast(res.data?.message || "মূলধন রেকর্ড সফলভাবে মুছে ফেলা হয়েছে", "success");
     deletingCapital.value = null;
-    await Promise.all([fetchCapitals(), fetchOverallSummary()]);
+    await Promise.all([fetchCapitals(), fetchOverallSummary(), fetchLedger()]);
   } catch (err: any) {
     showToast(err.response?.data?.message || "মুছে ফেলতে ব্যর্থ হয়েছে", "danger");
   } finally {
@@ -523,6 +730,7 @@ async function executeDelete() {
 onMounted(() => {
   fetchCapitals();
   fetchOverallSummary();
+  fetchLedger();
 });
 </script>
 
