@@ -102,7 +102,7 @@ export const routes = [
         path: "/accounts/capital",
         name: "accounts-capital",
         component: () => import("@/pages/accounts/capital-list.vue"),
-        meta: { requiresAuth: true, title: "মূলধন / পুঁজি বিনিয়োগ তালিকা" }
+        meta: { requiresAuth: true, title: "মূলধন ও পুঁজি বিনিয়োগ তালিকা" }
       },
       {
         path: "/accounts/capital/create",
@@ -114,7 +114,7 @@ export const routes = [
         path: "/accounts/withdrawals",
         name: "accounts-withdrawals",
         component: () => import("@/pages/accounts/withdrawal-list.vue"),
-        meta: { requiresAuth: true, title: "মূলধন / লাভ উত্তোলন তালিকা" }
+        meta: { requiresAuth: true, title: "মূলধন ও লাভ উত্তোলন তালিকা" }
       },
       {
         path: "/accounts/withdrawals/create",
