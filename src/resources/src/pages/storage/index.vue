@@ -111,6 +111,10 @@
               <div class="bg-body-secondary p-3 rounded-3 mb-3 border">
                 <div class="fw-semibold small mb-2 text-secondary">ব্যাকআপে অন্তর্ভুক্ত টেবিলসমূহ:</div>
                 <div class="d-flex flex-wrap gap-1">
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">পণ্য ({{ toBengaliNumber(stats.counts?.items || 0) }})</span>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">ক্রয় চালান ({{ toBengaliNumber(stats.counts?.purchases || 0) }})</span>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">বিক্রয় চালান ({{ toBengaliNumber(stats.counts?.sales || 0) }})</span>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis">ব্র্যান্ড ({{ toBengaliNumber(stats.counts?.brands || 0) }})</span>
                   <span class="badge bg-secondary-subtle text-secondary-emphasis">ক্যাটাগরি ({{ toBengaliNumber(stats.counts?.categories || 0) }})</span>
                   <span class="badge bg-secondary-subtle text-secondary-emphasis">সাব-ক্যাটাগরি ({{ toBengaliNumber(stats.counts?.subCategories || 0) }})</span>
                   <span class="badge bg-secondary-subtle text-secondary-emphasis">ধরন ({{ toBengaliNumber(stats.counts?.productTypes || 0) }})</span>

@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { db, HttpStatusCodes } from "@/framework/facade.js";
+import { capitalInvestments, capitalWithdrawals } from "@/modules/accounts/database/models/accounts.js";
 import { roles } from "@/modules/auth/database/models/role.js";
 import { users } from "@/modules/auth/database/models/user.js";
 import {
@@ -16,11 +17,17 @@ import {
   units,
   vendorTypes
 } from "@/modules/catalog/database/models/catalog.js";
-import { companys } from "@/modules/company/database/models/company.js";
+import { companys, companySettings } from "@/modules/company/database/models/company.js";
 import {
   brands,
   customers,
+  itemPricings,
+  items,
   manufacturers,
+  purchaseItems,
+  purchases,
+  saleItems,
+  sales,
   suppliers
 } from "@/modules/inventory/database/models/inventory.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
@@ -79,6 +86,9 @@ export const getDatabaseStats: Handler = async (c: any) => {
       colorCount,
       unitCount,
       brandCount,
+      itemCount,
+      purchaseCount,
+      saleCount,
       compCount,
       userCount
     ] = await Promise.all([
@@ -89,6 +99,9 @@ export const getDatabaseStats: Handler = async (c: any) => {
       db.select({ count: sql<number>`count(*)::int` }).from(colors),
       db.select({ count: sql<number>`count(*)::int` }).from(units),
       db.select({ count: sql<number>`count(*)::int` }).from(brands),
+      db.select({ count: sql<number>`count(*)::int` }).from(items),
+      db.select({ count: sql<number>`count(*)::int` }).from(purchases),
+      db.select({ count: sql<number>`count(*)::int` }).from(sales),
       db.select({ count: sql<number>`count(*)::int` }).from(companys),
       db.select({ count: sql<number>`count(*)::int` }).from(users)
     ]);
@@ -106,6 +119,9 @@ export const getDatabaseStats: Handler = async (c: any) => {
           colors: colorCount[0]?.count || 0,
           units: unitCount[0]?.count || 0,
           brands: brandCount[0]?.count || 0,
+          items: itemCount[0]?.count || 0,
+          purchases: purchaseCount[0]?.count || 0,
+          sales: saleCount[0]?.count || 0,
           companys: compCount[0]?.count || 0,
           users: userCount[0]?.count || 0
         }
@@ -119,12 +135,14 @@ export const getDatabaseStats: Handler = async (c: any) => {
 
 /**
  * 2. Download complete database backup as JSON
+ * Includes ALL Master Catalogs, Inventory, Purchases, Sales, Pricing, Accounts, Settings
  */
 export const downloadBackup: Handler = async (c: any) => {
   try {
     const [
       allSettings,
       allCompanys,
+      allCompanySettings,
       allCategories,
       allSubCategories,
       allProductTypes,
@@ -140,11 +158,20 @@ export const downloadBackup: Handler = async (c: any) => {
       allSuppliers,
       allManufacturers,
       allCustomers,
+      allItems,
+      allItemPricings,
+      allPurchases,
+      allPurchaseItems,
+      allSales,
+      allSaleItems,
+      allCapitalInvestments,
+      allCapitalWithdrawals,
       allRoles,
       allUsers
     ] = await Promise.all([
       db.select().from(settings),
       db.select().from(companys),
+      db.select().from(companySettings),
       db.select().from(categories),
       db.select().from(subCategories),
       db.select().from(productTypes),
@@ -160,6 +187,14 @@ export const downloadBackup: Handler = async (c: any) => {
       db.select().from(suppliers),
       db.select().from(manufacturers),
       db.select().from(customers),
+      db.select().from(items),
+      db.select().from(itemPricings),
+      db.select().from(purchases),
+      db.select().from(purchaseItems),
+      db.select().from(sales),
+      db.select().from(saleItems),
+      db.select().from(capitalInvestments),
+      db.select().from(capitalWithdrawals),
       db.select().from(roles),
       db.select().from(users)
     ]);
@@ -179,6 +214,7 @@ export const downloadBackup: Handler = async (c: any) => {
       data: {
         settings: allSettings,
         companys: allCompanys,
+        companySettings: allCompanySettings,
         categories: allCategories,
         subCategories: allSubCategories,
         productTypes: allProductTypes,
@@ -194,6 +230,14 @@ export const downloadBackup: Handler = async (c: any) => {
         suppliers: allSuppliers,
         manufacturers: allManufacturers,
         customers: allCustomers,
+        items: allItems,
+        itemPricings: allItemPricings,
+        purchases: allPurchases,
+        purchaseItems: allPurchaseItems,
+        sales: allSales,
+        saleItems: allSaleItems,
+        capitalInvestments: allCapitalInvestments,
+        capitalWithdrawals: allCapitalWithdrawals,
         roles: allRoles,
         users: exportUsers
       }
@@ -278,18 +322,21 @@ export const restoreBackup: Handler = async (c: any) => {
     // Ensures ALL-OR-NOTHING: Zero data loss, zero partial insertion
     await db.transaction(async (tx) => {
       // A. Clean child tables first, then parents (Order: Children -> Parents)
-      if (Array.isArray(data.customers)) {
-        await tx.delete(customers);
-      }
-      if (Array.isArray(data.manufacturers)) {
-        await tx.delete(manufacturers);
-      }
-      if (Array.isArray(data.suppliers)) {
-        await tx.delete(suppliers);
-      }
-      if (Array.isArray(data.brands)) {
-        await tx.delete(brands);
-      }
+      if (Array.isArray(data.saleItems)) await tx.delete(saleItems);
+      if (Array.isArray(data.sales)) await tx.delete(sales);
+      if (Array.isArray(data.purchaseItems)) await tx.delete(purchaseItems);
+      if (Array.isArray(data.purchases)) await tx.delete(purchases);
+      if (Array.isArray(data.itemPricings)) await tx.delete(itemPricings);
+      if (Array.isArray(data.items)) await tx.delete(items);
+
+      if (Array.isArray(data.capitalWithdrawals)) await tx.delete(capitalWithdrawals);
+      if (Array.isArray(data.capitalInvestments)) await tx.delete(capitalInvestments);
+      if (Array.isArray(data.companySettings)) await tx.delete(companySettings);
+
+      if (Array.isArray(data.customers)) await tx.delete(customers);
+      if (Array.isArray(data.manufacturers)) await tx.delete(manufacturers);
+      if (Array.isArray(data.suppliers)) await tx.delete(suppliers);
+      if (Array.isArray(data.brands)) await tx.delete(brands);
 
       await tx.delete(productTypes);
       await tx.delete(sizes);
@@ -300,15 +347,9 @@ export const restoreBackup: Handler = async (c: any) => {
       await tx.delete(categories);
       await tx.delete(units);
 
-      if (Array.isArray(data.challanTypes)) {
-        await tx.delete(challanTypes);
-      }
-      if (Array.isArray(data.vendorTypes)) {
-        await tx.delete(vendorTypes);
-      }
-      if (Array.isArray(data.paymentMethods)) {
-        await tx.delete(paymentMethods);
-      }
+      if (Array.isArray(data.challanTypes)) await tx.delete(challanTypes);
+      if (Array.isArray(data.vendorTypes)) await tx.delete(vendorTypes);
+      if (Array.isArray(data.paymentMethods)) await tx.delete(paymentMethods);
 
       // B. Clean settings and companys
       await tx.delete(settings);
@@ -362,8 +403,11 @@ export const restoreBackup: Handler = async (c: any) => {
       if (Array.isArray(data.companys) && data.companys.length > 0) {
         await tx.insert(companys).values(cleanRowsForInsert(data.companys));
       }
+      if (Array.isArray(data.companySettings) && data.companySettings.length > 0) {
+        await tx.insert(companySettings).values(cleanRowsForInsert(data.companySettings));
+      }
 
-      // F. Re-insert users (MUST be BEFORE any user-dependent tables like brands, suppliers, etc.)
+      // F. Re-insert users (MUST be BEFORE any user-dependent tables like brands, suppliers, items, etc.)
       if (Array.isArray(data.users) && data.users.length > 0) {
         const nonSuperAdminUsers = data.users.filter((u: any) => {
           const isSuperAdminRole = u.roleId && superAdminRoleIds.has(u.roleId);
@@ -377,59 +421,73 @@ export const restoreBackup: Handler = async (c: any) => {
         }
       }
 
-      // G. Resolve valid user IDs in transaction for user-dependent tables (brands, suppliers, etc.)
+      // G. Resolve valid user IDs in transaction for user-dependent tables
       const currentUsers = await tx.select({ id: users.id }).from(users);
       const validUserIds = new Set<number>(currentUsers.map((u) => u.id));
       const defaultUserId = Array.from(protectedUserIds)[0] || (currentUsers[0]?.id ?? 1);
 
-      // H. Re-insert brands (AFTER users so brands.userId -> users.id is guaranteed to exist)
-      if (Array.isArray(data.brands) && data.brands.length > 0) {
-        const safeBrands = data.brands.map((b: any) => {
-          const brand = cleanRowForInsert(b);
-          if (!brand.userId || !validUserIds.has(Number(brand.userId))) {
-            brand.userId = defaultUserId;
-          }
-          return brand;
-        });
+      // Helper to ensure userId belongs to an existing user
+      const mapSafeUser = (row: any) => {
+        const cleaned = cleanRowForInsert(row);
+        if (!cleaned.userId || !validUserIds.has(Number(cleaned.userId))) {
+          cleaned.userId = defaultUserId;
+        }
+        return cleaned;
+      };
 
-        await tx.insert(brands).values(safeBrands);
+      // H. Re-insert brands
+      if (Array.isArray(data.brands) && data.brands.length > 0) {
+        await tx.insert(brands).values(data.brands.map(mapSafeUser));
       }
 
-      // I. Re-insert suppliers, manufacturers, customers if present
+      // I. Re-insert suppliers, manufacturers, customers
       if (Array.isArray(data.suppliers) && data.suppliers.length > 0) {
-        const safeSuppliers = data.suppliers.map((s: any) => {
-          const row = cleanRowForInsert(s);
-          if (!row.userId || !validUserIds.has(Number(row.userId))) {
-            row.userId = defaultUserId;
-          }
-          return row;
-        });
-        await tx.insert(suppliers).values(safeSuppliers);
+        await tx.insert(suppliers).values(data.suppliers.map(mapSafeUser));
       }
 
       if (Array.isArray(data.manufacturers) && data.manufacturers.length > 0) {
-        const safeManufacturers = data.manufacturers.map((m: any) => {
-          const row = cleanRowForInsert(m);
-          if (!row.userId || !validUserIds.has(Number(row.userId))) {
-            row.userId = defaultUserId;
-          }
-          return row;
-        });
-        await tx.insert(manufacturers).values(safeManufacturers);
+        await tx.insert(manufacturers).values(data.manufacturers.map(mapSafeUser));
       }
 
       if (Array.isArray(data.customers) && data.customers.length > 0) {
-        const safeCustomers = data.customers.map((c: any) => {
-          const row = cleanRowForInsert(c);
-          if (!row.userId || !validUserIds.has(Number(row.userId))) {
-            row.userId = defaultUserId;
-          }
-          return row;
-        });
-        await tx.insert(customers).values(safeCustomers);
+        await tx.insert(customers).values(data.customers.map(mapSafeUser));
       }
 
-      // J. Resync all PostgreSQL sequence generators
+      // J. Re-insert Items (পণ্য)
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        await tx.insert(items).values(data.items.map(mapSafeUser));
+      }
+
+      // K. Re-insert Item Pricings (মূল্য নির্ধারণ)
+      if (Array.isArray(data.itemPricings) && data.itemPricings.length > 0) {
+        await tx.insert(itemPricings).values(data.itemPricings.map(mapSafeUser));
+      }
+
+      // L. Re-insert Purchases & Purchase Items (ক্রয় ও ক্রয়কৃত পণ্য)
+      if (Array.isArray(data.purchases) && data.purchases.length > 0) {
+        await tx.insert(purchases).values(data.purchases.map(mapSafeUser));
+      }
+      if (Array.isArray(data.purchaseItems) && data.purchaseItems.length > 0) {
+        await tx.insert(purchaseItems).values(cleanRowsForInsert(data.purchaseItems));
+      }
+
+      // M. Re-insert Sales & Sale Items (বিক্রয় ও বিক্রিত পণ্য)
+      if (Array.isArray(data.sales) && data.sales.length > 0) {
+        await tx.insert(sales).values(data.sales.map(mapSafeUser));
+      }
+      if (Array.isArray(data.saleItems) && data.saleItems.length > 0) {
+        await tx.insert(saleItems).values(cleanRowsForInsert(data.saleItems));
+      }
+
+      // N. Re-insert Accounts (পুঁজি বিনিয়োগ ও উত্তোলন)
+      if (Array.isArray(data.capitalInvestments) && data.capitalInvestments.length > 0) {
+        await tx.insert(capitalInvestments).values(data.capitalInvestments.map(mapSafeUser));
+      }
+      if (Array.isArray(data.capitalWithdrawals) && data.capitalWithdrawals.length > 0) {
+        await tx.insert(capitalWithdrawals).values(data.capitalWithdrawals.map(mapSafeUser));
+      }
+
+      // O. Resync all PostgreSQL sequence generators
       const serialTables = [
         "categories",
         "sub_categories",
@@ -447,8 +505,17 @@ export const restoreBackup: Handler = async (c: any) => {
         "manufacturers",
         "customers",
         "companys",
+        "company_settings",
         "settings",
-        "users"
+        "users",
+        "items",
+        "item_pricings",
+        "purchases",
+        "purchase_items",
+        "sales",
+        "sale_items",
+        "capital_investments",
+        "capital_withdrawals"
       ];
 
       for (const tbl of serialTables) {
