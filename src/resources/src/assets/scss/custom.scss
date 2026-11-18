@@ -1639,3 +1639,126 @@ input[type="number"] {
     page-break-after: auto !important;
   }
 }
+
+
+/*************************************************
+  GLOBAL DARK MODE ENHANCEMENTS ACROSS ALL PAGES
+*************************************************/
+[data-bs-theme="dark"],
+.theme-dark {
+  color: #e5e5e5;
+  --bs-body-color: #e5e5e5;
+  --bs-heading-color: #f3f4f6;
+
+  .text-dark {
+    color: #f3f4f6 !important;
+  }
+
+  .bg-white {
+    background-color: #1b1b1f !important;
+  }
+
+  .bg-light {
+    background-color: #24252a !important;
+  }
+
+  .border {
+    border-color: #2e323b !important;
+  }
+
+  .table-light {
+    background-color: #24252a !important;
+    color: #f3f4f6 !important;
+    border-color: #2e323b !important;
+
+    th,
+    td {
+      background-color: #24252a !important;
+      color: #f3f4f6 !important;
+      border-color: #2e323b !important;
+    }
+  }
+
+  .card {
+    background-color: #1b1b1f !important;
+    border-color: #2e323b !important;
+    color: #e5e5e5;
+  }
+
+  .card-header,
+  .card-footer {
+    border-color: #2e323b !important;
+  }
+
+  .list-group-item {
+    background-color: transparent !important;
+    border-color: #2e323b !important;
+    color: #e5e5e5 !important;
+  }
+
+  .form-control,
+  .form-select {
+    background-color: #121212 !important;
+    border-color: #3f3f3f !important;
+    color: #e5e5e5 !important;
+
+    &:focus {
+      background-color: #161616 !important;
+      border-color: #0d6efd !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .dropdown-menu {
+    background-color: #1e2025 !important;
+    border-color: #2e323b !important;
+    color: #e5e5e5 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .dropdown-item {
+    color: #e5e5e5 !important;
+
+    &:hover,
+    &:focus {
+      background-color: #2a2c33 !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .modal-content {
+    background-color: #1b1b1f !important;
+    border-color: #2e323b !important;
+    color: #e5e5e5 !important;
+  }
+
+  .modal-header,
+  .modal-footer {
+    border-color: #2e323b !important;
+  }
+
+  .btn-white {
+    background-color: #1b1b1f !important;
+    border-color: #3f3f3f !important;
+    color: #e5e5e5 !important;
+
+    &:hover {
+      background-color: #25262c !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .badge.bg-light {
+    background-color: #2a2c33 !important;
+    color: #e5e5e5 !important;
+    border-color: #3f3f3f !important;
+  }
+
+  .badge-icon {
+    opacity: 0.9;
+  }
+
+  .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+  }
+}

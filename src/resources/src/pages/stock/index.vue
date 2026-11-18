@@ -476,13 +476,8 @@ const paginationData = computed(() => {
 async function fetchItems() {
   loading.value = true;
   try {
-    const res = await axios.get("/api/inventory/items?purchasedOnly=true");
-    const rawItems = res.data?.data || [];
-    // Only items that have been purchased or have stock should appear in Stock Report:
-    // "পণ্য তৈরির পর ক্রয় না হলে স্টকে দেখানোর প্রয়োজন নাই"
-    itemsList.value = rawItems.filter(
-      (item: any) => Boolean(item.hasPurchases) || Number(item.totalPurchased || 0) > 0 || Number(item.stockQuantity || 0) > 0
-    );
+    const res = await axios.get("/api/inventory/items");
+    itemsList.value = res.data?.data || [];
   } catch (err) {
     console.error("Failed to fetch stock items:", err);
   } finally {

@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <!-- ২. সেলস পারফরম্যান্স অ্যানালিটিক্স (৩টি কলাম: ব্র্যান্ড, ডিজাইন ও আইটেম) -->
+    <!-- ২. সেলস পারফরম্যান্স অ্যানালিটিক্স (সর্বোচ্চ ৫টি আইটেম, অন্যগুলো ভিউ বাটনে) -->
     <div class="row g-3 mb-4">
       <!-- ২.১ কোন ব্র্যান্ডের পণ্য বেশি বিক্রয় হয় -->
       <div class="col-12 col-md-4">
@@ -95,15 +95,15 @@
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
               <i class="bi bi-award-fill text-warning fs-5"></i>
-              <span class="fw-bold text-dark">সর্বোচ্চ বিক্রিত ব্র্যান্ড</span>
+              <span class="fw-bold">সর্বোচ্চ বিক্রিত ব্র্যান্ড</span>
             </div>
             <button
               type="button"
-              class="btn btn-sm btn-outline-warning border-0 p-1 text-dark d-flex align-items-center gap-1 small"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
               title="স্টক ট্যাবে ব্র্যান্ডের পণ্য দেখুন"
               @click="$emit('switch-tab', 'stock')">
               <i class="bi bi-eye"></i>
-              <span class="small">ভিউ</span>
+              <span>ভিউ</span>
             </button>
           </div>
           <div class="card-body p-0">
@@ -113,15 +113,15 @@
             </div>
             <div v-else class="list-group list-group-flush small">
               <div
-                v-for="(brand, idx) in summary.analytics?.topBrands"
+                v-for="(brand, idx) in summary.analytics?.topBrands.slice(0, 5)"
                 :key="brand.brandName"
                 class="list-group-item d-flex justify-content-between align-items-center px-3 py-2.5">
                 <div class="d-flex align-items-center gap-2">
-                  <span class="badge rounded-circle bg-light text-dark border rank-badge">
+                  <span class="badge rounded-circle bg-light text-body border rank-badge">
                     {{ toBengaliNumber(idx + 1) }}
                   </span>
                   <div>
-                    <div class="fw-bold text-dark">{{ brand.brandName }}</div>
+                    <div class="fw-bold">{{ brand.brandName }}</div>
                     <small class="text-muted">বর্তমান গুদাম মজুদ: {{ toBengaliNumber(brand.currentStock) }} পিস</small>
                   </div>
                 </div>
@@ -135,21 +135,21 @@
         </div>
       </div>
 
-      <!-- ২.২ কোন ডিজাইন বেশি বিক্রয় হয়েছে -->
+      <!-- ২.২ কোন ডিজাইন বেশি বিক্রয় হয়েছে (পণ্যের নামসহ ডিজাইন) -->
       <div class="col-12 col-md-4">
         <div class="card border shadow-sm h-100">
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
               <i class="bi bi-palette2 text-info fs-5"></i>
-              <span class="fw-bold text-dark">সর্বোচ্চ বিক্রিত ডিজাইন</span>
+              <span class="fw-bold">সর্বোচ্চ বিক্রিত ডিজাইন</span>
             </div>
             <button
               type="button"
-              class="btn btn-sm btn-outline-info border-0 p-1 text-info d-flex align-items-center gap-1 small"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
               title="ডিজাইন অনুযায়ী স্টক দেখুন"
               @click="$emit('switch-tab', 'stock')">
               <i class="bi bi-eye"></i>
-              <span class="small">ভিউ</span>
+              <span>ভিউ</span>
             </button>
           </div>
           <div class="card-body p-0">
@@ -159,16 +159,21 @@
             </div>
             <div v-else class="list-group list-group-flush small">
               <div
-                v-for="(dgn, idx) in summary.analytics?.topDesigns"
+                v-for="(dgn, idx) in summary.analytics?.topDesigns.slice(0, 5)"
                 :key="dgn.designCode"
                 class="list-group-item d-flex justify-content-between align-items-center px-3 py-2.5">
                 <div class="d-flex align-items-center gap-2">
-                  <span class="badge rounded-circle bg-light text-dark border rank-badge">
+                  <span class="badge rounded-circle bg-light text-body border rank-badge">
                     {{ toBengaliNumber(idx + 1) }}
                   </span>
                   <div>
-                    <div class="fw-bold text-dark font-monospace">{{ dgn.designCode }}</div>
-                    <small class="text-muted">{{ dgn.brandName || 'সাধারণ' }} | মজুদ: {{ toBengaliNumber(dgn.currentStock) }} পিস</small>
+                    <div class="fw-bold d-flex align-items-center gap-1.5 flex-wrap">
+                      <span class="font-monospace text-primary">{{ dgn.designCode }}</span>
+                      <span v-if="dgn.productName" class="badge bg-primary-subtle text-primary border border-primary-subtle small fw-medium">
+                        {{ dgn.productName }}
+                      </span>
+                    </div>
+                    <small class="text-muted">ব্র্যান্ড: {{ dgn.brandName || '-' }} | মজুদ: {{ toBengaliNumber(dgn.currentStock) }} পিস</small>
                   </div>
                 </div>
                 <div class="text-end">
@@ -187,15 +192,15 @@
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
               <i class="bi bi-fire text-danger fs-5"></i>
-              <span class="fw-bold text-dark">সবচেয়ে বেশি বিক্রিত আইটেম</span>
+              <span class="fw-bold">সবচেয়ে বেশি বিক্রিত আইটেম</span>
             </div>
             <button
               type="button"
-              class="btn btn-sm btn-outline-danger border-0 p-1 text-danger d-flex align-items-center gap-1 small"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
               title="লাভ-ক্ষতি ও মার্জিন বিশ্লেষণ দেখুন"
               @click="$emit('switch-tab', 'profit_loss')">
               <i class="bi bi-eye"></i>
-              <span class="small">ভিউ</span>
+              <span>ভিউ</span>
             </button>
           </div>
           <div class="card-body p-0">
@@ -205,15 +210,15 @@
             </div>
             <div v-else class="list-group list-group-flush small">
               <div
-                v-for="(prod, idx) in summary.analytics?.topProducts"
+                v-for="(prod, idx) in summary.analytics?.topProducts.slice(0, 5)"
                 :key="prod.itemId || prod.name"
                 class="list-group-item d-flex justify-content-between align-items-center px-3 py-2.5">
                 <div class="d-flex align-items-center gap-2">
-                  <span class="badge rounded-circle bg-light text-dark border rank-badge">
+                  <span class="badge rounded-circle bg-light text-body border rank-badge">
                     {{ toBengaliNumber(idx + 1) }}
                   </span>
                   <div>
-                    <div class="fw-bold text-dark text-truncate" style="max-width: 140px;" :title="prod.name">
+                    <div class="fw-bold text-truncate" style="max-width: 150px;" :title="prod.name">
                       {{ prod.name }}
                     </div>
                     <small class="text-muted font-monospace">{{ prod.code || prod.barcode }} | মজুদ: {{ toBengaliNumber(prod.currentStock) }}</small>
@@ -236,17 +241,17 @@
       <div class="col-12 col-lg-6">
         <div class="card border shadow-sm h-100">
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
-            <span class="fw-bold text-dark d-flex align-items-center gap-2">
+            <span class="fw-bold d-flex align-items-center gap-2">
               <i class="bi bi-cash-stack text-success"></i>
               <span>বিক্রয় ও নগদ আদায় বিশ্লেষণ (নির্বাচিত সময়কাল)</span>
             </span>
             <button
               type="button"
-              class="btn btn-sm btn-outline-success border-0 p-1 text-success d-flex align-items-center gap-1 small"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
               title="আর্থিক স্টেটমেন্টে বিস্তারিত দেখুন"
               @click="$emit('switch-tab', 'statement')">
               <i class="bi bi-eye"></i>
-              <span class="small">ভিউ বিবরণী</span>
+              <span>ভিউ বিবরণী</span>
             </button>
           </div>
           <div class="card-body p-3">
@@ -280,17 +285,17 @@
       <div class="col-12 col-lg-6">
         <div class="card border shadow-sm h-100">
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
-            <span class="fw-bold text-dark d-flex align-items-center gap-2">
+            <span class="fw-bold d-flex align-items-center gap-2">
               <i class="bi bi-truck text-primary"></i>
               <span>মালামাল ক্রয় ও দেনা বিশ্লেষণ (নির্বাচিত সময়কাল)</span>
             </span>
             <button
               type="button"
-              class="btn btn-sm btn-outline-primary border-0 p-1 text-primary d-flex align-items-center gap-1 small"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
               title="দেনা-পাওনা খতিয়ান দেখুন"
               @click="$emit('switch-tab', 'parties')">
               <i class="bi bi-eye"></i>
-              <span class="small">ভিউ বিবরণী</span>
+              <span>ভিউ বিবরণী</span>
             </button>
           </div>
           <div class="card-body p-3">
@@ -324,7 +329,7 @@
       </div>
     </div>
 
-    <!-- ৪. সবার শেষে: ইনভেন্টরি রিস্টক ও ক্রয়ের সিদ্ধান্ত গাইড (কোনটা বাড়ানো দরকার বনাম কোনটা কেনার প্রয়োজন নেই) -->
+    <!-- ৪. সবার শেষে: ইনভেন্টরি রিস্টক ও ক্রয়ের সিদ্ধান্ত গাইড (সর্বোচ্চ ৫টি আইটেম, বাড়তি কলাম বাতিল) -->
     <div class="row g-3">
       <!-- ৪.১ কোন পণ্যগুলোর স্টক বাড়ানো দরকার (High Demand / Low Stock) -->
       <div class="col-12 col-lg-6">
@@ -335,20 +340,18 @@
                 <i class="bi bi-exclamation-triangle-fill"></i>
               </div>
               <div>
-                <span class="fw-bold text-dark d-block">স্টক বাড়ানো দরকার (জরুরি ক্রয় তালিকা)</span>
+                <span class="fw-bold d-block">স্টক বাড়ানো দরকার (জরুরি ক্রয় তালিকা)</span>
                 <small class="text-muted">চাহিদা বেশি অথবা স্টক সতর্কতা সীমার নিচে নেমে গেছে</small>
               </div>
             </div>
-            <div class="d-flex align-items-center gap-1">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 px-2 py-0.5 small"
-                title="সকল লো-স্টক পণ্য দেখুন"
-                @click="$emit('view-stock', 'low_stock')">
-                <i class="bi bi-eye"></i>
-                <span>সকল লো-স্টক</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 px-2.5 py-1 small"
+              title="সকল লো-স্টক পণ্য দেখুন"
+              @click="$emit('view-stock', 'low_stock')">
+              <i class="bi bi-eye"></i>
+              <span>সকল লো-স্টক</span>
+            </button>
           </div>
 
           <div class="card-body p-0">
@@ -360,22 +363,19 @@
               <table class="table table-hover align-middle mb-0 small">
                 <thead class="table-light">
                   <tr>
-                    <th>পণ্যের নাম ও কোড</th>
-                    <th>ব্র্যান্ড / ডিজাইন</th>
+                    <th class="ps-3">পণ্যের নাম ও কোড</th>
                     <th class="text-center">বিক্রয়</th>
                     <th class="text-center">বর্তমান স্টক</th>
-                    <th class="text-end">অবস্থা / ভিউ</th>
+                    <th class="text-end pe-3">অবস্থা / ভিউ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="item in summary.analytics?.restockRecommendations" :key="item.itemId || item.name">
-                    <td>
-                      <div class="fw-semibold text-dark">{{ item.name }}</div>
+                  <tr v-for="item in summary.analytics?.restockRecommendations.slice(0, 5)" :key="item.itemId || item.name">
+                    <td class="ps-3">
+                      <div class="fw-semibold text-truncate" style="max-width: 250px;" :title="item.name">
+                        {{ item.name }}
+                      </div>
                       <div class="font-monospace text-muted small">{{ item.code || item.barcode }}</div>
-                    </td>
-                    <td>
-                      <div>{{ item.brandName || '-' }}</div>
-                      <small class="text-muted">ডিজাইন: {{ item.designCode || '-' }}</small>
                     </td>
                     <td class="text-center fw-medium">
                       {{ toBengaliNumber(item.quantitySold || 0) }} পিস
@@ -385,20 +385,22 @@
                         {{ toBengaliNumber(item.currentStock) }} পিস
                       </span>
                     </td>
-                    <td class="text-end">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline-secondary border-0 p-1 me-1 text-danger"
-                        title="স্টকে খুঁজুন"
-                        @click="$emit('search-stock', item.name)">
-                        <i class="bi bi-arrow-right-circle"></i>
-                      </button>
-                      <span v-if="item.currentStock <= 0" class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                        স্টক শূন্য
-                      </span>
-                      <span v-else class="badge bg-warning-subtle text-dark border border-warning-subtle">
-                        স্টক বাড়ান
-                      </span>
+                    <td class="text-end pe-3">
+                      <div class="d-flex align-items-center justify-content-end gap-1.5">
+                        <span v-if="item.currentStock <= 0" class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                          স্টক শূন্য
+                        </span>
+                        <span v-else class="badge bg-warning-subtle text-dark border border-warning-subtle">
+                          স্টক বাড়ান
+                        </span>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary border-0 p-1 text-danger"
+                          title="স্টকে খুঁজুন"
+                          @click="$emit('search-stock', item.name)">
+                          <i class="bi bi-arrow-right-circle fs-6"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -417,20 +419,18 @@
                 <i class="bi bi-shield-check"></i>
               </div>
               <div>
-                <span class="fw-bold text-dark d-block">কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে)</span>
+                <span class="fw-bold d-block">কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে)</span>
                 <small class="text-muted">গুদামে পর্যাপ্ত মজুদ রয়েছে, নতুন করে কেনার প্রয়োজন নেই</small>
               </div>
             </div>
-            <div class="d-flex align-items-center gap-1">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 px-2 py-0.5 small"
-                title="সকল পর্যাপ্ত মজুদ পণ্য দেখুন"
-                @click="$emit('view-stock', 'in_stock')">
-                <i class="bi bi-eye"></i>
-                <span>সকল মজুদ</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 px-2.5 py-1 small"
+              title="সকল পর্যাপ্ত মজুদ পণ্য দেখুন"
+              @click="$emit('view-stock', 'in_stock')">
+              <i class="bi bi-eye"></i>
+              <span>সকল মজুদ</span>
+            </button>
           </div>
 
           <div class="card-body p-0">
@@ -442,42 +442,41 @@
               <table class="table table-hover align-middle mb-0 small">
                 <thead class="table-light">
                   <tr>
-                    <th>পণ্যের নাম ও কোড</th>
-                    <th>ব্র্যান্ড / ডিজাইন</th>
+                    <th class="ps-3">পণ্যের নাম ও কোড</th>
                     <th class="text-center">বর্তমান মজুদ</th>
                     <th class="text-end">স্টক ক্রয়মূল্য</th>
-                    <th class="text-end">অবস্থা / ভিউ</th>
+                    <th class="text-end pe-3">অবস্থা / ভিউ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="item in summary.analytics?.noRestockNeeded" :key="item.itemId || item.name">
-                    <td>
-                      <div class="fw-semibold text-dark">{{ item.name }}</div>
+                  <tr v-for="item in summary.analytics?.noRestockNeeded.slice(0, 5)" :key="item.itemId || item.name">
+                    <td class="ps-3">
+                      <div class="fw-semibold text-truncate" style="max-width: 250px;" :title="item.name">
+                        {{ item.name }}
+                      </div>
                       <div class="font-monospace text-muted small">{{ item.code || item.barcode }}</div>
-                    </td>
-                    <td>
-                      <div>{{ item.brandName || '-' }}</div>
-                      <small class="text-muted">ডিজাইন: {{ item.designCode || '-' }}</small>
                     </td>
                     <td class="text-center">
                       <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2 fw-bold">
                         {{ toBengaliNumber(item.currentStock) }} পিস
                       </span>
                     </td>
-                    <td class="text-end fw-medium text-dark">
+                    <td class="text-end fw-medium">
                       ৳ {{ toBengaliNumber(formatAmount(item.stockCostValue)) }}
                     </td>
-                    <td class="text-end">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline-secondary border-0 p-1 me-1 text-success"
-                        title="স্টকে খুঁজুন"
-                        @click="$emit('search-stock', item.name)">
-                        <i class="bi bi-arrow-right-circle"></i>
-                      </button>
-                      <span class="badge bg-light text-secondary border">
-                        নিরাপদ মজুদ
-                      </span>
+                    <td class="text-end pe-3">
+                      <div class="d-flex align-items-center justify-content-end gap-1.5">
+                        <span class="badge bg-light text-secondary border">
+                          নিরাপদ মজুদ
+                        </span>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary border-0 p-1 text-success"
+                          title="স্টকে খুঁজুন"
+                          @click="$emit('search-stock', item.name)">
+                          <i class="bi bi-arrow-right-circle fs-6"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -551,6 +550,10 @@ function formatAmount(val: number | string | undefined | null): string {
   font-size: 0.75rem;
   font-weight: 700;
 }
+.view-pill-btn {
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
 .text-emerald {
   color: #059669 !important;
 }
@@ -559,5 +562,37 @@ function formatAmount(val: number | string | undefined | null): string {
 }
 .border-emerald-subtle {
   border-color: #a7f3d0 !important;
+}
+
+/* Dark Mode Scoped Adaptations */
+:global([data-bs-theme="dark"]) .summary-report-component .card,
+:global(.theme-dark) .summary-report-component .card {
+  background-color: #1b1b1f !important;
+  border-color: #2e323b !important;
+  color: #e5e5e5 !important;
+}
+
+:global([data-bs-theme="dark"]) .summary-report-component .table-light,
+:global(.theme-dark) .summary-report-component .table-light {
+  background-color: #24252a !important;
+  color: #e5e5e5 !important;
+}
+
+:global([data-bs-theme="dark"]) .summary-report-component .table,
+:global(.theme-dark) .summary-report-component .table {
+  color: #e5e5e5 !important;
+}
+
+:global([data-bs-theme="dark"]) .summary-report-component .list-group-item,
+:global(.theme-dark) .summary-report-component .list-group-item {
+  background-color: transparent !important;
+  border-color: #2e323b !important;
+  color: #e5e5e5 !important;
+}
+
+:global([data-bs-theme="dark"]) .summary-report-component .bg-light,
+:global(.theme-dark) .summary-report-component .bg-light {
+  background-color: #24252a !important;
+  color: #e5e5e5 !important;
 }
 </style>

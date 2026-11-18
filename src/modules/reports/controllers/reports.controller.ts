@@ -236,14 +236,22 @@ export const getSummaryReport: Handler = async (c: any) => {
     const topBrands = Object.values(brandSalesMap)
       .filter((b) => b.quantitySold > 0)
       .sort((a, b) => b.quantitySold - a.quantitySold)
-      .slice(0, 6);
+      .slice(0, 5);
 
-    // B. Design Sales Analytics
-    const designSalesMap: Record<string, { designCode: string; quantitySold: number; totalRevenue: number; currentStock: number; brandName: string }> = {};
+    // B. Design Sales Analytics (পণ্যের নামসহ ডিজাইন তথ্য)
+    const designSalesMap: Record<string, { designCode: string; productName: string; brandName: string; quantitySold: number; totalRevenue: number; currentStock: number }> = {};
     allItems.forEach((it: any) => {
       const dCode = it.designCode || "সাধারণ";
       if (!designSalesMap[dCode]) {
-        designSalesMap[dCode] = { designCode: dCode, quantitySold: 0, totalRevenue: 0, currentStock: 0, brandName: it.brandName || "-" };
+        const cleanName = it.name ? it.name.split("_")[0] : (it.categoryName || "পোশাক");
+        designSalesMap[dCode] = {
+          designCode: dCode,
+          productName: cleanName,
+          brandName: it.brandName || "-",
+          quantitySold: 0,
+          totalRevenue: 0,
+          currentStock: 0
+        };
       }
       designSalesMap[dCode].currentStock += Number(it.stockQuantity) || 0;
     });
@@ -251,19 +259,30 @@ export const getSummaryReport: Handler = async (c: any) => {
     periodSaleItems.forEach((si: any) => {
       const item = si.itemId ? itemsMap.get(si.itemId) : null;
       const dCode = item?.designCode || "সাধারণ";
+      const cleanName = item?.name ? item.name.split("_")[0] : (si.name ? si.name.split("_")[0] : "পোশাক");
       if (!designSalesMap[dCode]) {
-        designSalesMap[dCode] = { designCode: dCode, quantitySold: 0, totalRevenue: 0, currentStock: 0, brandName: item?.brandName || si.brandName || "-" };
+        designSalesMap[dCode] = {
+          designCode: dCode,
+          productName: cleanName,
+          brandName: item?.brandName || si.brandName || "-",
+          quantitySold: 0,
+          totalRevenue: 0,
+          currentStock: 0
+        };
       }
       const qty = Number(si.quantity) || 0;
       const price = Number(si.totalPrice) || (qty * (Number(si.unitPrice) || 0));
       designSalesMap[dCode].quantitySold += qty;
       designSalesMap[dCode].totalRevenue += price;
+      if (!designSalesMap[dCode].productName || designSalesMap[dCode].productName === "পোশাক") {
+        designSalesMap[dCode].productName = cleanName;
+      }
     });
 
     const topDesigns = Object.values(designSalesMap)
       .filter((d) => d.quantitySold > 0)
       .sort((a, b) => b.quantitySold - a.quantitySold)
-      .slice(0, 6);
+      .slice(0, 5);
 
     // C. Top Selling Products
     const productSalesMap: Record<string, { itemId: number | null; name: string; code: string; barcode: string; brandName: string; designCode: string; quantitySold: number; totalRevenue: number; currentStock: number; alertQuantity: number }> = {};
@@ -292,9 +311,9 @@ export const getSummaryReport: Handler = async (c: any) => {
 
     const topProducts = Object.values(productSalesMap)
       .sort((a, b) => b.quantitySold - a.quantitySold)
-      .slice(0, 6);
+      .slice(0, 5);
 
-    // D. Inventory Reordering Decisions (কোন পণ্য স্টক বাড়ানো দরকার আর কোনটা কেনার প্রয়োজন নেই)
+    // D. Inventory Reordering Decisions (সর্বোচ্চ ৫টি আইটেম প্রদর্শিত হবে)
     // ১. স্টক বাড়ানো দরকার (Low stock or zero stock)
     const restockRecommendations = allItems
       .filter((it: any) => (Number(it.stockQuantity) || 0) <= (Number(it.alertQuantity) || 5))
@@ -305,7 +324,7 @@ export const getSummaryReport: Handler = async (c: any) => {
         if (qtyB === 0 && qtyA > 0) return 1;
         return qtyA - qtyB;
       })
-      .slice(0, 8)
+      .slice(0, 5)
       .map((it: any) => {
         const soldQty = productSalesMap[String(it.id)]?.quantitySold || 0;
         return {
@@ -325,7 +344,7 @@ export const getSummaryReport: Handler = async (c: any) => {
     const noRestockNeeded = allItems
       .filter((it: any) => (Number(it.stockQuantity) || 0) > (Number(it.alertQuantity) || 5))
       .sort((a: any, b: any) => (Number(b.stockQuantity) || 0) - (Number(a.stockQuantity) || 0))
-      .slice(0, 8)
+      .slice(0, 5)
       .map((it: any) => {
         const soldQty = productSalesMap[String(it.id)]?.quantitySold || 0;
         return {

@@ -1,7 +1,7 @@
 <template>
   <div class="reports-page pb-5">
     <!-- Header Section with Breadcrumb & Timeframe Selector -->
-    <div class="card border shadow-sm mb-4 bg-white">
+    <div class="card border shadow-sm mb-4 reports-header-card">
       <div class="card-body p-3 p-md-4">
         <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
           <!-- Left: Title & Subtitle -->
@@ -368,36 +368,37 @@ onBeforeUnmount(() => {
 }
 .period-dropdown-btn {
   border-radius: 8px;
-  background-color: #ffffff;
+  background-color: var(--bs-card-bg, #ffffff);
+  color: var(--bs-body-color, #212529);
   transition: all 0.2s ease-in-out;
 }
 .period-dropdown-btn:hover {
-  background-color: #f8fafc;
+  background-color: rgba(0, 0, 0, 0.05);
   border-color: #cbd5e1;
 }
 .period-floating-menu {
   min-width: 220px;
   border-radius: 10px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: var(--bs-card-bg, #ffffff);
   z-index: 1050;
 }
 .period-floating-menu .dropdown-item {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #334155;
+  color: var(--bs-body-color, #334155);
   border-radius: 6px;
   margin: 2px 6px;
   width: auto;
   transition: all 0.15s ease;
 }
 .period-floating-menu .dropdown-item:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 .period-floating-menu .dropdown-item.active {
-  background-color: #eff6ff;
-  color: #0284c7;
+  background-color: rgba(13, 110, 253, 0.15);
+  color: #0d6efd;
   font-weight: 600;
 }
 .rotate-180 {
@@ -405,19 +406,53 @@ onBeforeUnmount(() => {
   transition: transform 0.2s ease;
 }
 .report-nav-pills .nav-link {
-  color: #4b5563;
-  background-color: #f3f4f6;
+  color: var(--bs-secondary-color, #4b5563);
+  background-color: rgba(0, 0, 0, 0.04);
   border-radius: 8px;
   transition: all 0.2s ease-in-out;
 }
 .report-nav-pills .nav-link:hover {
-  background-color: #e5e7eb;
-  color: #111827;
+  background-color: rgba(0, 0, 0, 0.08);
 }
 .report-nav-pills .nav-link.active {
   background-color: #0d6efd;
-  color: #ffffff;
+  color: #ffffff !important;
   box-shadow: 0 2px 4px rgba(13, 110, 253, 0.25);
+}
+
+/* Dark Mode Overrides for Reports */
+:global([data-bs-theme="dark"]) .reports-page .reports-header-card,
+:global(.theme-dark) .reports-page .reports-header-card {
+  background-color: #1b1b1f !important;
+  border-color: #2e323b !important;
+}
+
+:global([data-bs-theme="dark"]) .period-floating-menu,
+:global(.theme-dark) .period-floating-menu {
+  background-color: #1e2025 !important;
+  border-color: #2e323b !important;
+}
+
+:global([data-bs-theme="dark"]) .period-floating-menu .dropdown-item,
+:global(.theme-dark) .period-floating-menu .dropdown-item {
+  color: #e5e5e5 !important;
+}
+
+:global([data-bs-theme="dark"]) .period-floating-menu .dropdown-item:hover,
+:global(.theme-dark) .period-floating-menu .dropdown-item:hover {
+  background-color: #2a2c33 !important;
+}
+
+:global([data-bs-theme="dark"]) .report-nav-pills .nav-link,
+:global(.theme-dark) .report-nav-pills .nav-link {
+  background-color: #24252a !important;
+  color: #9aa0a6 !important;
+}
+
+:global([data-bs-theme="dark"]) .report-nav-pills .nav-link.active,
+:global(.theme-dark) .report-nav-pills .nav-link.active {
+  background-color: #0d6efd !important;
+  color: #ffffff !important;
 }
 .spin-animation {
   animation: spin 1s linear infinite;
