@@ -5,16 +5,54 @@ import { roles } from "@/modules/auth/database/models/role.js";
 import { users } from "@/modules/auth/database/models/user.js";
 import {
   categories,
+  challanTypes,
   colors,
   fabricTypes,
+  paymentMethods,
   productTypes,
   sizeGroups,
   sizes,
   subCategories,
-  units
+  units,
+  vendorTypes
 } from "@/modules/catalog/database/models/catalog.js";
 import { companys } from "@/modules/company/database/models/company.js";
+import { brands } from "@/modules/inventory/database/models/inventory.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
+
+/**
+ * Convert string ISO dates from JSON backup into JavaScript Date objects
+ * so Drizzle ORM's timestamp driver can call `.toISOString()` without throwing.
+ */
+function cleanRowForInsert<T extends Record<string, any>>(row: T): T {
+  if (!row || typeof row !== "object") return row;
+  const result: any = { ...row };
+  for (const [key, val] of Object.entries(result)) {
+    if (typeof val === "string") {
+      // YYYY-MM-DD string without time (like saleDate "2026-11-18") should stay a string
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        continue;
+      }
+      // If key ends with 'At', contains 'Date'/'Time', or val is an ISO timestamp string
+      if (
+        /at$/i.test(key) ||
+        /(?:date|time)/i.test(key) ||
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)
+      ) {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          result[key] = d;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function cleanRowsForInsert<T extends Record<string, any>>(rows: T[]): T[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => cleanRowForInsert(r));
+}
 
 /**
  * 1. Get real-time database stats (Actual PostgreSQL Size & record counts)
@@ -35,6 +73,7 @@ export const getDatabaseStats: Handler = async (c: any) => {
       sizeCount,
       colorCount,
       unitCount,
+      brandCount,
       compCount,
       userCount
     ] = await Promise.all([
@@ -44,6 +83,7 @@ export const getDatabaseStats: Handler = async (c: any) => {
       db.select({ count: sql<number>`count(*)::int` }).from(sizes),
       db.select({ count: sql<number>`count(*)::int` }).from(colors),
       db.select({ count: sql<number>`count(*)::int` }).from(units),
+      db.select({ count: sql<number>`count(*)::int` }).from(brands),
       db.select({ count: sql<number>`count(*)::int` }).from(companys),
       db.select({ count: sql<number>`count(*)::int` }).from(users)
     ]);
@@ -60,6 +100,7 @@ export const getDatabaseStats: Handler = async (c: any) => {
           sizes: sizeCount[0]?.count || 0,
           colors: colorCount[0]?.count || 0,
           units: unitCount[0]?.count || 0,
+          brands: brandCount[0]?.count || 0,
           companys: compCount[0]?.count || 0,
           users: userCount[0]?.count || 0
         }
@@ -87,6 +128,10 @@ export const downloadBackup: Handler = async (c: any) => {
       allColors,
       allFabricTypes,
       allUnits,
+      allChallanTypes,
+      allVendorTypes,
+      allPaymentMethods,
+      allBrands,
       allRoles,
       allUsers
     ] = await Promise.all([
@@ -100,6 +145,10 @@ export const downloadBackup: Handler = async (c: any) => {
       db.select().from(colors),
       db.select().from(fabricTypes),
       db.select().from(units),
+      db.select().from(challanTypes),
+      db.select().from(vendorTypes),
+      db.select().from(paymentMethods),
+      db.select().from(brands),
       db.select().from(roles),
       db.select().from(users)
     ]);
@@ -127,6 +176,10 @@ export const downloadBackup: Handler = async (c: any) => {
         colors: allColors,
         fabricTypes: allFabricTypes,
         units: allUnits,
+        challanTypes: allChallanTypes,
+        vendorTypes: allVendorTypes,
+        paymentMethods: allPaymentMethods,
+        brands: allBrands,
         roles: allRoles,
         users: exportUsers
       }
@@ -220,6 +273,19 @@ export const restoreBackup: Handler = async (c: any) => {
       await tx.delete(categories);
       await tx.delete(units);
 
+      if (Array.isArray(data.challanTypes)) {
+        await tx.delete(challanTypes);
+      }
+      if (Array.isArray(data.vendorTypes)) {
+        await tx.delete(vendorTypes);
+      }
+      if (Array.isArray(data.paymentMethods)) {
+        await tx.delete(paymentMethods);
+      }
+      if (Array.isArray(data.brands)) {
+        await tx.delete(brands);
+      }
+
       // B. Clean settings and companys
       await tx.delete(settings);
       await tx.delete(companys);
@@ -230,38 +296,50 @@ export const restoreBackup: Handler = async (c: any) => {
         await tx.delete(users).where(notInArray(users.id, idsArray));
       }
 
-      // D. Re-insert parent catalog tables
+      // D. Re-insert parent catalog tables (all timestamps parsed to Date objects)
       if (Array.isArray(data.categories) && data.categories.length > 0) {
-        await tx.insert(categories).values(data.categories);
+        await tx.insert(categories).values(cleanRowsForInsert(data.categories));
       }
       if (Array.isArray(data.subCategories) && data.subCategories.length > 0) {
-        await tx.insert(subCategories).values(data.subCategories);
+        await tx.insert(subCategories).values(cleanRowsForInsert(data.subCategories));
       }
       if (Array.isArray(data.sizeGroups) && data.sizeGroups.length > 0) {
-        await tx.insert(sizeGroups).values(data.sizeGroups);
+        await tx.insert(sizeGroups).values(cleanRowsForInsert(data.sizeGroups));
       }
       if (Array.isArray(data.sizes) && data.sizes.length > 0) {
-        await tx.insert(sizes).values(data.sizes);
+        await tx.insert(sizes).values(cleanRowsForInsert(data.sizes));
       }
       if (Array.isArray(data.productTypes) && data.productTypes.length > 0) {
-        await tx.insert(productTypes).values(data.productTypes);
+        await tx.insert(productTypes).values(cleanRowsForInsert(data.productTypes));
       }
       if (Array.isArray(data.colors) && data.colors.length > 0) {
-        await tx.insert(colors).values(data.colors);
+        await tx.insert(colors).values(cleanRowsForInsert(data.colors));
       }
       if (Array.isArray(data.fabricTypes) && data.fabricTypes.length > 0) {
-        await tx.insert(fabricTypes).values(data.fabricTypes);
+        await tx.insert(fabricTypes).values(cleanRowsForInsert(data.fabricTypes));
       }
       if (Array.isArray(data.units) && data.units.length > 0) {
-        await tx.insert(units).values(data.units);
+        await tx.insert(units).values(cleanRowsForInsert(data.units));
+      }
+      if (Array.isArray(data.challanTypes) && data.challanTypes.length > 0) {
+        await tx.insert(challanTypes).values(cleanRowsForInsert(data.challanTypes));
+      }
+      if (Array.isArray(data.vendorTypes) && data.vendorTypes.length > 0) {
+        await tx.insert(vendorTypes).values(cleanRowsForInsert(data.vendorTypes));
+      }
+      if (Array.isArray(data.paymentMethods) && data.paymentMethods.length > 0) {
+        await tx.insert(paymentMethods).values(cleanRowsForInsert(data.paymentMethods));
+      }
+      if (Array.isArray(data.brands) && data.brands.length > 0) {
+        await tx.insert(brands).values(cleanRowsForInsert(data.brands));
       }
 
       // E. Re-insert settings and companys
       if (Array.isArray(data.settings) && data.settings.length > 0) {
-        await tx.insert(settings).values(data.settings);
+        await tx.insert(settings).values(cleanRowsForInsert(data.settings));
       }
       if (Array.isArray(data.companys) && data.companys.length > 0) {
-        await tx.insert(companys).values(data.companys);
+        await tx.insert(companys).values(cleanRowsForInsert(data.companys));
       }
 
       // F. Re-insert users (Strict rule: exclude any super_admin user from the backup file)
@@ -274,7 +352,7 @@ export const restoreBackup: Handler = async (c: any) => {
         });
 
         if (nonSuperAdminUsers.length > 0) {
-          await tx.insert(users).values(nonSuperAdminUsers);
+          await tx.insert(users).values(cleanRowsForInsert(nonSuperAdminUsers));
         }
       }
 
@@ -288,6 +366,10 @@ export const restoreBackup: Handler = async (c: any) => {
         "colors",
         "fabric_types",
         "units",
+        "challan_types",
+        "vendor_types",
+        "payment_methods",
+        "brands",
         "companys",
         "settings",
         "users"
@@ -311,8 +393,11 @@ export const restoreBackup: Handler = async (c: any) => {
         preservedSuperAdminsCount: currentSuperAdmins.length
       }
     }, HttpStatusCodes.OK);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Restore backup error:", error);
-    return c.json({ message: "ব্যাকআপ রিস্টোর করতে ব্যর্থ হয়েছে। ফাইলের গঠন যাচাই করুন।" }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
+    return c.json(
+      { message: error?.message || "ব্যাকআপ রিস্টোর করতে ব্যর্থ হয়েছে। ফাইলের গঠন যাচাই করুন।" },
+      HttpStatusCodes.INTERNAL_SERVER_ERROR
+    );
   }
 };
