@@ -1643,15 +1643,35 @@ input[type="number"] {
 
 /*************************************************
   GLOBAL DARK MODE ENHANCEMENTS ACROSS ALL PAGES
+  Pure Neutral Charcoal / Black Architecture (Zero Glare)
 *************************************************/
+html[data-bs-theme="dark"],
+body.theme-dark,
+[data-bs-theme="dark"] body {
+  background-color: #121212 !important;
+  color: #e5e5e5 !important;
+  --bs-body-bg: #121212 !important;
+  --bs-body-color: #e5e5e5 !important;
+}
+
 [data-bs-theme="dark"],
 .theme-dark {
   color: #e5e5e5;
   --bs-body-color: #e5e5e5;
   --bs-heading-color: #f3f4f6;
 
+  .main,
+  .content-wrapper,
+  .content {
+    background-color: #121212 !important;
+  }
+
   .text-dark {
     color: #f3f4f6 !important;
+  }
+
+  .text-muted {
+    color: #9aa0a6 !important;
   }
 
   .bg-white {
@@ -1666,19 +1686,79 @@ input[type="number"] {
     border-color: #2e323b !important;
   }
 
-  .table-light {
-    background-color: #24252a !important;
-    color: #f3f4f6 !important;
+  /* Breadcrumb in dark mode */
+  .pagebar-container {
+    .breadcrumb-item a {
+      color: #9aa0a6 !important;
+      &:hover {
+        color: #3b8eed !important;
+      }
+    }
+    .breadcrumb-item.active,
+    .active-item {
+      color: #3b8eed !important;
+    }
+  }
+
+  /* Subtle Badges in Dark Mode */
+  .bg-primary-subtle {
+    background-color: rgba(59, 142, 237, 0.16) !important;
+    color: #58a6ff !important;
+  }
+  .bg-success-subtle {
+    background-color: rgba(25, 135, 84, 0.16) !important;
+    color: #3fb950 !important;
+  }
+  .bg-danger-subtle {
+    background-color: rgba(220, 53, 69, 0.16) !important;
+    color: #f85149 !important;
+  }
+  .bg-warning-subtle {
+    background-color: rgba(255, 193, 7, 0.16) !important;
+    color: #e3b341 !important;
+  }
+  .bg-info-subtle {
+    background-color: rgba(13, 202, 240, 0.16) !important;
+    color: #58a6ff !important;
+  }
+
+  .border-primary-subtle {
+    border-color: rgba(59, 142, 237, 0.3) !important;
+  }
+  .border-success-subtle {
+    border-color: rgba(25, 135, 84, 0.3) !important;
+  }
+  .border-danger-subtle {
+    border-color: rgba(220, 53, 69, 0.3) !important;
+  }
+  .border-warning-subtle {
+    border-color: rgba(255, 193, 7, 0.3) !important;
+  }
+  .border-info-subtle {
+    border-color: rgba(13, 202, 240, 0.3) !important;
+  }
+
+  /* Tables in Dark Mode */
+  .table {
+    color: #e5e5e5 !important;
+    border-color: #2e323b !important;
+  }
+
+  .table-light,
+  .table thead th {
+    background-color: #161618 !important;
+    color: #a6a6a6 !important;
     border-color: #2e323b !important;
 
     th,
     td {
-      background-color: #24252a !important;
-      color: #f3f4f6 !important;
+      background-color: #161618 !important;
+      color: #a6a6a6 !important;
       border-color: #2e323b !important;
     }
   }
 
+  /* Cards in Dark Mode */
   .card {
     background-color: #1b1b1f !important;
     border-color: #2e323b !important;
@@ -1687,7 +1767,8 @@ input[type="number"] {
 
   .card-header,
   .card-footer {
-    border-color: #2e323b !important;
+    background-color: #171719 !important;
+    border-color: #262626 !important;
   }
 
   .list-group-item {
@@ -1696,19 +1777,31 @@ input[type="number"] {
     color: #e5e5e5 !important;
   }
 
+  /* Form Controls in Dark Mode */
   .form-control,
   .form-select {
     background-color: #121212 !important;
-    border-color: #3f3f3f !important;
-    color: #e5e5e5 !important;
+    border-color: #333333 !important;
+    color: #f0f0f0 !important;
 
     &:focus {
       background-color: #161616 !important;
-      border-color: #0d6efd !important;
+      border-color: #3b8eed !important;
+      box-shadow: 0 0 0 0.2rem rgba(59, 142, 237, 0.25) !important;
       color: #ffffff !important;
+    }
+
+    &::placeholder {
+      color: #737373 !important;
     }
   }
 
+  .form-select option {
+    background-color: #1b1b1f !important;
+    color: #f0f0f0 !important;
+  }
+
+  /* Dropdowns in Dark Mode */
   .dropdown-menu {
     background-color: #1e2025 !important;
     border-color: #2e323b !important;
@@ -1726,6 +1819,7 @@ input[type="number"] {
     }
   }
 
+  /* Modals in Dark Mode */
   .modal-content {
     background-color: #1b1b1f !important;
     border-color: #2e323b !important;
@@ -1734,12 +1828,14 @@ input[type="number"] {
 
   .modal-header,
   .modal-footer {
-    border-color: #2e323b !important;
+    background-color: #171719 !important;
+    border-color: #262626 !important;
   }
 
+  /* Buttons in Dark Mode */
   .btn-white {
     background-color: #1b1b1f !important;
-    border-color: #3f3f3f !important;
+    border-color: #333333 !important;
     color: #e5e5e5 !important;
 
     &:hover {
@@ -1749,16 +1845,16 @@ input[type="number"] {
   }
 
   .badge.bg-light {
-    background-color: #2a2c33 !important;
-    color: #e5e5e5 !important;
-    border-color: #3f3f3f !important;
+    background-color: #24252a !important;
+    color: #a6a6a6 !important;
+    border-color: #333333 !important;
   }
 
   .badge-icon {
     opacity: 0.9;
   }
 
-  .table-hover tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.04) !important;
+  .table-hover tbody tr:hover > * {
+    background-color: rgba(255, 255, 255, 0.035) !important;
   }
 }

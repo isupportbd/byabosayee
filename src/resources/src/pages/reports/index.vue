@@ -1,215 +1,193 @@
 <template>
-  <div class="reports-page pb-5">
-    <!-- Header Section with Breadcrumb & Timeframe Selector -->
-    <div class="card border shadow-sm mb-4 reports-header-card">
-      <div class="card-body p-3 p-md-4">
-        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-          <!-- Left: Title & Subtitle -->
-          <div>
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb mb-1 small">
-                <li class="breadcrumb-item">
-                  <router-link to="/" class="text-decoration-none text-muted">
-                    <i class="bi bi-house-door me-1"></i>হোম
-                  </router-link>
-                </li>
-                <li class="breadcrumb-item active text-dark fw-medium" aria-current="page">
-                  রিপোর্টস
-                </li>
-              </ol>
-            </nav>
-            <div class="d-flex align-items-center gap-2">
-              <div class="reports-header-icon bg-primary-subtle text-primary rounded p-2 d-flex align-items-center justify-content-center">
-                <i class="bi bi-graph-up fs-4"></i>
-              </div>
-              <div>
-                <h4 class="m-0 fw-bold text-dark">ব্যবসায়িক সার্বিক রিপোর্ট ও আর্থিক বিশ্লেষণ</h4>
-                <p class="text-muted small mb-0 mt-0.5">
-                  বিক্রয়, ক্রয়, বর্তমান স্টক, নগদ প্রবাহ এবং দেনা-পাওনার সামগ্রিক চিত্র
-                </p>
-              </div>
-            </div>
-          </div>
+  <div class="reports-page pb-4">
+    <!-- Header Actions & Period Selector (Standard Nexgen Page Layout) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <!-- Left: Page Icon & Title -->
+      <div class="d-flex align-items-center gap-2">
+        <div class="reports-header-icon bg-primary text-white rounded-circle p-2 d-flex align-items-center justify-content-center shadow-sm">
+          <i class="bi bi-graph-up fs-5"></i>
+        </div>
+        <div>
+          <h5 class="m-0 fw-bold">রিপোর্টস ও আর্থিক বিবরণী</h5>
+        </div>
+      </div>
 
-          <!-- Right: Custom Styled Period Dropdown & Actions -->
-          <div class="d-flex flex-wrap align-items-center gap-2 justify-content-lg-end">
-            <!-- Custom Styled Period Dropdown -->
-            <div class="position-relative" ref="dropdownRef">
-              <button
-                type="button"
-                class="btn btn-sm btn-white border shadow-sm d-flex align-items-center gap-2 px-3 py-1.5 period-dropdown-btn"
-                @click="isDropdownOpen = !isDropdownOpen">
-                <i class="bi bi-calendar3 text-primary"></i>
-                <span class="fw-semibold text-dark">{{ currentPeriodLabel }}</span>
-                <i class="bi bi-chevron-down ms-1 text-muted small" :class="{ 'rotate-180': isDropdownOpen }"></i>
-              </button>
+      <!-- Right: Period Selector & Action Buttons -->
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <!-- Floating Custom Period Dropdown -->
+        <div class="position-relative" ref="dropdownRef">
+          <button
+            type="button"
+            class="btn btn-sm btn-white border shadow-sm d-flex align-items-center gap-2 px-3 py-1.5 period-dropdown-btn"
+            @click="isDropdownOpen = !isDropdownOpen">
+            <i class="bi bi-calendar3 text-primary"></i>
+            <span class="fw-semibold">{{ currentPeriodLabel }}</span>
+            <i class="bi bi-chevron-down ms-1 text-muted small" :class="{ 'rotate-180': isDropdownOpen }"></i>
+          </button>
 
-              <!-- Floating Custom Dropdown Menu -->
-              <div
-                v-if="isDropdownOpen"
-                class="dropdown-menu show shadow-lg border-0 py-2 mt-1 period-floating-menu position-absolute end-0">
-                <div class="dropdown-header text-uppercase small fw-bold text-muted px-3 py-1">
-                  সময়কাল নির্বাচন করুন
-                </div>
-
-                <button
-                  type="button"
-                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
-                  :class="{ active: selectedPeriod === 'today' }"
-                  @click="selectPeriod('today')">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-sun text-warning"></i>
-                    <span>আজকের দিন</span>
-                  </div>
-                  <i v-if="selectedPeriod === 'today'" class="bi bi-check2 text-primary fw-bold"></i>
-                </button>
-
-                <button
-                  type="button"
-                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
-                  :class="{ active: selectedPeriod === 'week' }"
-                  @click="selectPeriod('week')">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-calendar-week text-info"></i>
-                    <span>চলতি সপ্তাহ</span>
-                  </div>
-                  <i v-if="selectedPeriod === 'week'" class="bi bi-check2 text-primary fw-bold"></i>
-                </button>
-
-                <button
-                  type="button"
-                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
-                  :class="{ active: selectedPeriod === 'month' }"
-                  @click="selectPeriod('month')">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-calendar-month text-primary"></i>
-                    <span>চলতি মাস</span>
-                  </div>
-                  <i v-if="selectedPeriod === 'month'" class="bi bi-check2 text-primary fw-bold"></i>
-                </button>
-
-                <button
-                  type="button"
-                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
-                  :class="{ active: selectedPeriod === 'year' }"
-                  @click="selectPeriod('year')">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-calendar4 text-success"></i>
-                    <span>চলতি বছর</span>
-                  </div>
-                  <i v-if="selectedPeriod === 'year'" class="bi bi-check2 text-primary fw-bold"></i>
-                </button>
-
-                <div class="dropdown-divider my-1"></div>
-
-                <button
-                  type="button"
-                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
-                  :class="{ active: selectedPeriod === 'custom' }"
-                  @click="selectPeriod('custom')">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-calendar-range text-secondary"></i>
-                    <span>কাস্টম তারিখ সীমা...</span>
-                  </div>
-                  <i v-if="selectedPeriod === 'custom'" class="bi bi-check2 text-primary fw-bold"></i>
-                </button>
-              </div>
+          <!-- Floating Custom Dropdown Menu -->
+          <div
+            v-if="isDropdownOpen"
+            class="dropdown-menu show shadow-lg border py-2 mt-1 period-floating-menu position-absolute end-0">
+            <div class="dropdown-header text-uppercase small fw-bold text-muted px-3 py-1">
+              সময়কাল নির্বাচন করুন
             </div>
 
-            <!-- Custom Date Inputs (when custom period is active) -->
-            <div v-if="selectedPeriod === 'custom'" class="d-flex align-items-center gap-1.5 p-1 bg-light rounded border">
-              <input
-                v-model="customStartDate"
-                type="date"
-                class="form-control form-control-sm border-0 bg-white"
-                @change="fetchSummary" />
-              <span class="text-muted small px-1">হতে</span>
-              <input
-                v-model="customEndDate"
-                type="date"
-                class="form-control form-control-sm border-0 bg-white"
-                @change="fetchSummary" />
-            </div>
-
-            <!-- Reload Button -->
             <button
               type="button"
-              class="btn btn-sm btn-white border shadow-sm d-inline-flex align-items-center gap-1 px-2.5 py-1.5 text-secondary"
-              title="তথ্য রিফ্রেশ করুন"
-              :disabled="loadingSummary"
-              @click="fetchSummary">
-              <i class="bi bi-arrow-clockwise text-primary" :class="{ 'spin-animation': loadingSummary }"></i>
-              <span class="d-none d-sm-inline">রিফ্রেশ</span>
+              class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+              :class="{ active: selectedPeriod === 'today' }"
+              @click="selectPeriod('today')">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-sun text-warning"></i>
+                <span>আজকের দিন</span>
+              </div>
+              <i v-if="selectedPeriod === 'today'" class="bi bi-check2 text-primary fw-bold"></i>
             </button>
 
-            <!-- Print Page Button -->
             <button
               type="button"
-              class="btn btn-sm btn-white border shadow-sm d-inline-flex align-items-center gap-1 px-2.5 py-1.5 text-secondary"
-              title="রিপোর্ট প্রিন্ট করুন"
-              @click="printReport">
-              <i class="bi bi-printer text-primary"></i>
-              <span class="d-none d-sm-inline">প্রিন্ট</span>
+              class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+              :class="{ active: selectedPeriod === 'week' }"
+              @click="selectPeriod('week')">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-week text-info"></i>
+                <span>চলতি সপ্তাহ</span>
+              </div>
+              <i v-if="selectedPeriod === 'week'" class="bi bi-check2 text-primary fw-bold"></i>
+            </button>
+
+            <button
+              type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+              :class="{ active: selectedPeriod === 'month' }"
+              @click="selectPeriod('month')">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-month text-primary"></i>
+                <span>চলতি মাস</span>
+              </div>
+              <i v-if="selectedPeriod === 'month'" class="bi bi-check2 text-primary fw-bold"></i>
+            </button>
+
+            <button
+              type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+              :class="{ active: selectedPeriod === 'year' }"
+              @click="selectPeriod('year')">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar4 text-success"></i>
+                <span>চলতি বছর</span>
+              </div>
+              <i v-if="selectedPeriod === 'year'" class="bi bi-check2 text-primary fw-bold"></i>
+            </button>
+
+            <div class="dropdown-divider my-1"></div>
+
+            <button
+              type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+              :class="{ active: selectedPeriod === 'custom' }"
+              @click="selectPeriod('custom')">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-range text-secondary"></i>
+                <span>কাস্টম তারিখ সীমা...</span>
+              </div>
+              <i v-if="selectedPeriod === 'custom'" class="bi bi-check2 text-primary fw-bold"></i>
             </button>
           </div>
         </div>
 
-        <!-- Navigation Tabs (Nexgen Modular Switcher) -->
-        <hr class="my-3 opacity-25" />
-        <ul class="nav nav-pills report-nav-pills gap-1.5 flex-nowrap overflow-auto" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button
-              type="button"
-              class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
-              :class="{ active: activeTab === 'summary' }"
-              @click="activeTab = 'summary'">
-              <i class="bi bi-speedometer2"></i>
-              <span>সার্বিক সামারি</span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              type="button"
-              class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
-              :class="{ active: activeTab === 'stock' }"
-              @click="activeTab = 'stock'">
-              <i class="bi bi-box-seam"></i>
-              <span>পণ্যভিত্তিক বর্তমান স্টক</span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              type="button"
-              class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
-              :class="{ active: activeTab === 'statement' }"
-              @click="activeTab = 'statement'">
-              <i class="bi bi-journal-text"></i>
-              <span>আর্থিক ও ক্যাশফ্লো স্টেটমেন্ট</span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              type="button"
-              class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
-              :class="{ active: activeTab === 'profit_loss' }"
-              @click="activeTab = 'profit_loss'">
-              <i class="bi bi-graph-up-arrow"></i>
-              <span>লাভ-ক্ষতি ও মার্জিন</span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              type="button"
-              class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
-              :class="{ active: activeTab === 'parties' }"
-              @click="activeTab = 'parties'">
-              <i class="bi bi-people"></i>
-              <span>দেনা-পাওনা খতিয়ান</span>
-            </button>
-          </li>
-        </ul>
+        <!-- Custom Date Inputs (when custom period is active) -->
+        <div v-if="selectedPeriod === 'custom'" class="d-flex align-items-center gap-1.5 p-1 bg-light rounded border">
+          <input
+            v-model="customStartDate"
+            type="date"
+            class="form-control form-control-sm border-0"
+            @change="fetchSummary" />
+          <span class="text-muted small px-1">হতে</span>
+          <input
+            v-model="customEndDate"
+            type="date"
+            class="form-control form-control-sm border-0"
+            @change="fetchSummary" />
+        </div>
+
+        <!-- Reload Button -->
+        <button
+          type="button"
+          class="btn btn-sm btn-white border shadow-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 text-secondary"
+          title="তথ্য রিফ্রেশ করুন"
+          :disabled="loadingSummary"
+          @click="fetchSummary">
+          <i class="bi bi-arrow-clockwise text-primary" :class="{ 'spin-animation': loadingSummary }"></i>
+          <span class="d-none d-sm-inline">রিফ্রেশ</span>
+        </button>
+
+        <!-- Print Page Button -->
+        <button
+          type="button"
+          class="btn btn-sm btn-white border shadow-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 text-secondary"
+          title="রিপোর্ট প্রিন্ট করুন"
+          @click="printReport">
+          <i class="bi bi-printer text-primary"></i>
+          <span class="d-none d-sm-inline">প্রিন্ট</span>
+        </button>
       </div>
     </div>
+
+    <!-- Navigation Pills / Tabs (Standard Flat Layout) -->
+    <ul class="nav nav-pills report-nav-pills gap-1.5 mb-3 flex-nowrap overflow-auto py-1" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button
+          type="button"
+          class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
+          :class="{ active: activeTab === 'summary' }"
+          @click="activeTab = 'summary'">
+          <i class="bi bi-speedometer2"></i>
+          <span>সার্বিক সামারি</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          type="button"
+          class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
+          :class="{ active: activeTab === 'stock' }"
+          @click="activeTab = 'stock'">
+          <i class="bi bi-box-seam"></i>
+          <span>পণ্যভিত্তিক বর্তমান স্টক</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          type="button"
+          class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
+          :class="{ active: activeTab === 'statement' }"
+          @click="activeTab = 'statement'">
+          <i class="bi bi-journal-text"></i>
+          <span>আর্থিক ও ক্যাশফ্লো স্টেটমেন্ট</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          type="button"
+          class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
+          :class="{ active: activeTab === 'profit_loss' }"
+          @click="activeTab = 'profit_loss'">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>লাভ-ক্ষতি ও মার্জিন</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          type="button"
+          class="nav-link text-nowrap d-flex align-items-center gap-2 py-2 px-3 small fw-medium"
+          :class="{ active: activeTab === 'parties' }"
+          @click="activeTab = 'parties'">
+          <i class="bi bi-people"></i>
+          <span>দেনা-পাওনা খতিয়ান</span>
+        </button>
+      </li>
+    </ul>
 
     <!-- Active Tab Content Area -->
     <div class="report-content-container">
@@ -363,8 +341,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .reports-header-icon {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
 }
 .period-dropdown-btn {
   border-radius: 8px;
@@ -421,12 +399,6 @@ onBeforeUnmount(() => {
 }
 
 /* Dark Mode Overrides for Reports */
-:global([data-bs-theme="dark"]) .reports-page .reports-header-card,
-:global(.theme-dark) .reports-page .reports-header-card {
-  background-color: #1b1b1f !important;
-  border-color: #2e323b !important;
-}
-
 :global([data-bs-theme="dark"]) .period-floating-menu,
 :global(.theme-dark) .period-floating-menu {
   background-color: #1e2025 !important;
@@ -470,7 +442,6 @@ onBeforeUnmount(() => {
   .period-floating-menu,
   .report-nav-pills,
   .btn,
-  .breadcrumb,
   input {
     display: none !important;
   }
