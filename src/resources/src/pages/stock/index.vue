@@ -79,7 +79,7 @@
             </div>
             <p class="small mb-0 mt-1 text-truncate" :class="lowStockCount > 0 ? 'text-danger fw-semibold' : 'text-muted'">
               <template v-if="lowStockCount > 0">
-                {{ toBengaliNumber(lowStockCount) }} টি পণ্যের স্টক কম / শেষ
+                {{ toBengaliNumber(lowStockCount) }} টি পণ্যের স্টক কম (৫০ বা নিচে)
               </template>
               <template v-else>
                 সকল পণ্যের স্টক সন্তোষজনক
@@ -123,8 +123,8 @@
           <div style="min-width: 130px;">
             <select v-model="stockStatusFilter" class="form-select form-select-sm" @change="currentPage = 1">
               <option value="all">সকল স্টক</option>
-              <option value="in_stock">ইন-স্টক (পর্যাপ্ত)</option>
-              <option value="low_stock">লো-স্টক (সতর্কতা)</option>
+              <option value="in_stock">ইন-স্টক (৫০+ পিস)</option>
+              <option value="low_stock">লো-স্টক (১-৫০ পিস)</option>
               <option value="out_of_stock">স্টক শেষ (০ পিস)</option>
             </select>
           </div>
@@ -255,8 +255,8 @@
                     class="badge px-2.5 py-1 fs-7 fw-bold"
                     :class="{
                       'bg-danger text-white': Number(item.stockQuantity || 0) <= 0,
-                      'bg-warning-subtle text-warning-emphasis border border-warning-subtle': Number(item.stockQuantity || 0) > 0 && Number(item.stockQuantity || 0) <= Number(item.alertQuantity || 5),
-                      'bg-success-subtle text-success border border-success-subtle': Number(item.stockQuantity || 0) > Number(item.alertQuantity || 5)
+                      'bg-warning-subtle text-warning-emphasis border border-warning-subtle': Number(item.stockQuantity || 0) > 0 && Number(item.stockQuantity || 0) <= 50,
+                      'bg-success-subtle text-success border border-success-subtle': Number(item.stockQuantity || 0) > 50
                     }">
                     {{ toBengaliNumber(item.stockQuantity || 0) }} {{ item.unit?.shortName || item.unit?.name || 'পিস' }}
                   </span>
@@ -275,7 +275,7 @@
                     স্টক শেষ
                   </span>
                   <span
-                    v-else-if="Number(item.stockQuantity || 0) <= Number(item.alertQuantity || 5)"
+                    v-else-if="Number(item.stockQuantity || 0) <= 50"
                     class="badge bg-warning-subtle text-warning border border-warning-subtle small">
                     লো-স্টক
                   </span>
@@ -377,8 +377,7 @@ const totalRetailValue = computed(() => {
 const lowStockCount = computed(() => {
   return itemsList.value.filter((item) => {
     const qty = Number(item.stockQuantity) || 0;
-    const alert = Number(item.alertQuantity) || 5;
-    return qty <= alert;
+    return qty <= 50;
   }).length;
 });
 
@@ -401,14 +400,12 @@ const filteredItems = computed(() => {
   if (stockStatusFilter.value === "in_stock") {
     list = list.filter((item) => {
       const qty = Number(item.stockQuantity) || 0;
-      const alert = Number(item.alertQuantity) || 5;
-      return qty > alert;
+      return qty > 50;
     });
   } else if (stockStatusFilter.value === "low_stock") {
     list = list.filter((item) => {
       const qty = Number(item.stockQuantity) || 0;
-      const alert = Number(item.alertQuantity) || 5;
-      return qty > 0 && qty <= alert;
+      return qty > 0 && qty <= 50;
     });
   } else if (stockStatusFilter.value === "out_of_stock") {
     list = list.filter((item) => Number(item.stockQuantity || 0) <= 0);

@@ -262,7 +262,7 @@
                     স্টক শূন্য
                   </span>
                   <span v-else-if="item.stockStatus === 'low_stock'" class="badge bg-warning-subtle text-warning border border-warning-subtle">
-                    লো-স্টক ({{ toBengaliNumber(item.alertQuantity) }} এর নিচে)
+                    লো-স্টক (৫০ বা কম পিস)
                   </span>
                   <span v-else class="badge bg-success-subtle text-success border border-success-subtle">
                     পর্যাপ্ত স্টক

@@ -183,7 +183,7 @@ export const getSummaryReport: Handler = async (c: any) => {
       const qty = Number(it.stockQuantity) || 0;
       const cost = Number(it.purchasePrice) || 0;
       const sell = Number(it.sellingPrice) || 0;
-      const alert = Number(it.alertQuantity) || 5;
+      const alert = 50; // User rule: ৫০ এর নিচে নামলে স্টক লো
 
       totalStockPieces += qty;
       totalStockPurchaseValue += qty * cost;
@@ -314,19 +314,13 @@ export const getSummaryReport: Handler = async (c: any) => {
       .slice(0, 5);
 
     // D. Inventory Reordering Decisions (সর্বোচ্চ ৫টি আইটেম প্রদর্শিত হবে)
-    // ১. স্টক বাড়ানো দরকার (Low stock or zero stock)
-    const restockRecommendations = allItems
-      .filter((it: any) => (Number(it.stockQuantity) || 0) <= (Number(it.alertQuantity) || 5))
-      .sort((a: any, b: any) => {
-        const qtyA = Number(a.stockQuantity) || 0;
-        const qtyB = Number(b.stockQuantity) || 0;
-        if (qtyA === 0 && qtyB > 0) return -1;
-        if (qtyB === 0 && qtyA > 0) return 1;
-        return qtyA - qtyB;
-      })
-      .slice(0, 5)
+    // ১. স্টক বাড়ানো দরকার (বিক্রয় তথ্য বিশ্লেষণ করে সর্বাধিক বিক্রিত পণ্যগুলোর মধ্যে যেগুলোর স্টক সীমিত বা শেষ [<= ৫০ পিস])
+    const lowStockThreshold = 50;
+    const itemCandidates = allItems
+      .filter((it: any) => (Number(it.stockQuantity) || 0) <= lowStockThreshold)
       .map((it: any) => {
         const soldQty = productSalesMap[String(it.id)]?.quantitySold || 0;
+        const rev = productSalesMap[String(it.id)]?.totalRevenue || 0;
         return {
           itemId: it.id,
           name: it.name,
@@ -335,14 +329,27 @@ export const getSummaryReport: Handler = async (c: any) => {
           brandName: it.brandName || "-",
           designCode: it.designCode || "-",
           quantitySold: soldQty,
+          totalRevenue: rev,
           currentStock: Number(it.stockQuantity) || 0,
-          alertQuantity: Number(it.alertQuantity) || 5
+          alertQuantity: lowStockThreshold
         };
       });
 
-    // ২. কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে / ওভারস্টক)
+    // Sort: First by quantitySold DESC (সর্বাধিক বিক্রিত পণ্য আগে আসবে), then by currentStock ASC (কম স্টক আগে)
+    const restockRecommendations = itemCandidates
+      .sort((a, b) => {
+        if (a.quantitySold > 0 && b.quantitySold === 0) return -1;
+        if (b.quantitySold > 0 && a.quantitySold === 0) return 1;
+        if (b.quantitySold !== a.quantitySold) {
+          return b.quantitySold - a.quantitySold;
+        }
+        return a.currentStock - b.currentStock;
+      })
+      .slice(0, 5);
+
+    // ২. কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে [> ৫০ পিস] / ওভারস্টক)
     const noRestockNeeded = allItems
-      .filter((it: any) => (Number(it.stockQuantity) || 0) > (Number(it.alertQuantity) || 5))
+      .filter((it: any) => (Number(it.stockQuantity) || 0) > lowStockThreshold)
       .sort((a: any, b: any) => (Number(b.stockQuantity) || 0) - (Number(a.stockQuantity) || 0))
       .slice(0, 5)
       .map((it: any) => {
@@ -356,7 +363,7 @@ export const getSummaryReport: Handler = async (c: any) => {
           designCode: it.designCode || "-",
           currentStock: Number(it.stockQuantity) || 0,
           quantitySold: soldQty,
-          alertQuantity: Number(it.alertQuantity) || 5,
+          alertQuantity: lowStockThreshold,
           stockCostValue: (Number(it.stockQuantity) || 0) * (Number(it.purchasePrice) || 0)
         };
       });
@@ -473,7 +480,7 @@ export const getStockReport: Handler = async (c: any) => {
 
     let filtered = productRows.map((it: any) => {
       const qty = Number(it.stockQuantity) || 0;
-      const alert = Number(it.alertQuantity) || 5;
+      const alert = 50; // User rule: ৫০ এর নিচে নামলে লো-স্টক
       const cost = Number(it.purchasePrice) || 0;
       const sell = Number(it.sellingPrice) || 0;
       const stockCostValue = qty * cost;
