@@ -403,11 +403,8 @@ export const restoreBackup: Handler = async (c: any) => {
       if (Array.isArray(data.companys) && data.companys.length > 0) {
         await tx.insert(companys).values(cleanRowsForInsert(data.companys));
       }
-      if (Array.isArray(data.companySettings) && data.companySettings.length > 0) {
-        await tx.insert(companySettings).values(cleanRowsForInsert(data.companySettings));
-      }
 
-      // F. Re-insert users (MUST be BEFORE any user-dependent tables like brands, suppliers, items, etc.)
+      // F. Re-insert users (MUST be BEFORE any user-dependent tables like companySettings, brands, suppliers, items, etc.)
       if (Array.isArray(data.users) && data.users.length > 0) {
         const nonSuperAdminUsers = data.users.filter((u: any) => {
           const isSuperAdminRole = u.roleId && superAdminRoleIds.has(u.roleId);
@@ -434,6 +431,24 @@ export const restoreBackup: Handler = async (c: any) => {
         }
         return cleaned;
       };
+
+      // H. Re-insert companySettings (AFTER users so companySettings.userId -> users.id exists)
+      if (Array.isArray(data.companySettings) && data.companySettings.length > 0) {
+        const usedUserIds = new Set<number>();
+        const safeCompanySettings: any[] = [];
+        for (const cs of data.companySettings) {
+          const cleaned = cleanRowForInsert(cs);
+          const targetUid = validUserIds.has(Number(cleaned.userId)) ? Number(cleaned.userId) : defaultUserId;
+          if (!usedUserIds.has(targetUid)) {
+            cleaned.userId = targetUid;
+            usedUserIds.add(targetUid);
+            safeCompanySettings.push(cleaned);
+          }
+        }
+        if (safeCompanySettings.length > 0) {
+          await tx.insert(companySettings).values(safeCompanySettings);
+        }
+      }
 
       // H. Re-insert brands
       if (Array.isArray(data.brands) && data.brands.length > 0) {
