@@ -304,8 +304,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import axios from "axios";
+
+const props = defineProps<{
+  initialStatus?: string;
+  initialSearch?: string;
+}>();
 
 const loading = ref(false);
 const itemsList = ref<any[]>([]);
@@ -313,10 +318,10 @@ const summaryData = ref<any>({});
 const categoriesList = ref<any[]>([]);
 const brandsList = ref<any[]>([]);
 
-const searchQuery = ref("");
+const searchQuery = ref(props.initialSearch || "");
 const selectedCategoryId = ref("");
 const selectedBrandId = ref("");
-const selectedStatus = ref("all");
+const selectedStatus = ref(props.initialStatus || "all");
 
 const currentPage = ref(1);
 const perPage = ref(15);
@@ -414,6 +419,12 @@ function exportCsv() {
   link.click();
   document.body.removeChild(link);
 }
+
+watch(() => [props.initialStatus, props.initialSearch], () => {
+  if (props.initialStatus) selectedStatus.value = props.initialStatus;
+  if (props.initialSearch !== undefined) searchQuery.value = props.initialSearch;
+  fetchStockReport();
+});
 
 onMounted(() => {
   fetchDropdowns();

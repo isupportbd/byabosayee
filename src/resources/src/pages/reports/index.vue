@@ -223,12 +223,17 @@
         </div>
         <SummaryReport
           v-else
-          :summary="summaryData" />
+          :summary="summaryData"
+          @switch-tab="handleSwitchTab"
+          @view-stock="handleViewStock"
+          @search-stock="handleSearchStock" />
       </div>
 
       <!-- ২. পণ্যভিত্তিক স্টক রিপোর্ট ট্যাব -->
       <div v-if="activeTab === 'stock'">
-        <StockReport />
+        <StockReport
+          :initial-status="stockInitialStatus"
+          :initial-search="stockInitialSearch" />
       </div>
 
       <!-- ৩. আর্থিক ও ক্যাশফ্লো স্টেটমেন্ট ট্যাব -->
@@ -268,6 +273,25 @@ const activeTab = ref<"summary" | "stock" | "statement" | "profit_loss" | "parti
 const selectedPeriod = ref("month"); // 'today' | 'week' | 'month' | 'year' | 'custom'
 const customStartDate = ref("");
 const customEndDate = ref("");
+
+const stockInitialStatus = ref("all");
+const stockInitialSearch = ref("");
+
+function handleSwitchTab(tab: "summary" | "stock" | "statement" | "profit_loss" | "parties") {
+  activeTab.value = tab;
+}
+
+function handleViewStock(status: "all" | "in_stock" | "low_stock" | "out_of_stock") {
+  stockInitialStatus.value = status;
+  stockInitialSearch.value = "";
+  activeTab.value = "stock";
+}
+
+function handleSearchStock(query: string) {
+  stockInitialStatus.value = "all";
+  stockInitialSearch.value = query;
+  activeTab.value = "stock";
+}
 
 const isDropdownOpen = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);

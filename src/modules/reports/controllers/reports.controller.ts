@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Handler } from "hono";
 import { db, HttpStatusCodes } from "@/framework/facade.js";
 import { capitalInvestments, capitalWithdrawals } from "@/modules/accounts/database/models/accounts.js";
@@ -196,14 +196,20 @@ export const getSummaryReport: Handler = async (c: any) => {
       }
     });
 
-    // 4. Period Sale Items Breakdown (Top Brands, Top Designs, Top Products, Reorder Insights)
+    // 4. Sale Items Breakdown (Top Brands, Top Designs, Top Products, Reorder Insights)
     const saleIds = periodSales.map((s: any) => s.id);
+    const allSaleIds = allSales.map((s: any) => s.id);
+    
+    // If period has sales, use period sales; otherwise fallback to all-time sales for top items
+    const targetSaleIds = saleIds.length > 0 ? saleIds : allSaleIds;
+    const isAllTimeFallback = saleIds.length === 0 && allSaleIds.length > 0;
+
     let periodSaleItems: any[] = [];
-    if (saleIds.length > 0) {
+    if (targetSaleIds.length > 0) {
       periodSaleItems = await db
         .select()
         .from(saleItems)
-        .where(sql`${saleItems.saleId} IN (${sql.join(saleIds.map((id) => sql`${id}`), sql`, `)})`);
+        .where(inArray(saleItems.saleId, targetSaleIds));
     }
 
     // A. Brand Sales Analytics
@@ -289,43 +295,37 @@ export const getSummaryReport: Handler = async (c: any) => {
       .slice(0, 6);
 
     // D. Inventory Reordering Decisions (কোন পণ্য স্টক বাড়ানো দরকার আর কোনটা কেনার প্রয়োজন নেই)
-    // ১. স্টক বাড়ানো প্রয়োজন (চাহিদা আছে কিন্তু স্টক কম / শূন্য)
-    const restockRecommendations = Object.values(productSalesMap)
-      .filter((p) => p.currentStock <= p.alertQuantity)
-      .sort((a, b) => {
-        if (a.currentStock === 0 && b.currentStock > 0) return -1;
-        if (b.currentStock === 0 && a.currentStock > 0) return 1;
-        return b.quantitySold - a.quantitySold;
+    // ১. স্টক বাড়ানো দরকার (Low stock or zero stock)
+    const restockRecommendations = allItems
+      .filter((it: any) => (Number(it.stockQuantity) || 0) <= (Number(it.alertQuantity) || 5))
+      .sort((a: any, b: any) => {
+        const qtyA = Number(a.stockQuantity) || 0;
+        const qtyB = Number(b.stockQuantity) || 0;
+        if (qtyA === 0 && qtyB > 0) return -1;
+        if (qtyB === 0 && qtyA > 0) return 1;
+        return qtyA - qtyB;
       })
-      .slice(0, 6);
-
-    if (restockRecommendations.length < 6) {
-      const existingIds = new Set(restockRecommendations.map((r) => r.itemId).filter(Boolean));
-      const lowItems = allItems
-        .filter((it: any) => (Number(it.stockQuantity) || 0) <= (Number(it.alertQuantity) || 5) && !existingIds.has(it.id))
-        .sort((a: any, b: any) => (Number(a.stockQuantity) || 0) - (Number(b.stockQuantity) || 0))
-        .slice(0, 6 - restockRecommendations.length)
-        .map((it: any) => ({
+      .slice(0, 8)
+      .map((it: any) => {
+        const soldQty = productSalesMap[String(it.id)]?.quantitySold || 0;
+        return {
           itemId: it.id,
           name: it.name,
           code: it.code || "-",
           barcode: it.barcode || "-",
           brandName: it.brandName || "-",
           designCode: it.designCode || "-",
-          quantitySold: 0,
-          totalRevenue: 0,
+          quantitySold: soldQty,
           currentStock: Number(it.stockQuantity) || 0,
           alertQuantity: Number(it.alertQuantity) || 5
-        }));
-      restockRecommendations.push(...lowItems);
-    }
+        };
+      });
 
-    // ২. নতুন করে কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে / ওভারস্টক)
+    // ২. কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে / ওভারস্টক)
     const noRestockNeeded = allItems
-      .filter((it: any) => {
-        const qty = Number(it.stockQuantity) || 0;
-        return qty >= (Number(it.alertQuantity) || 5) * 2;
-      })
+      .filter((it: any) => (Number(it.stockQuantity) || 0) > (Number(it.alertQuantity) || 5))
+      .sort((a: any, b: any) => (Number(b.stockQuantity) || 0) - (Number(a.stockQuantity) || 0))
+      .slice(0, 8)
       .map((it: any) => {
         const soldQty = productSalesMap[String(it.id)]?.quantitySold || 0;
         return {
@@ -340,9 +340,7 @@ export const getSummaryReport: Handler = async (c: any) => {
           alertQuantity: Number(it.alertQuantity) || 5,
           stockCostValue: (Number(it.stockQuantity) || 0) * (Number(it.purchasePrice) || 0)
         };
-      })
-      .sort((a: any, b: any) => b.currentStock - a.currentStock)
-      .slice(0, 6);
+      });
 
     // 5. Fetch Capital & Withdrawals during range
     const [allCapitals, allWithdrawals] = await Promise.all([
