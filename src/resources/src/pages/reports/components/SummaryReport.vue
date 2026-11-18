@@ -87,7 +87,258 @@
       </div>
     </div>
 
-    <!-- Comparative Breakdown Rows -->
+    <!-- 🌟 SECTION 1: INVENTORY RESTOCK & PURCHASING DECISION GUIDE (কোনটা বাড়ানো দরকার বনাম কোনটা কেনার প্রয়োজন নেই) -->
+    <div class="row g-3 mb-4">
+      <!-- Left: কোন পণ্যগুলোর স্টক বাড়ানো দরকার (High Demand / Low Stock) -->
+      <div class="col-12 col-lg-6">
+        <div class="card border shadow-sm h-100 card-bar-danger">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="badge-icon bg-danger-subtle text-danger p-1 rounded">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+              </div>
+              <div>
+                <span class="fw-bold text-dark d-block">স্টক বাড়ানো দরকার (জরুরি ক্রয় তালিকা)</span>
+                <small class="text-muted">চাহিদা বেশি অথবা স্টক সতর্কতা সীমার নিচে নেমে গেছে</small>
+              </div>
+            </div>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">ক্রয় সুপারিশ</span>
+          </div>
+
+          <div class="card-body p-0">
+            <div v-if="!summary.analytics?.restockRecommendations?.length" class="p-4 text-center text-muted small">
+              <i class="bi bi-check-circle text-success fs-3 d-block mb-1"></i>
+              বর্তমানে সব পণ্যের পর্যাপ্ত স্টক আছে, জরুরি ঘাটতি নেই।
+            </div>
+            <div v-else class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>পণ্যের নাম ও কোড</th>
+                    <th>ব্র্যান্ড / ডিজাইন</th>
+                    <th class="text-center">বিক্রয়</th>
+                    <th class="text-center">বর্তমান স্টক</th>
+                    <th class="text-end">অবস্থা / পদক্ষেপ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in summary.analytics?.restockRecommendations" :key="item.itemId || item.name">
+                    <td>
+                      <div class="fw-semibold text-dark">{{ item.name }}</div>
+                      <div class="font-monospace text-muted small">{{ item.code || item.barcode }}</div>
+                    </td>
+                    <td>
+                      <div>{{ item.brandName || '-' }}</div>
+                      <small class="text-muted">ডিজাইন: {{ item.designCode || '-' }}</small>
+                    </td>
+                    <td class="text-center fw-medium">
+                      {{ toBengaliNumber(item.quantitySold || 0) }} পিস
+                    </td>
+                    <td class="text-center">
+                      <span class="badge py-1 px-2" :class="item.currentStock <= 0 ? 'bg-danger text-white' : 'bg-warning text-dark'">
+                        {{ toBengaliNumber(item.currentStock) }} পিস
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <span v-if="item.currentStock <= 0" class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                        স্টক শূন্য (দ্রুত কিনুন)
+                      </span>
+                      <span v-else class="badge bg-warning-subtle text-dark border border-warning-subtle">
+                        স্টক বাড়ান
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: কোন পণ্যগুলো নতুন করে কেনার প্রয়োজন নেই (Overstocked / Slow Moving) -->
+      <div class="col-12 col-lg-6">
+        <div class="card border shadow-sm h-100 card-bar-success">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="badge-icon bg-success-subtle text-success p-1 rounded">
+                <i class="bi bi-shield-check"></i>
+              </div>
+              <div>
+                <span class="fw-bold text-dark d-block">কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে)</span>
+                <small class="text-muted">গুদামে অতিরিক্ত মজুদ রয়েছে, নতুন করে কেনার প্রয়োজন নেই</small>
+              </div>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">মজুদ নিরাপদ</span>
+          </div>
+
+          <div class="card-body p-0">
+            <div v-if="!summary.analytics?.noRestockNeeded?.length" class="p-4 text-center text-muted small">
+              <i class="bi bi-info-circle text-muted fs-3 d-block mb-1"></i>
+              কোনো অতিরিক্ত মজুদ বা ওভারস্টক পণ্য শনাক্ত হয়নি।
+            </div>
+            <div v-else class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>পণ্যের নাম ও কোড</th>
+                    <th>ব্র্যান্ড / ডিজাইন</th>
+                    <th class="text-center">বর্তমান মজুদ</th>
+                    <th class="text-end">স্টক মূল্য</th>
+                    <th class="text-end">অবস্থা / পদক্ষেপ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in summary.analytics?.noRestockNeeded" :key="item.itemId || item.name">
+                    <td>
+                      <div class="fw-semibold text-dark">{{ item.name }}</div>
+                      <div class="font-monospace text-muted small">{{ item.code || item.barcode }}</div>
+                    </td>
+                    <td>
+                      <div>{{ item.brandName || '-' }}</div>
+                      <small class="text-muted">ডিজাইন: {{ item.designCode || '-' }}</small>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2 fw-bold">
+                        {{ toBengaliNumber(item.currentStock) }} পিস
+                      </span>
+                    </td>
+                    <td class="text-end fw-medium text-dark">
+                      ৳ {{ toBengaliNumber(formatAmount(item.stockCostValue)) }}
+                    </td>
+                    <td class="text-end">
+                      <span class="badge bg-light text-secondary border">
+                        কেনার দরকার নেই
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🌟 SECTION 2: TOP SELLING BRANDS, DESIGNS & ITEMS (৩টি কলাম অ্যানালিটিক্স কার্ড) -->
+    <div class="row g-3 mb-4">
+      <!-- ১. কোন ব্র্যান্ডের পণ্য বেশি বিক্রয় হয় -->
+      <div class="col-12 col-md-4">
+        <div class="card border shadow-sm h-100">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-award-fill text-warning fs-5"></i>
+              <span class="fw-bold text-dark">সর্বোচ্চ বিক্রিত ব্র্যান্ড</span>
+            </div>
+            <span class="badge bg-warning-subtle text-dark border border-warning-subtle">টপ ব্র্যান্ড</span>
+          </div>
+          <div class="card-body p-0">
+            <div v-if="!summary.analytics?.topBrands?.length" class="p-4 text-center text-muted small">
+              নির্বাচিত সময়ে কোনো ব্র্যান্ডের বিক্রয় রেকর্ড নেই।
+            </div>
+            <div v-else class="list-group list-group-flush small">
+              <div
+                v-for="(brand, idx) in summary.analytics?.topBrands"
+                :key="brand.brandName"
+                class="list-group-item d-flex justify-content-between align-items-center px-3 py-2.5">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge rounded-circle bg-light text-dark border rank-badge">
+                    {{ toBengaliNumber(idx + 1) }}
+                  </span>
+                  <div>
+                    <div class="fw-bold text-dark">{{ brand.brandName }}</div>
+                    <small class="text-muted">বর্তমান গুদাম মজুদ: {{ toBengaliNumber(brand.currentStock) }} পিস</small>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-bold text-primary">{{ toBengaliNumber(brand.quantitySold) }} পিস বিক্রয়</div>
+                  <small class="text-success fw-medium">৳ {{ toBengaliNumber(formatAmount(brand.totalRevenue)) }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ২. কোন ডিজাইন বেশি বিক্রয় হয়েছে -->
+      <div class="col-12 col-md-4">
+        <div class="card border shadow-sm h-100">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-palette2 text-info fs-5"></i>
+              <span class="fw-bold text-dark">সর্বোচ্চ বিক্রিত ডিজাইন</span>
+            </div>
+            <span class="badge bg-info-subtle text-info border border-info-subtle">টপ ডিজাইন</span>
+          </div>
+          <div class="card-body p-0">
+            <div v-if="!summary.analytics?.topDesigns?.length" class="p-4 text-center text-muted small">
+              নির্বাচিত সময়ে কোনো ডিজাইনের বিক্রয় রেকর্ড নেই।
+            </div>
+            <div v-else class="list-group list-group-flush small">
+              <div
+                v-for="(dgn, idx) in summary.analytics?.topDesigns"
+                :key="dgn.designCode"
+                class="list-group-item d-flex justify-content-between align-items-center px-3 py-2.5">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge rounded-circle bg-light text-dark border rank-badge">
+                    {{ toBengaliNumber(idx + 1) }}
+                  </span>
+                  <div>
+                    <div class="fw-bold text-dark font-monospace">{{ dgn.designCode }}</div>
+                    <small class="text-muted">{{ dgn.brandName || 'সাধারণ' }} | মজুদ: {{ toBengaliNumber(dgn.currentStock) }} পিস</small>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-bold text-info">{{ toBengaliNumber(dgn.quantitySold) }} পিস বিক্রয়</div>
+                  <small class="text-success fw-medium">৳ {{ toBengaliNumber(formatAmount(dgn.totalRevenue)) }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৩. কোন আইটেম সবচেয়ে বেশি বিক্রি হয়েছে -->
+      <div class="col-12 col-md-4">
+        <div class="card border shadow-sm h-100">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-fire text-danger fs-5"></i>
+              <span class="fw-bold text-dark">সবচেয়ে বেশি বিক্রিত আইটেম</span>
+            </div>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">হট আইটেম</span>
+          </div>
+          <div class="card-body p-0">
+            <div v-if="!summary.analytics?.topProducts?.length" class="p-4 text-center text-muted small">
+              নির্বাচিত সময়ে কোনো পণ্যের বিক্রয় রেকর্ড নেই।
+            </div>
+            <div v-else class="list-group list-group-flush small">
+              <div
+                v-for="(prod, idx) in summary.analytics?.topProducts"
+                :key="prod.itemId || prod.name"
+                class="list-group-item d-flex justify-content-between align-items-center px-3 py-2.5">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge rounded-circle bg-light text-dark border rank-badge">
+                    {{ toBengaliNumber(idx + 1) }}
+                  </span>
+                  <div>
+                    <div class="fw-bold text-dark text-truncate" style="max-width: 140px;" :title="prod.name">
+                      {{ prod.name }}
+                    </div>
+                    <small class="text-muted font-monospace">{{ prod.code || prod.barcode }} | মজুদ: {{ toBengaliNumber(prod.currentStock) }}</small>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-bold text-danger">{{ toBengaliNumber(prod.quantitySold) }} পিস</div>
+                  <small class="text-success fw-medium">৳ {{ toBengaliNumber(formatAmount(prod.totalRevenue)) }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🌟 SECTION 3: COMPARATIVE BREAKDOWN ROWS (বিক্রয় ও নগদ আদায় বনাম ক্রয় ও দেনা) -->
     <div class="row g-3">
       <!-- Left: বিক্রয় ও আদায় বিবরণী -->
       <div class="col-12 col-lg-6">
@@ -139,11 +390,11 @@
           <div class="card-body p-3">
             <ul class="list-group list-group-flush small">
               <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-journal-text me-1"></i>মোট ক্রয় চালান:</span>
+                <span class="text-muted"><i class="bi bi-receipt-cutoff me-1 text-primary"></i>মোট ক্রয় চালান:</span>
                 <span class="fw-bold">{{ toBengaliNumber(summary.purchases?.count || 0) }} টি</span>
               </li>
               <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-cash-coin me-1"></i>মোট চালানের পণ্যের মূল্য:</span>
+                <span class="text-muted"><i class="bi bi-currency-dollar me-1 text-primary"></i>মোট ক্রয় চালান মূল্য:</span>
                 <span class="fw-bold text-primary fs-6">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.totalAmount)) }}</span>
               </li>
               <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
@@ -197,6 +448,12 @@ function formatAmount(val: number | string | undefined | null): string {
 .card-bar-info {
   border-left: 4px solid #0dcaf0 !important;
 }
+.card-bar-warning {
+  border-left: 4px solid #ffc107 !important;
+}
+.card-bar-danger {
+  border-left: 4px solid #dc3545 !important;
+}
 .card-bar-emerald {
   border-left: 4px solid #059669 !important;
 }
@@ -208,6 +465,15 @@ function formatAmount(val: number | string | undefined | null): string {
   align-items: center;
   justify-content: center;
   font-size: 1rem;
+}
+.rank-badge {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 .text-emerald {
   color: #059669 !important;

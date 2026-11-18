@@ -149,18 +149,29 @@ export const getSummaryReport: Handler = async (c: any) => {
       purchasesDueAmount += Number(p.dueAmount) || 0;
     });
 
-    // 3. Current Stock Status (Overall)
+    // 3. Current Stock Status (Overall) with Catalog Details
     const allItems = await db
       .select({
         id: items.id,
+        name: items.name,
+        code: items.code,
+        barcode: items.barcode,
+        designCode: items.designCode,
         stockQuantity: items.stockQuantity,
         purchasePrice: items.purchasePrice,
         sellingPrice: items.sellingPrice,
-        alertQuantity: items.alertQuantity
+        alertQuantity: items.alertQuantity,
+        brandId: items.brandId,
+        categoryId: items.categoryId,
+        brandName: brands.name,
+        categoryName: categories.name
       })
       .from(items)
+      .leftJoin(brands, eq(items.brandId, brands.id))
+      .leftJoin(categories, eq(items.categoryId, categories.id))
       .where(eq(items.userId, userId));
 
+    const itemsMap = new Map<number, any>();
     let totalStockPieces = 0;
     let totalStockPurchaseValue = 0;
     let totalStockSellingValue = 0;
@@ -168,6 +179,7 @@ export const getSummaryReport: Handler = async (c: any) => {
     let outOfStockCount = 0;
 
     allItems.forEach((it: any) => {
+      itemsMap.set(it.id, it);
       const qty = Number(it.stockQuantity) || 0;
       const cost = Number(it.purchasePrice) || 0;
       const sell = Number(it.sellingPrice) || 0;
@@ -184,7 +196,155 @@ export const getSummaryReport: Handler = async (c: any) => {
       }
     });
 
-    // 4. Fetch Capital & Withdrawals during range
+    // 4. Period Sale Items Breakdown (Top Brands, Top Designs, Top Products, Reorder Insights)
+    const saleIds = periodSales.map((s: any) => s.id);
+    let periodSaleItems: any[] = [];
+    if (saleIds.length > 0) {
+      periodSaleItems = await db
+        .select()
+        .from(saleItems)
+        .where(sql`${saleItems.saleId} IN (${sql.join(saleIds.map((id) => sql`${id}`), sql`, `)})`);
+    }
+
+    // A. Brand Sales Analytics
+    const brandSalesMap: Record<string, { brandName: string; quantitySold: number; totalRevenue: number; currentStock: number }> = {};
+    allItems.forEach((it: any) => {
+      const bName = it.brandName || "অন্যান্য";
+      if (!brandSalesMap[bName]) {
+        brandSalesMap[bName] = { brandName: bName, quantitySold: 0, totalRevenue: 0, currentStock: 0 };
+      }
+      brandSalesMap[bName].currentStock += Number(it.stockQuantity) || 0;
+    });
+
+    periodSaleItems.forEach((si: any) => {
+      const bName = si.brandName || (si.itemId && itemsMap.get(si.itemId)?.brandName) || "অন্যান্য";
+      if (!brandSalesMap[bName]) {
+        brandSalesMap[bName] = { brandName: bName, quantitySold: 0, totalRevenue: 0, currentStock: 0 };
+      }
+      const qty = Number(si.quantity) || 0;
+      const price = Number(si.totalPrice) || (qty * (Number(si.unitPrice) || 0));
+      brandSalesMap[bName].quantitySold += qty;
+      brandSalesMap[bName].totalRevenue += price;
+    });
+
+    const topBrands = Object.values(brandSalesMap)
+      .filter((b) => b.quantitySold > 0)
+      .sort((a, b) => b.quantitySold - a.quantitySold)
+      .slice(0, 6);
+
+    // B. Design Sales Analytics
+    const designSalesMap: Record<string, { designCode: string; quantitySold: number; totalRevenue: number; currentStock: number; brandName: string }> = {};
+    allItems.forEach((it: any) => {
+      const dCode = it.designCode || "সাধারণ";
+      if (!designSalesMap[dCode]) {
+        designSalesMap[dCode] = { designCode: dCode, quantitySold: 0, totalRevenue: 0, currentStock: 0, brandName: it.brandName || "-" };
+      }
+      designSalesMap[dCode].currentStock += Number(it.stockQuantity) || 0;
+    });
+
+    periodSaleItems.forEach((si: any) => {
+      const item = si.itemId ? itemsMap.get(si.itemId) : null;
+      const dCode = item?.designCode || "সাধারণ";
+      if (!designSalesMap[dCode]) {
+        designSalesMap[dCode] = { designCode: dCode, quantitySold: 0, totalRevenue: 0, currentStock: 0, brandName: item?.brandName || si.brandName || "-" };
+      }
+      const qty = Number(si.quantity) || 0;
+      const price = Number(si.totalPrice) || (qty * (Number(si.unitPrice) || 0));
+      designSalesMap[dCode].quantitySold += qty;
+      designSalesMap[dCode].totalRevenue += price;
+    });
+
+    const topDesigns = Object.values(designSalesMap)
+      .filter((d) => d.quantitySold > 0)
+      .sort((a, b) => b.quantitySold - a.quantitySold)
+      .slice(0, 6);
+
+    // C. Top Selling Products
+    const productSalesMap: Record<string, { itemId: number | null; name: string; code: string; barcode: string; brandName: string; designCode: string; quantitySold: number; totalRevenue: number; currentStock: number; alertQuantity: number }> = {};
+    periodSaleItems.forEach((si: any) => {
+      const key = si.itemId ? String(si.itemId) : `${si.name}_${si.barcode || ""}`;
+      const item = si.itemId ? itemsMap.get(si.itemId) : null;
+      if (!productSalesMap[key]) {
+        productSalesMap[key] = {
+          itemId: si.itemId || null,
+          name: si.name,
+          code: item?.code || "-",
+          barcode: si.barcode || item?.barcode || "-",
+          brandName: si.brandName || item?.brandName || "-",
+          designCode: item?.designCode || "-",
+          quantitySold: 0,
+          totalRevenue: 0,
+          currentStock: item ? Number(item.stockQuantity) || 0 : 0,
+          alertQuantity: item ? Number(item.alertQuantity) || 5 : 5
+        };
+      }
+      const qty = Number(si.quantity) || 0;
+      const price = Number(si.totalPrice) || (qty * (Number(si.unitPrice) || 0));
+      productSalesMap[key].quantitySold += qty;
+      productSalesMap[key].totalRevenue += price;
+    });
+
+    const topProducts = Object.values(productSalesMap)
+      .sort((a, b) => b.quantitySold - a.quantitySold)
+      .slice(0, 6);
+
+    // D. Inventory Reordering Decisions (কোন পণ্য স্টক বাড়ানো দরকার আর কোনটা কেনার প্রয়োজন নেই)
+    // ১. স্টক বাড়ানো প্রয়োজন (চাহিদা আছে কিন্তু স্টক কম / শূন্য)
+    const restockRecommendations = Object.values(productSalesMap)
+      .filter((p) => p.currentStock <= p.alertQuantity)
+      .sort((a, b) => {
+        if (a.currentStock === 0 && b.currentStock > 0) return -1;
+        if (b.currentStock === 0 && a.currentStock > 0) return 1;
+        return b.quantitySold - a.quantitySold;
+      })
+      .slice(0, 6);
+
+    if (restockRecommendations.length < 6) {
+      const existingIds = new Set(restockRecommendations.map((r) => r.itemId).filter(Boolean));
+      const lowItems = allItems
+        .filter((it: any) => (Number(it.stockQuantity) || 0) <= (Number(it.alertQuantity) || 5) && !existingIds.has(it.id))
+        .sort((a: any, b: any) => (Number(a.stockQuantity) || 0) - (Number(b.stockQuantity) || 0))
+        .slice(0, 6 - restockRecommendations.length)
+        .map((it: any) => ({
+          itemId: it.id,
+          name: it.name,
+          code: it.code || "-",
+          barcode: it.barcode || "-",
+          brandName: it.brandName || "-",
+          designCode: it.designCode || "-",
+          quantitySold: 0,
+          totalRevenue: 0,
+          currentStock: Number(it.stockQuantity) || 0,
+          alertQuantity: Number(it.alertQuantity) || 5
+        }));
+      restockRecommendations.push(...lowItems);
+    }
+
+    // ২. নতুন করে কেনার প্রয়োজন নেই (পর্যাপ্ত মজুদ আছে / ওভারস্টক)
+    const noRestockNeeded = allItems
+      .filter((it: any) => {
+        const qty = Number(it.stockQuantity) || 0;
+        return qty >= (Number(it.alertQuantity) || 5) * 2;
+      })
+      .map((it: any) => {
+        const soldQty = productSalesMap[String(it.id)]?.quantitySold || 0;
+        return {
+          itemId: it.id,
+          name: it.name,
+          code: it.code || "-",
+          barcode: it.barcode || "-",
+          brandName: it.brandName || "-",
+          designCode: it.designCode || "-",
+          currentStock: Number(it.stockQuantity) || 0,
+          quantitySold: soldQty,
+          alertQuantity: Number(it.alertQuantity) || 5,
+          stockCostValue: (Number(it.stockQuantity) || 0) * (Number(it.purchasePrice) || 0)
+        };
+      })
+      .sort((a: any, b: any) => b.currentStock - a.currentStock)
+      .slice(0, 6);
+
+    // 5. Fetch Capital & Withdrawals during range
     const [allCapitals, allWithdrawals] = await Promise.all([
       db.select().from(capitalInvestments).where(eq(capitalInvestments.userId, userId)),
       db.select().from(capitalWithdrawals).where(eq(capitalWithdrawals.userId, userId))
@@ -226,6 +386,13 @@ export const getSummaryReport: Handler = async (c: any) => {
           potentialProfit: totalStockSellingValue - totalStockPurchaseValue,
           lowStockCount,
           outOfStockCount
+        },
+        analytics: {
+          topBrands,
+          topDesigns,
+          topProducts,
+          restockRecommendations,
+          noRestockNeeded
         }
       }
     }, HttpStatusCodes.OK);
