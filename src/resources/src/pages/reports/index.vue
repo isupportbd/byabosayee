@@ -31,57 +31,124 @@
             </div>
           </div>
 
-          <!-- Right: Period Selector & Action Buttons -->
+          <!-- Right: Custom Styled Period Dropdown & Actions -->
           <div class="d-flex flex-wrap align-items-center gap-2 justify-content-lg-end">
-            <!-- Period Dropdown -->
-            <div class="d-flex align-items-center gap-1.5 bg-light p-1 rounded border">
-              <i class="bi bi-calendar3 text-muted ms-2 small"></i>
-              <select
-                v-model="selectedPeriod"
-                class="form-select form-select-sm border-0 bg-transparent fw-medium"
-                style="width: 140px; cursor: pointer;"
-                @change="handlePeriodChange">
-                <option value="today">আজকের (Today)</option>
-                <option value="week">চলতি সপ্তাহের</option>
-                <option value="month">চলতি মাসের</option>
-                <option value="year">চলতি বছরের</option>
-                <option value="custom">কাস্টম তারিখ...</option>
-              </select>
+            <!-- Custom Styled Period Dropdown -->
+            <div class="position-relative" ref="dropdownRef">
+              <button
+                type="button"
+                class="btn btn-sm btn-white border shadow-sm d-flex align-items-center gap-2 px-3 py-1.5 period-dropdown-btn"
+                @click="isDropdownOpen = !isDropdownOpen">
+                <i class="bi bi-calendar3 text-primary"></i>
+                <span class="fw-semibold text-dark">{{ currentPeriodLabel }}</span>
+                <i class="bi bi-chevron-down ms-1 text-muted small" :class="{ 'rotate-180': isDropdownOpen }"></i>
+              </button>
+
+              <!-- Floating Custom Dropdown Menu -->
+              <div
+                v-if="isDropdownOpen"
+                class="dropdown-menu show shadow-lg border-0 py-2 mt-1 period-floating-menu position-absolute end-0">
+                <div class="dropdown-header text-uppercase small fw-bold text-muted px-3 py-1">
+                  সময়কাল নির্বাচন করুন
+                </div>
+
+                <button
+                  type="button"
+                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+                  :class="{ active: selectedPeriod === 'today' }"
+                  @click="selectPeriod('today')">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-sun text-warning"></i>
+                    <span>আজকের দিন</span>
+                  </div>
+                  <i v-if="selectedPeriod === 'today'" class="bi bi-check2 text-primary fw-bold"></i>
+                </button>
+
+                <button
+                  type="button"
+                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+                  :class="{ active: selectedPeriod === 'week' }"
+                  @click="selectPeriod('week')">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-week text-info"></i>
+                    <span>চলতি সপ্তাহ</span>
+                  </div>
+                  <i v-if="selectedPeriod === 'week'" class="bi bi-check2 text-primary fw-bold"></i>
+                </button>
+
+                <button
+                  type="button"
+                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+                  :class="{ active: selectedPeriod === 'month' }"
+                  @click="selectPeriod('month')">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-month text-primary"></i>
+                    <span>চলতি মাস</span>
+                  </div>
+                  <i v-if="selectedPeriod === 'month'" class="bi bi-check2 text-primary fw-bold"></i>
+                </button>
+
+                <button
+                  type="button"
+                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+                  :class="{ active: selectedPeriod === 'year' }"
+                  @click="selectPeriod('year')">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar4 text-success"></i>
+                    <span>চলতি বছর</span>
+                  </div>
+                  <i v-if="selectedPeriod === 'year'" class="bi bi-check2 text-primary fw-bold"></i>
+                </button>
+
+                <div class="dropdown-divider my-1"></div>
+
+                <button
+                  type="button"
+                  class="dropdown-item d-flex align-items-center justify-content-between px-3 py-2"
+                  :class="{ active: selectedPeriod === 'custom' }"
+                  @click="selectPeriod('custom')">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-range text-secondary"></i>
+                    <span>কাস্টম তারিখ সীমা...</span>
+                  </div>
+                  <i v-if="selectedPeriod === 'custom'" class="bi bi-check2 text-primary fw-bold"></i>
+                </button>
+              </div>
             </div>
 
-            <!-- Custom Date Inputs (when custom period is selected) -->
-            <div v-if="selectedPeriod === 'custom'" class="d-flex align-items-center gap-1">
+            <!-- Custom Date Inputs (when custom period is active) -->
+            <div v-if="selectedPeriod === 'custom'" class="d-flex align-items-center gap-1.5 p-1 bg-light rounded border">
               <input
                 v-model="customStartDate"
                 type="date"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm border-0 bg-white"
                 @change="fetchSummary" />
-              <span class="text-muted small">থেকে</span>
+              <span class="text-muted small px-1">হতে</span>
               <input
                 v-model="customEndDate"
                 type="date"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm border-0 bg-white"
                 @change="fetchSummary" />
             </div>
 
             <!-- Reload Button -->
             <button
               type="button"
-              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+              class="btn btn-sm btn-white border shadow-sm d-inline-flex align-items-center gap-1 px-2.5 py-1.5 text-secondary"
               title="তথ্য রিফ্রেশ করুন"
               :disabled="loadingSummary"
               @click="fetchSummary">
-              <i class="bi bi-arrow-clockwise" :class="{ 'spin-animation': loadingSummary }"></i>
+              <i class="bi bi-arrow-clockwise text-primary" :class="{ 'spin-animation': loadingSummary }"></i>
               <span class="d-none d-sm-inline">রিফ্রেশ</span>
             </button>
 
             <!-- Print Page Button -->
             <button
               type="button"
-              class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+              class="btn btn-sm btn-white border shadow-sm d-inline-flex align-items-center gap-1 px-2.5 py-1.5 text-secondary"
               title="রিপোর্ট প্রিন্ট করুন"
               @click="printReport">
-              <i class="bi bi-printer"></i>
+              <i class="bi bi-printer text-primary"></i>
               <span class="d-none d-sm-inline">প্রিন্ট</span>
             </button>
           </div>
@@ -89,7 +156,7 @@
 
         <!-- Navigation Tabs (Nexgen Modular Switcher) -->
         <hr class="my-3 opacity-25" />
-        <ul class="nav nav-pills report-nav-pills gap-1 flex-nowrap overflow-auto" role="tablist">
+        <ul class="nav nav-pills report-nav-pills gap-1.5 flex-nowrap overflow-auto" role="tablist">
           <li class="nav-item" role="presentation">
             <button
               type="button"
@@ -189,7 +256,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
 import SummaryReport from "./components/SummaryReport.vue";
 import StockReport from "./components/StockReport.vue";
@@ -202,12 +269,40 @@ const selectedPeriod = ref("month"); // 'today' | 'week' | 'month' | 'year' | 'c
 const customStartDate = ref("");
 const customEndDate = ref("");
 
+const isDropdownOpen = ref(false);
+const dropdownRef = ref<HTMLElement | null>(null);
+
 const loadingSummary = ref(false);
 const summaryData = ref<any>({});
 
-function handlePeriodChange() {
-  if (selectedPeriod.value !== "custom") {
+const currentPeriodLabel = computed(() => {
+  switch (selectedPeriod.value) {
+    case "today":
+      return "আজকের দিন";
+    case "week":
+      return "চলতি সপ্তাহ";
+    case "month":
+      return "চলতি মাস";
+    case "year":
+      return "চলতি বছর";
+    case "custom":
+      return "কাস্টম তারিখ";
+    default:
+      return "চলতি মাস";
+  }
+});
+
+function selectPeriod(period: string) {
+  selectedPeriod.value = period;
+  isDropdownOpen.value = false;
+  if (period !== "custom") {
     fetchSummary();
+  }
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
+    isDropdownOpen.value = false;
   }
 }
 
@@ -234,6 +329,11 @@ function printReport() {
 
 onMounted(() => {
   fetchSummary();
+  document.addEventListener("click", handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
 });
 </script>
 
@@ -241,6 +341,44 @@ onMounted(() => {
 .reports-header-icon {
   width: 44px;
   height: 44px;
+}
+.period-dropdown-btn {
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: all 0.2s ease-in-out;
+}
+.period-dropdown-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+.period-floating-menu {
+  min-width: 220px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  z-index: 1050;
+}
+.period-floating-menu .dropdown-item {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  border-radius: 6px;
+  margin: 2px 6px;
+  width: auto;
+  transition: all 0.15s ease;
+}
+.period-floating-menu .dropdown-item:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+.period-floating-menu .dropdown-item.active {
+  background-color: #eff6ff;
+  color: #0284c7;
+  font-weight: 600;
+}
+.rotate-180 {
+  transform: rotate(180deg);
+  transition: transform 0.2s ease;
 }
 .report-nav-pills .nav-link {
   color: #4b5563;
@@ -269,10 +407,11 @@ onMounted(() => {
   }
 }
 @media print {
+  .period-dropdown-btn,
+  .period-floating-menu,
   .report-nav-pills,
   .btn,
   .breadcrumb,
-  select,
   input {
     display: none !important;
   }
