@@ -17,7 +17,12 @@ import {
   vendorTypes
 } from "@/modules/catalog/database/models/catalog.js";
 import { companys } from "@/modules/company/database/models/company.js";
-import { brands } from "@/modules/inventory/database/models/inventory.js";
+import {
+  brands,
+  customers,
+  manufacturers,
+  suppliers
+} from "@/modules/inventory/database/models/inventory.js";
 import { settings } from "@/modules/settings/database/models/settings.js";
 
 /**
@@ -132,6 +137,9 @@ export const downloadBackup: Handler = async (c: any) => {
       allVendorTypes,
       allPaymentMethods,
       allBrands,
+      allSuppliers,
+      allManufacturers,
+      allCustomers,
       allRoles,
       allUsers
     ] = await Promise.all([
@@ -149,6 +157,9 @@ export const downloadBackup: Handler = async (c: any) => {
       db.select().from(vendorTypes),
       db.select().from(paymentMethods),
       db.select().from(brands),
+      db.select().from(suppliers),
+      db.select().from(manufacturers),
+      db.select().from(customers),
       db.select().from(roles),
       db.select().from(users)
     ]);
@@ -180,6 +191,9 @@ export const downloadBackup: Handler = async (c: any) => {
         vendorTypes: allVendorTypes,
         paymentMethods: allPaymentMethods,
         brands: allBrands,
+        suppliers: allSuppliers,
+        manufacturers: allManufacturers,
+        customers: allCustomers,
         roles: allRoles,
         users: exportUsers
       }
@@ -263,7 +277,20 @@ export const restoreBackup: Handler = async (c: any) => {
     // 2. Perform restoration inside a strict Database Transaction (ACID Atomicity)
     // Ensures ALL-OR-NOTHING: Zero data loss, zero partial insertion
     await db.transaction(async (tx) => {
-      // A. Clean catalog child tables then parent tables
+      // A. Clean child tables first, then parents (Order: Children -> Parents)
+      if (Array.isArray(data.customers)) {
+        await tx.delete(customers);
+      }
+      if (Array.isArray(data.manufacturers)) {
+        await tx.delete(manufacturers);
+      }
+      if (Array.isArray(data.suppliers)) {
+        await tx.delete(suppliers);
+      }
+      if (Array.isArray(data.brands)) {
+        await tx.delete(brands);
+      }
+
       await tx.delete(productTypes);
       await tx.delete(sizes);
       await tx.delete(fabricTypes);
@@ -281,9 +308,6 @@ export const restoreBackup: Handler = async (c: any) => {
       }
       if (Array.isArray(data.paymentMethods)) {
         await tx.delete(paymentMethods);
-      }
-      if (Array.isArray(data.brands)) {
-        await tx.delete(brands);
       }
 
       // B. Clean settings and companys
@@ -330,9 +354,6 @@ export const restoreBackup: Handler = async (c: any) => {
       if (Array.isArray(data.paymentMethods) && data.paymentMethods.length > 0) {
         await tx.insert(paymentMethods).values(cleanRowsForInsert(data.paymentMethods));
       }
-      if (Array.isArray(data.brands) && data.brands.length > 0) {
-        await tx.insert(brands).values(cleanRowsForInsert(data.brands));
-      }
 
       // E. Re-insert settings and companys
       if (Array.isArray(data.settings) && data.settings.length > 0) {
@@ -342,7 +363,7 @@ export const restoreBackup: Handler = async (c: any) => {
         await tx.insert(companys).values(cleanRowsForInsert(data.companys));
       }
 
-      // F. Re-insert users (Strict rule: exclude any super_admin user from the backup file)
+      // F. Re-insert users (MUST be BEFORE any user-dependent tables like brands, suppliers, etc.)
       if (Array.isArray(data.users) && data.users.length > 0) {
         const nonSuperAdminUsers = data.users.filter((u: any) => {
           const isSuperAdminRole = u.roleId && superAdminRoleIds.has(u.roleId);
@@ -356,7 +377,59 @@ export const restoreBackup: Handler = async (c: any) => {
         }
       }
 
-      // G. Resync all PostgreSQL sequence generators
+      // G. Resolve valid user IDs in transaction for user-dependent tables (brands, suppliers, etc.)
+      const currentUsers = await tx.select({ id: users.id }).from(users);
+      const validUserIds = new Set<number>(currentUsers.map((u) => u.id));
+      const defaultUserId = Array.from(protectedUserIds)[0] || (currentUsers[0]?.id ?? 1);
+
+      // H. Re-insert brands (AFTER users so brands.userId -> users.id is guaranteed to exist)
+      if (Array.isArray(data.brands) && data.brands.length > 0) {
+        const safeBrands = data.brands.map((b: any) => {
+          const brand = cleanRowForInsert(b);
+          if (!brand.userId || !validUserIds.has(Number(brand.userId))) {
+            brand.userId = defaultUserId;
+          }
+          return brand;
+        });
+
+        await tx.insert(brands).values(safeBrands);
+      }
+
+      // I. Re-insert suppliers, manufacturers, customers if present
+      if (Array.isArray(data.suppliers) && data.suppliers.length > 0) {
+        const safeSuppliers = data.suppliers.map((s: any) => {
+          const row = cleanRowForInsert(s);
+          if (!row.userId || !validUserIds.has(Number(row.userId))) {
+            row.userId = defaultUserId;
+          }
+          return row;
+        });
+        await tx.insert(suppliers).values(safeSuppliers);
+      }
+
+      if (Array.isArray(data.manufacturers) && data.manufacturers.length > 0) {
+        const safeManufacturers = data.manufacturers.map((m: any) => {
+          const row = cleanRowForInsert(m);
+          if (!row.userId || !validUserIds.has(Number(row.userId))) {
+            row.userId = defaultUserId;
+          }
+          return row;
+        });
+        await tx.insert(manufacturers).values(safeManufacturers);
+      }
+
+      if (Array.isArray(data.customers) && data.customers.length > 0) {
+        const safeCustomers = data.customers.map((c: any) => {
+          const row = cleanRowForInsert(c);
+          if (!row.userId || !validUserIds.has(Number(row.userId))) {
+            row.userId = defaultUserId;
+          }
+          return row;
+        });
+        await tx.insert(customers).values(safeCustomers);
+      }
+
+      // J. Resync all PostgreSQL sequence generators
       const serialTables = [
         "categories",
         "sub_categories",
@@ -370,6 +443,9 @@ export const restoreBackup: Handler = async (c: any) => {
         "vendor_types",
         "payment_methods",
         "brands",
+        "suppliers",
+        "manufacturers",
+        "customers",
         "companys",
         "settings",
         "users"
