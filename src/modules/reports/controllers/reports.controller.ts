@@ -238,15 +238,15 @@ export const getSummaryReport: Handler = async (c: any) => {
       .sort((a, b) => b.quantitySold - a.quantitySold)
       .slice(0, 5);
 
-    // B. Design Sales Analytics (পণ্যের নামসহ ডিজাইন তথ্য)
+    // B. Design Sales Analytics (পণ্যের সম্পূর্ণ নামসহ ডিজাইন তথ্য)
     const designSalesMap: Record<string, { designCode: string; productName: string; brandName: string; quantitySold: number; totalRevenue: number; currentStock: number }> = {};
     allItems.forEach((it: any) => {
       const dCode = it.designCode || "সাধারণ";
       if (!designSalesMap[dCode]) {
-        const cleanName = it.name ? it.name.split("_")[0] : (it.categoryName || "পোশাক");
+        const fullProdName = it.name || it.categoryName || dCode;
         designSalesMap[dCode] = {
           designCode: dCode,
-          productName: cleanName,
+          productName: fullProdName,
           brandName: it.brandName || "-",
           quantitySold: 0,
           totalRevenue: 0,
@@ -258,12 +258,12 @@ export const getSummaryReport: Handler = async (c: any) => {
 
     periodSaleItems.forEach((si: any) => {
       const item = si.itemId ? itemsMap.get(si.itemId) : null;
-      const dCode = item?.designCode || "সাধারণ";
-      const cleanName = item?.name ? item.name.split("_")[0] : (si.name ? si.name.split("_")[0] : "পোশাক");
+      const dCode = item?.designCode || si.designCode || "সাধারণ";
+      const fullProdName = item?.name || si.name || dCode;
       if (!designSalesMap[dCode]) {
         designSalesMap[dCode] = {
           designCode: dCode,
-          productName: cleanName,
+          productName: fullProdName,
           brandName: item?.brandName || si.brandName || "-",
           quantitySold: 0,
           totalRevenue: 0,
@@ -274,8 +274,8 @@ export const getSummaryReport: Handler = async (c: any) => {
       const price = Number(si.totalPrice) || (qty * (Number(si.unitPrice) || 0));
       designSalesMap[dCode].quantitySold += qty;
       designSalesMap[dCode].totalRevenue += price;
-      if (!designSalesMap[dCode].productName || designSalesMap[dCode].productName === "পোশাক") {
-        designSalesMap[dCode].productName = cleanName;
+      if (fullProdName && (!designSalesMap[dCode].productName || designSalesMap[dCode].productName === dCode)) {
+        designSalesMap[dCode].productName = fullProdName;
       }
     });
 

@@ -87,9 +87,103 @@
       </div>
     </div>
 
-    <!-- ২. সেলস পারফরম্যান্স অ্যানালিটিক্স (সর্বোচ্চ ৫টি আইটেম, অন্যগুলো ভিউ বাটনে) -->
+    <!-- ২. তুলনামূলক বিশ্লেষণ (বিক্রয় ও নগদ আদায় বনাম মালামাল ক্রয় ও দেনা) - উপরের ধাপে স্থানান্তরিত -->
     <div class="row g-3 mb-4">
-      <!-- ২.১ কোন ব্র্যান্ডের পণ্য বেশি বিক্রয় হয় -->
+      <!-- ২.১ বিক্রয় ও আদায় বিবরণী -->
+      <div class="col-12 col-lg-6">
+        <div class="card border shadow-sm h-100">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <span class="fw-bold d-flex align-items-center gap-2">
+              <i class="bi bi-cash-stack text-success"></i>
+              <span>বিক্রয় ও নগদ আদায় বিশ্লেষণ (নির্বাচিত সময়কাল)</span>
+            </span>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
+              title="আর্থিক স্টেটমেন্টে বিস্তারিত দেখুন"
+              @click="$emit('switch-tab', 'statement')">
+              <i class="bi bi-eye"></i>
+              <span>ভিউ বিবরণী</span>
+            </button>
+          </div>
+          <div class="card-body p-3">
+            <ul class="list-group list-group-flush small">
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-receipt me-1"></i>মোট বিক্রয় চালান:</span>
+                <span class="fw-bold">{{ toBengaliNumber(summary.sales?.count || 0) }} টি</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-tag me-1"></i>মোট বিক্রয় মূল্য (ছাড় বাদে):</span>
+                <span class="fw-bold text-success fs-6">৳ {{ toBengaliNumber(formatAmount(summary.sales?.totalAmount)) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-check2-circle me-1 text-success"></i>নগদ আদায়কৃত টাকা:</span>
+                <span class="fw-bold text-success">৳ {{ toBengaliNumber(formatAmount(summary.sales?.paidAmount)) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-exclamation-circle me-1 text-danger"></i>কাস্টমারদের কাছে বাকি (বকেয়া):</span>
+                <span class="fw-bold text-danger">৳ {{ toBengaliNumber(formatAmount(summary.sales?.dueAmount)) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-percent me-1 text-primary"></i>প্রদত্ত মোট ডিসকাউন্ট:</span>
+                <span class="text-primary fw-semibold">৳ {{ toBengaliNumber(formatAmount(summary.sales?.discountAmount)) }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ২.২ ক্রয় ও দেনা বিবরণী -->
+      <div class="col-12 col-lg-6">
+        <div class="card border shadow-sm h-100">
+          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
+            <span class="fw-bold d-flex align-items-center gap-2">
+              <i class="bi bi-truck text-primary"></i>
+              <span>মালামাল ক্রয় ও দেনা বিশ্লেষণ (নির্বাচিত সময়কাল)</span>
+            </span>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
+              title="দেনা-পাওনা খতিয়ান দেখুন"
+              @click="$emit('switch-tab', 'parties')">
+              <i class="bi bi-eye"></i>
+              <span>ভিউ বিবরণী</span>
+            </button>
+          </div>
+          <div class="card-body p-3">
+            <ul class="list-group list-group-flush small">
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-receipt-cutoff me-1 text-primary"></i>মোট ক্রয় চালান:</span>
+                <span class="fw-bold">{{ toBengaliNumber(summary.purchases?.count || 0) }} টি</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-currency-dollar me-1 text-primary"></i>মোট ক্রয় চালান মূল্য:</span>
+                <span class="fw-bold text-primary fs-6">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.totalAmount)) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-credit-card me-1 text-primary"></i>সাপ্লায়ারদের পরিশোধিত টাকা:</span>
+                <span class="fw-bold text-primary">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.paidAmount)) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-clock-history me-1 text-danger"></i>সরবরাহকারীদের কাছে দেনা (বকেয়া):</span>
+                <span class="fw-bold text-danger">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.dueAmount)) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span class="text-muted"><i class="bi bi-shield-check me-1 text-secondary"></i>মজুদ স্ট্যাটাস সতর্কতা:</span>
+                <div>
+                  <span class="badge bg-warning-subtle text-warning border me-1">{{ toBengaliNumber(summary.inventory?.lowStockCount || 0) }} টি লো-স্টক</span>
+                  <span class="badge bg-danger-subtle text-danger border">{{ toBengaliNumber(summary.inventory?.outOfStockCount || 0) }} টি স্টক-আউট</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ৩. সেলস পারফরম্যান্স অ্যানালিটিক্স (সর্বোচ্চ ৫টি আইটেম, অন্যগুলো ভিউ বাটনে) -->
+    <div class="row g-3 mb-4">
+      <!-- ৩.১ কোন ব্র্যান্ডের পণ্য বেশি বিক্রয় হয় -->
       <div class="col-12 col-md-4">
         <div class="card border shadow-sm h-100">
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
@@ -135,7 +229,7 @@
         </div>
       </div>
 
-      <!-- ২.২ কোন ডিজাইন বেশি বিক্রয় হয়েছে (পণ্যের নামসহ ডিজাইন) -->
+      <!-- ৩.২ কোন ডিজাইন বেশি বিক্রয় হয়েছে (পণ্যের পুরো নামসহ, কোনো ব্যাজ ছাড়া) -->
       <div class="col-12 col-md-4">
         <div class="card border shadow-sm h-100">
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
@@ -167,13 +261,11 @@
                     {{ toBengaliNumber(idx + 1) }}
                   </span>
                   <div>
-                    <div class="fw-bold d-flex align-items-center gap-1.5 flex-wrap">
-                      <span class="font-monospace text-primary">{{ dgn.designCode }}</span>
-                      <span v-if="dgn.productName" class="badge bg-primary-subtle text-primary border border-primary-subtle small fw-medium">
-                        {{ dgn.productName }}
-                      </span>
+                    <!-- পুরো পণ্যের নাম সরাসরি টাইটেল হিসেবে (কোনো ব্যাজ ছাড়া) -->
+                    <div class="fw-bold text-truncate" style="max-width: 220px;" :title="dgn.productName">
+                      {{ dgn.productName }}
                     </div>
-                    <small class="text-muted">ব্র্যান্ড: {{ dgn.brandName || '-' }} | মজুদ: {{ toBengaliNumber(dgn.currentStock) }} পিস</small>
+                    <small class="text-muted">ডিজাইন: <span class="font-monospace text-primary fw-semibold">{{ dgn.designCode }}</span> | মজুদ: {{ toBengaliNumber(dgn.currentStock) }} পিস</small>
                   </div>
                 </div>
                 <div class="text-end">
@@ -186,7 +278,7 @@
         </div>
       </div>
 
-      <!-- ২.৩ কোন আইটেম সবচেয়ে বেশি বিক্রি হয়েছে -->
+      <!-- ৩.৩ কোন আইটেম সবচেয়ে বেশি বিক্রি হয়েছে -->
       <div class="col-12 col-md-4">
         <div class="card border shadow-sm h-100">
           <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
@@ -230,100 +322,6 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ৩. তুলনামূলক বিশ্লেষণ (বিক্রয় ও নগদ আদায় বনাম মালামাল ক্রয় ও দেনা) -->
-    <div class="row g-3 mb-4">
-      <!-- ৩.১ বিক্রয় ও আদায় বিবরণী -->
-      <div class="col-12 col-lg-6">
-        <div class="card border shadow-sm h-100">
-          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
-            <span class="fw-bold d-flex align-items-center gap-2">
-              <i class="bi bi-cash-stack text-success"></i>
-              <span>বিক্রয় ও নগদ আদায় বিশ্লেষণ (নির্বাচিত সময়কাল)</span>
-            </span>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
-              title="আর্থিক স্টেটমেন্টে বিস্তারিত দেখুন"
-              @click="$emit('switch-tab', 'statement')">
-              <i class="bi bi-eye"></i>
-              <span>ভিউ বিবরণী</span>
-            </button>
-          </div>
-          <div class="card-body p-3">
-            <ul class="list-group list-group-flush small">
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-receipt me-1"></i>মোট বিক্রয় চালান:</span>
-                <span class="fw-bold">{{ toBengaliNumber(summary.sales?.count || 0) }} টি</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-tag me-1"></i>মোট বিক্রয় মূল্য (ছাড় বাদে):</span>
-                <span class="fw-bold text-success fs-6">৳ {{ toBengaliNumber(formatAmount(summary.sales?.totalAmount)) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-check2-circle me-1 text-success"></i>নগদ আদায়কৃত টাকা:</span>
-                <span class="fw-bold text-success">৳ {{ toBengaliNumber(formatAmount(summary.sales?.paidAmount)) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-exclamation-circle me-1 text-danger"></i>কাস্টমারদের কাছে বাকি (বকেয়া):</span>
-                <span class="fw-bold text-danger">৳ {{ toBengaliNumber(formatAmount(summary.sales?.dueAmount)) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-percent me-1 text-primary"></i>প্রদত্ত মোট ডিসকাউন্ট:</span>
-                <span class="text-primary fw-semibold">৳ {{ toBengaliNumber(formatAmount(summary.sales?.discountAmount)) }}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- ৩.২ ক্রয় ও দেনা বিবরণী -->
-      <div class="col-12 col-lg-6">
-        <div class="card border shadow-sm h-100">
-          <div class="card-header bg-transparent border-bottom py-2.5 d-flex align-items-center justify-content-between">
-            <span class="fw-bold d-flex align-items-center gap-2">
-              <i class="bi bi-truck text-primary"></i>
-              <span>মালামাল ক্রয় ও দেনা বিশ্লেষণ (নির্বাচিত সময়কাল)</span>
-            </span>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-0.5 px-2 small view-pill-btn"
-              title="দেনা-পাওনা খতিয়ান দেখুন"
-              @click="$emit('switch-tab', 'parties')">
-              <i class="bi bi-eye"></i>
-              <span>ভিউ বিবরণী</span>
-            </button>
-          </div>
-          <div class="card-body p-3">
-            <ul class="list-group list-group-flush small">
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-receipt-cutoff me-1 text-primary"></i>মোট ক্রয় চালান:</span>
-                <span class="fw-bold">{{ toBengaliNumber(summary.purchases?.count || 0) }} টি</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-currency-dollar me-1 text-primary"></i>মোট ক্রয় চালান মূল্য:</span>
-                <span class="fw-bold text-primary fs-6">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.totalAmount)) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-credit-card me-1 text-primary"></i>সাপ্লায়ারদের পরিশোধিত টাকা:</span>
-                <span class="fw-bold text-primary">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.paidAmount)) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-clock-history me-1 text-danger"></i>সরবরাহকারীদের কাছে দেনা (বকেয়া):</span>
-                <span class="fw-bold text-danger">৳ {{ toBengaliNumber(formatAmount(summary.purchases?.dueAmount)) }}</span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                <span class="text-muted"><i class="bi bi-shield-check me-1 text-secondary"></i>মজুদ স্ট্যাটাস সতর্কতা:</span>
-                <div>
-                  <span class="badge bg-warning-subtle text-warning border me-1">{{ toBengaliNumber(summary.inventory?.lowStockCount || 0) }} টি লো-স্টক</span>
-                  <span class="badge bg-danger-subtle text-danger border">{{ toBengaliNumber(summary.inventory?.outOfStockCount || 0) }} টি স্টক-আউট</span>
-                </div>
-              </li>
-            </ul>
           </div>
         </div>
       </div>
