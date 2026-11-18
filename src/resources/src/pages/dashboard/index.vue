@@ -132,10 +132,10 @@
 
       <!-- ২. কোম্পানী এডমিন ড্যাশবোর্ড (কোম্পানী লগইন করলে ব্যবসায়িক ও ইনভেন্টরি হাব দেখাবে) -->
       <div v-else-if="isCompanyAdmin" class="company-dashboard-section mb-4">
-        <!-- ১. ক্রয়, মূল্য নির্ধারণ, বিক্রয় ও মজুদ কার্ডস - ৪ কলাম লেআউট -->
+        <!-- ১. ক্রয়, মূল্য নির্ধারণ, বিক্রয়, পণ্য ফেরত ও মজুদ কার্ডস - ৫ কলাম রেস্পন্সিভ লেআউট -->
         <div class="row g-3 mb-3">
           <!-- ১. ক্রয় -->
-          <div class="col-12 col-sm-6 col-lg-3 d-flex">
+          <div class="col-12 col-sm-6 col-md-4 col-xl d-flex">
             <div class="card border shadow-sm w-100 merchant-card card-bar-primary">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2 gap-1.5 flex-nowrap">
@@ -175,7 +175,7 @@
           </div>
 
           <!-- ২. মূল্য নির্ধারণ (ক্রয়ের পরে কার্ড) -->
-          <div class="col-12 col-sm-6 col-lg-3 d-flex">
+          <div class="col-12 col-sm-6 col-md-4 col-xl d-flex">
             <div class="card border shadow-sm w-100 merchant-card card-bar-purple">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2 gap-1.5 flex-nowrap">
@@ -215,7 +215,7 @@
           </div>
 
           <!-- ৩. বিক্রয় -->
-          <div class="col-12 col-sm-6 col-lg-3 d-flex">
+          <div class="col-12 col-sm-6 col-md-4 col-xl d-flex">
             <div class="card border shadow-sm w-100 merchant-card card-bar-success">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2 gap-1.5 flex-nowrap">
@@ -254,8 +254,48 @@
             </div>
           </div>
 
-          <!-- ৪. মজুদ / স্টক -->
-          <div class="col-12 col-sm-6 col-lg-3 d-flex">
+          <!-- ৪. পণ্য ফেরত / রিটার্ন পলিসি -->
+          <div class="col-12 col-sm-6 col-md-4 col-xl d-flex">
+            <div class="card border shadow-sm w-100 merchant-card card-bar-rose">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2 gap-1.5 flex-nowrap">
+                  <div class="d-flex align-items-center min-w-0">
+                    <div class="card-icon-box text-rose me-2">
+                      <i class="bi bi-arrow-return-left"></i>
+                    </div>
+                    <div class="text-truncate">
+                      <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">পণ্য ফেরত</h5>
+                    </div>
+                  </div>
+                  <router-link
+                    to="/returns"
+                    class="btn btn-sm btn-outline-rose rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0 text-decoration-none">
+                    +নতুন ফেরত
+                  </router-link>
+                </div>
+                <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
+                  <div class="min-w-0">
+                    <div class="d-flex align-items-baseline">
+                      <span class="stat-value me-1 text-rose">{{ toBengaliNumber(inventoryStats.returns?.count || 0) }}</span>
+                      <span class="text-muted small">টি ফেরত রেকর্ড</span>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1 text-truncate">
+                      <i class="bi bi-arrow-left-right text-rose me-1"></i>বিক্রয় ও ক্রয় ফেরত পলিসি
+                    </p>
+                  </div>
+                  <router-link
+                    to="/returns"
+                    class="view-icon-btn text-rose flex-shrink-0 text-decoration-none"
+                    title="রিটার্ন তালিকা ও পলিসি দেখুন">
+                    <i class="bi bi-eye"></i>
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ৫. মজুদ / স্টক -->
+          <div class="col-12 col-sm-6 col-md-4 col-xl d-flex">
             <div class="card border shadow-sm w-100 merchant-card card-bar-info">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2 gap-1.5 flex-nowrap">
@@ -1505,6 +1545,7 @@ async function submitForm() {
 const inventoryStats = reactive({
   purchases: { count: 0, totalAmount: 0 },
   sales: { count: 0, totalAmount: 0 },
+  returns: { count: 0, totalAmount: 0 },
   items: { count: 0, totalStock: 0, stockValue: 0 },
   brands: { count: 0 },
   suppliers: { count: 0 },
@@ -1825,6 +1866,7 @@ async function fetchInventoryStats() {
     const data = res.data?.data || {};
     inventoryStats.purchases = data.purchases || { count: 0, totalAmount: 0 };
     inventoryStats.sales = data.sales || { count: 0, totalAmount: 0 };
+    inventoryStats.returns = data.returns || { count: 0, totalAmount: 0 };
     inventoryStats.items = data.items || { count: 0, totalStock: 0, stockValue: 0 };
     inventoryStats.brands = data.brands || { count: 0 };
     inventoryStats.suppliers = data.suppliers || { count: 0 };
@@ -2443,6 +2485,53 @@ html[data-bs-theme="dark"] .btn-outline-warning:hover,
 .btn-purple:hover {
   background-color: #6d28d9 !important;
   border-color: #6d28d9 !important;
+}
+
+/* Custom Rose Styles for পণ্য ফেরত / রিটার্ন */
+.card-bar-rose {
+  border-top-color: #e11d48 !important;
+}
+.text-rose {
+  color: #e11d48 !important;
+}
+.btn-outline-rose {
+  color: #e11d48 !important;
+  border-color: #e11d48 !important;
+  background-color: transparent !important;
+}
+.btn-outline-rose:hover,
+.btn-outline-rose:focus,
+.btn-outline-rose:active {
+  color: #ffffff !important;
+  background-color: #e11d48 !important;
+  border-color: #e11d48 !important;
+}
+.btn-rose {
+  color: #ffffff !important;
+  background-color: #e11d48 !important;
+  border-color: #e11d48 !important;
+}
+.btn-rose:hover {
+  background-color: #be123c !important;
+  border-color: #be123c !important;
+}
+html[data-bs-theme="dark"] .card-bar-rose,
+.theme-dark .card-bar-rose {
+  border-top-color: #fb7185 !important;
+}
+html[data-bs-theme="dark"] .text-rose,
+.theme-dark .text-rose {
+  color: #fb7185 !important;
+}
+html[data-bs-theme="dark"] .btn-outline-rose,
+.theme-dark .btn-outline-rose {
+  color: #fb7185 !important;
+  border-color: #fb7185 !important;
+}
+html[data-bs-theme="dark"] .btn-outline-rose:hover,
+.theme-dark .btn-outline-rose:hover {
+  color: #000000 !important;
+  background-color: #fb7185 !important;
 }
 
 /* Custom Emerald Styles for একাউন্টস */

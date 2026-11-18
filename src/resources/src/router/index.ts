@@ -81,6 +81,12 @@ export const routes = [
         meta: { requiresAuth: true, title: "বিক্রয় চালানের তালিকা" }
       },
       {
+        path: "/returns",
+        name: "returns",
+        component: () => import("@/pages/returns/index.vue"),
+        meta: { requiresAuth: true, title: "পণ্য ফেরত ও রিটার্ন পলিসি" }
+      },
+      {
         path: "/settings",
         name: "settings",
         component: () => import("@/pages/settings/index.vue"),
