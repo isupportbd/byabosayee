@@ -570,7 +570,7 @@
 
           <!-- ৩. রিপোর্টস -->
           <div class="col-12 col-sm-6 col-lg-3 d-flex">
-            <div class="card border shadow-sm w-100 merchant-card card-bar-indigo">
+            <div class="card border shadow-sm w-100 merchant-card card-bar-indigo cursor-pointer" @click="router.push('/reports')">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2 gap-1.5 flex-nowrap">
                   <div class="d-flex align-items-center min-w-0">
@@ -581,12 +581,12 @@
                       <h5 class="card-title mb-0 fs-6 fw-bold text-truncate">রিপোর্টস</h5>
                     </div>
                   </div>
-                  <button
-                    type="button"
+                  <router-link
+                    to="/reports"
                     class="btn btn-sm btn-outline-indigo rounded-pill px-2 py-0.5 small text-nowrap flex-shrink-0"
-                    @click="openReportsModal">
+                    @click.stop>
                     +বিবরণী
-                  </button>
+                  </router-link>
                 </div>
                 <div class="d-flex justify-content-between align-items-end gap-2 pt-1">
                   <div class="min-w-0">
@@ -598,13 +598,13 @@
                       <i class="bi bi-pie-chart text-indigo me-1"></i>লাভ-ক্ষতি ও স্টক অডিট
                     </p>
                   </div>
-                  <button
-                    type="button"
+                  <router-link
+                    to="/reports"
                     class="view-icon-btn text-indigo flex-shrink-0"
-                    title="রিপোর্টস প্যানেল দেখুন"
-                    @click="openReportsModal">
+                    title="রিপোর্টস পেইজ দেখুন"
+                    @click.stop>
                     <i class="bi bi-eye"></i>
-                  </button>
+                  </router-link>
                 </div>
               </div>
             </div>
@@ -1943,7 +1943,7 @@ function openCustomerModal() {
 }
 
 function openReportsModal() {
-  showReportsModal.value = true;
+  router.push("/reports");
 }
 
 // List Modals

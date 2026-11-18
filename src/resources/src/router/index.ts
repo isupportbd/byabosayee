@@ -121,6 +121,12 @@ export const routes = [
         name: "accounts-withdrawals-create",
         component: () => import("@/pages/accounts/withdrawal-form.vue"),
         meta: { requiresAuth: true, title: "নতুন উত্তোলন এন্ট্রি" }
+      },
+      {
+        path: "/reports",
+        name: "reports",
+        component: () => import("@/pages/reports/index.vue"),
+        meta: { requiresAuth: true, title: "রিপোর্টস ও আর্থিক বিবরণী" }
       }
     ]
   },
